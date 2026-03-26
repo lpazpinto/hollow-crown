@@ -64,7 +64,7 @@ The game is designed in **Brazilian Portuguese** in all design documents. The in
 
 ## Asset Conventions
 
-- Static assets (images, audio) go in `public/assets/` and are referenced by relative path (e.g., `'assets/bg.png'`).
+- Static assets (images, audio) go in `public/assets/`. When using `this.load.setPath('assets')` (as in `src/game/scenes/Game.ts`), reference them without the `assets/` prefix (e.g., `'bg.png'`).
 - Bundled assets can be imported directly in TypeScript with `import img from './assets/file.png'`.
 
 ## Notes for Copilot
