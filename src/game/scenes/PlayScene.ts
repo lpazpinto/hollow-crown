@@ -12,9 +12,9 @@ import {
   type BattleSession,
 } from '../battle/battleSession'
 import {
-  advanceFloorAfterEncounter,
   applyBattleResult,
   getRunDeck,
+  getRunRelics,
   getRunState,
   type EncounterType,
 } from '../battle/runState'
@@ -47,6 +47,7 @@ export class PlayScene extends Phaser.Scene {
     this.session = createInitialBattleSession(getRunDeck(), {
       heroHp: runState.heroHp,
       encounterType: this.encounterType,
+      relics: getRunRelics(),
     })
 
     this.cameras.main.setBackgroundColor('#111827')
@@ -61,7 +62,12 @@ export class PlayScene extends Phaser.Scene {
       color: '#cbd5e1',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 65, 'Press ESC to return to menu', {
+    this.add.text(width / 2, 70, `Floor ${runState.currentFloor} / ${runState.maxFloors}`, {
+      fontSize: '16px',
+      color: '#cbd5e1',
+    }).setOrigin(0.5)
+
+    this.add.text(width / 2, 90, 'Press ESC to return to menu', {
       fontSize: '16px',
       color: '#cbd5e1',
     }).setOrigin(0.5)
@@ -255,13 +261,11 @@ export class PlayScene extends Phaser.Scene {
       this.transitioningScene = true
 
       if (this.encounterType === 'boss') {
-        advanceFloorAfterEncounter()
-        this.scene.start('RunEndScene')
+        this.scene.start('RelicRewardScene', { nextScene: 'RunEndScene' })
       } else if (this.encounterType === 'battle') {
         this.scene.start('RewardScene')
       } else {
-        advanceFloorAfterEncounter()
-        this.scene.start('MapScene')
+        this.scene.start('RelicRewardScene', { nextScene: 'MapScene' })
       }
 
       return

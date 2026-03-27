@@ -1,4 +1,6 @@
 import { STARTER_DECK, type CardContent } from '../content/cards'
+import type { RelicContent } from '../content/relics'
+import { getPostBattleHealAmount } from './relicEffects'
 
 export type EncounterType = 'battle' | 'rest' | 'elite' | 'boss'
 
@@ -6,6 +8,7 @@ export type RunState = {
   currentFloor: number
   maxFloors: number
   currentDeck: CardContent[]
+  currentRelics: RelicContent[]
   heroHp: number
   maxHeroHp: number
   currentEncounterType: EncounterType | null
@@ -19,6 +22,7 @@ export function startNewRun() {
     currentFloor: 1,
     maxFloors: 4,
     currentDeck: cloneDeck(STARTER_DECK),
+    currentRelics: [],
     heroHp: 40,
     maxHeroHp: 40,
     currentEncounterType: null,
@@ -71,6 +75,11 @@ export function applyBattleResult(heroHpAfterBattle: number, wasVictory: boolean
   const state = runState as RunState
   state.heroHp = Math.max(0, Math.min(state.maxHeroHp, heroHpAfterBattle))
 
+  if (wasVictory) {
+    const healAmount = getPostBattleHealAmount(state.currentRelics)
+    state.heroHp = Math.min(state.maxHeroHp, state.heroHp + healAmount)
+  }
+
   if (!wasVictory) {
     state.currentEncounterType = null
   }
@@ -110,6 +119,23 @@ export function addCardToRunDeck(card: CardContent) {
   state.currentDeck = [...state.currentDeck, copy]
 }
 
+export function getRunRelics(): RelicContent[] {
+  ensureRunState()
+  return cloneRelics((runState as RunState).currentRelics)
+}
+
+export function addRelicToRun(relic: RelicContent) {
+  ensureRunState()
+  const state = runState as RunState
+
+  const copy = {
+    ...relic,
+    id: `${relic.id}-run-${state.currentRelics.length + 1}`,
+  }
+
+  state.currentRelics = [...state.currentRelics, copy]
+}
+
 function ensureRunState() {
   if (!runState) {
     startNewRun()
@@ -124,5 +150,10 @@ function cloneRunState(state: RunState): RunState {
   return {
     ...state,
     currentDeck: cloneDeck(state.currentDeck),
+    currentRelics: cloneRelics(state.currentRelics),
   }
+}
+
+function cloneRelics(relics: RelicContent[]): RelicContent[] {
+  return relics.map((relic) => ({ ...relic }))
 }

@@ -3,6 +3,7 @@ import { LoadingScene } from './scenes/LoadingScene'
 import { MapScene } from './scenes/MapScene'
 import { MenuScene } from './scenes/MenuScene'
 import { PlayScene } from './scenes/PlayScene'
+import { RelicRewardScene } from './scenes/RelicRewardScene'
 import { RewardScene } from './scenes/RewardScene'
 import { RunEndScene } from './scenes/RunEndScene'
 import { AUTO, Game, Scale, Types } from 'phaser'
@@ -17,7 +18,7 @@ const config: Types.Core.GameConfig = {
     mode: Scale.FIT,
     autoCenter: Scale.CENTER_BOTH,
   },
-  scene: [LoadingScene, MenuScene, MapScene, PlayScene, RewardScene, RunEndScene],
+  scene: [LoadingScene, MenuScene, MapScene, PlayScene, RewardScene, RelicRewardScene, RunEndScene],
   plugins: {
     global: [
       {

@@ -3,8 +3,10 @@ import {
   checkBattleOutcome,
   type BattleOutcome,
   type BattleState,
+  type CardEffectType,
 } from './battleLogic'
 import { STARTER_DECK, type CardContent } from '../content/cards'
+import type { RelicContent } from '../content/relics'
 import {
   getRandomBossEnemy,
   getRandomEliteEnemy,
@@ -13,6 +15,12 @@ import {
   type EnemyIntent,
 } from '../content/enemies'
 import type { EncounterType } from './runState'
+import {
+  getBattleStartArmorBonus,
+  getConditionalDamageBonus,
+  getFirstTurnExtraDraw,
+  getTurnStartArmorBonus,
+} from './relicEffects'
 
 export type BattleSession = {
   state: BattleState
@@ -23,12 +31,15 @@ export type BattleSession = {
   currentEnergy: number
   maxEnergy: number
   currentIntentIndex: number
+  turnNumber: number
+  relics: RelicContent[]
   outcome: BattleOutcome
 }
 
 type CreateBattleSessionOptions = {
   heroHp?: number
   encounterType?: EncounterType
+  relics?: RelicContent[]
 }
 
 export function createInitialBattleSession(
@@ -40,11 +51,14 @@ export function createInitialBattleSession(
   const maxEnergy = 3
   const shuffledDeck = shuffleCards(cloneDeck(deck))
   const heroHp = options.heroHp ?? 40
+  const relics = cloneRelics(options.relics ?? [])
+  const battleStartArmor = getBattleStartArmorBonus(relics)
+  const firstTurnDraw = getFirstTurnExtraDraw(relics)
 
   const initialSession: BattleSession = {
     state: {
       heroHp,
-      heroArmor: 0,
+      heroArmor: battleStartArmor,
       enemyHp: enemy.maxHp,
     },
     drawPile: shuffledDeck,
@@ -54,22 +68,12 @@ export function createInitialBattleSession(
     currentEnergy: maxEnergy,
     maxEnergy,
     currentIntentIndex: -1,
+    turnNumber: 1,
+    relics,
     outcome: 'ongoing',
   }
 
-  return drawCards(initialSession, 3)
-}
-
-function getEnemyForEncounter(encounterType: EncounterType): EnemyContent {
-  if (encounterType === 'elite') {
-    return getRandomEliteEnemy()
-  }
-
-  if (encounterType === 'boss') {
-    return getRandomBossEnemy()
-  }
-
-  return getRandomEnemy()
+  return drawCards(initialSession, 3 + firstTurnDraw)
 }
 
 export function getCurrentIntent(session: BattleSession): EnemyIntent {
@@ -86,7 +90,7 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
     return session
   }
 
-  const nextState = applyCardEffect(session.state, card.effectType, card.value)
+  const nextState = applyCardWithRelicBonus(session, card.effectType, card.value)
   const nextHand = session.hand.filter((_, index) => index !== cardIndex)
   const nextDiscardPile = [...session.discardPile, card]
 
@@ -102,10 +106,17 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
 
 export function startNewPlayerTurn(session: BattleSession): BattleSession {
   const nextIntentIndex = getNextIntentIndex(session)
+  const turnStartArmor = getTurnStartArmorBonus(session.relics)
+
   const withResetEnergy: BattleSession = {
     ...session,
+    state: {
+      ...session.state,
+      heroArmor: session.state.heroArmor + turnStartArmor,
+    },
     currentEnergy: session.maxEnergy,
     currentIntentIndex: nextIntentIndex,
+    turnNumber: session.turnNumber + 1,
   }
 
   return drawCards(withResetEnergy, 3)
@@ -158,6 +169,31 @@ export function reshuffleDiscardIntoDrawPile(session: BattleSession): BattleSess
   }
 }
 
+function getEnemyForEncounter(encounterType: EncounterType): EnemyContent {
+  if (encounterType === 'elite') {
+    return getRandomEliteEnemy()
+  }
+
+  if (encounterType === 'boss') {
+    return getRandomBossEnemy()
+  }
+
+  return getRandomEnemy()
+}
+
+function applyCardWithRelicBonus(
+  session: BattleSession,
+  effectType: CardEffectType,
+  baseValue: number,
+): BattleState {
+  if (effectType !== 'damage') {
+    return applyCardEffect(session.state, effectType, baseValue)
+  }
+
+  const bonusDamage = getConditionalDamageBonus(session.state, session.relics)
+  return applyCardEffect(session.state, effectType, baseValue + bonusDamage)
+}
+
 function getNextIntentIndex(session: BattleSession): number {
   if (session.enemy.intents.length === 0) {
     return -1
@@ -172,6 +208,10 @@ function getNextIntentIndex(session: BattleSession): number {
 
 function cloneDeck(deck: CardContent[]): CardContent[] {
   return deck.map((card) => ({ ...card }))
+}
+
+function cloneRelics(relics: RelicContent[]): RelicContent[] {
+  return relics.map((relic) => ({ ...relic }))
 }
 
 function shuffleCards(cards: CardContent[]): CardContent[] {
