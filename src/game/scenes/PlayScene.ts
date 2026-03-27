@@ -11,20 +11,29 @@ import {
   startNewPlayerTurn,
   type BattleSession,
 } from '../battle/battleSession'
+import {
+  advanceFloorAfterEncounter,
+  applyBattleResult,
+  getRunDeck,
+  getRunState,
+  type EncounterType,
+} from '../battle/runState'
 
 export class PlayScene extends Phaser.Scene {
   private readonly heroMaxHp = 40
   private session!: BattleSession
+  private transitioningScene = false
+  private encounterType: EncounterType = 'battle'
 
   private heroHpText!: Phaser.GameObjects.Text
   private heroArmorText!: Phaser.GameObjects.Text
   private energyText!: Phaser.GameObjects.Text
-  private drawPileText!: Phaser.GameObjects.Text
+  private drawPileCountText!: Phaser.GameObjects.Text
   private discardPileText!: Phaser.GameObjects.Text
   private enemyHpText!: Phaser.GameObjects.Text
   private intentText!: Phaser.GameObjects.Text
   private resultText!: Phaser.GameObjects.Text
-  private handGroup: Phaser.GameObjects.Group | null = null
+  private handObjects: Phaser.GameObjects.GameObject[] = []
 
   constructor() {
     super('PlayScene')
@@ -32,13 +41,24 @@ export class PlayScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale
-    this.session = createInitialBattleSession()
+    this.transitioningScene = false
+    const runState = getRunState()
+    this.encounterType = runState.currentEncounterType ?? 'battle'
+    this.session = createInitialBattleSession(getRunDeck(), {
+      heroHp: runState.heroHp,
+      encounterType: this.encounterType,
+    })
 
     this.cameras.main.setBackgroundColor('#111827')
 
     this.add.text(width / 2, 30, 'Battle Prototype', {
       fontSize: '28px',
       color: '#ffffff',
+    }).setOrigin(0.5)
+
+    this.add.text(width / 2, 50, `Encounter: ${this.encounterType.toUpperCase()}`, {
+      fontSize: '16px',
+      color: '#cbd5e1',
     }).setOrigin(0.5)
 
     this.add.text(width / 2, 65, 'Press ESC to return to menu', {
@@ -104,7 +124,7 @@ export class PlayScene extends Phaser.Scene {
       color: '#bfdbfe',
     }).setOrigin(0.5)
 
-    this.drawPileText = this.add.text(width / 2 - 220, height - 255, 'Draw: 0', {
+    this.drawPileCountText = this.add.text(width / 2 - 220, height - 255, 'Draw Pile: 0', {
       fontSize: '16px',
       color: '#cbd5e1',
     }).setOrigin(0.5)
@@ -224,12 +244,29 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private updateBattleText() {
+    if (this.transitioningScene) {
+      return
+    }
+
     this.session.outcome = checkBattleOutcome(this.session.state)
 
     if (this.session.outcome === 'victory') {
-      this.resultText.setText('Victory')
-      this.resultText.setColor('#86efac')
+      applyBattleResult(this.session.state.heroHp, true)
+      this.transitioningScene = true
+
+      if (this.encounterType === 'boss') {
+        advanceFloorAfterEncounter()
+        this.scene.start('RunEndScene')
+      } else if (this.encounterType === 'battle') {
+        this.scene.start('RewardScene')
+      } else {
+        advanceFloorAfterEncounter()
+        this.scene.start('MapScene')
+      }
+
+      return
     } else if (this.session.outcome === 'defeat') {
+      applyBattleResult(this.session.state.heroHp, false)
       this.resultText.setText('Defeat')
       this.resultText.setColor('#fca5a5')
     }
@@ -238,7 +275,7 @@ export class PlayScene extends Phaser.Scene {
     this.heroHpText.setText(`HP: ${this.session.state.heroHp} / ${this.heroMaxHp}`)
     this.heroArmorText.setText(`Armor: ${this.session.state.heroArmor}`)
     this.energyText.setText(`Energy: ${this.session.currentEnergy} / ${this.session.maxEnergy}`)
-    this.drawPileText.setText(`Draw: ${this.session.drawPile.length}`)
+    this.drawPileCountText.setText(`Draw Pile: ${this.session.drawPile.length}`)
     this.discardPileText.setText(`Discard: ${this.session.discardPile.length}`)
     this.intentText.setText(`Intent: ${getCurrentIntent(this.session).label}`)
 
@@ -250,11 +287,12 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private renderHand() {
-    if (this.handGroup) {
-      this.handGroup.clear(true, true)
+    if (this.handObjects.length > 0) {
+      this.handObjects.forEach((gameObject) => {
+        gameObject.destroy()
+      })
+      this.handObjects = []
     }
-
-    this.handGroup = this.add.group()
 
     const { width, height } = this.scale
     const cardSpacing = 180
@@ -277,7 +315,7 @@ export class PlayScene extends Phaser.Scene {
         },
       )
 
-      this.handGroup?.addMultiple(cardObjects)
+      this.handObjects.push(...cardObjects)
     })
   }
 }

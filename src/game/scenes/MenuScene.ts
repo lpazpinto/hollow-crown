@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { startNewRun } from '../battle/runState'
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -19,7 +20,8 @@ export class MenuScene extends Phaser.Scene {
     })
 
     this.input.once('pointerdown', () => {
-      this.scene.start('PlayScene')
+      startNewRun()
+      this.scene.start('MapScene')
     })
   }
 }

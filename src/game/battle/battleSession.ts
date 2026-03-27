@@ -6,10 +6,13 @@ import {
 } from './battleLogic'
 import { STARTER_DECK, type CardContent } from '../content/cards'
 import {
-  SKELETON_KNIGHT,
+  getRandomBossEnemy,
+  getRandomEliteEnemy,
+  getRandomEnemy,
   type EnemyContent,
   type EnemyIntent,
 } from '../content/enemies'
+import type { EncounterType } from './runState'
 
 export type BattleSession = {
   state: BattleState
@@ -23,14 +26,24 @@ export type BattleSession = {
   outcome: BattleOutcome
 }
 
-export function createInitialBattleSession(): BattleSession {
-  const enemy = SKELETON_KNIGHT
+type CreateBattleSessionOptions = {
+  heroHp?: number
+  encounterType?: EncounterType
+}
+
+export function createInitialBattleSession(
+  deck: CardContent[] = STARTER_DECK,
+  options: CreateBattleSessionOptions = {},
+): BattleSession {
+  const encounterType = options.encounterType ?? 'battle'
+  const enemy = getEnemyForEncounter(encounterType)
   const maxEnergy = 3
-  const shuffledDeck = shuffleCards(cloneStarterDeck())
+  const shuffledDeck = shuffleCards(cloneDeck(deck))
+  const heroHp = options.heroHp ?? 40
 
   const initialSession: BattleSession = {
     state: {
-      heroHp: 40,
+      heroHp,
       heroArmor: 0,
       enemyHp: enemy.maxHp,
     },
@@ -45,6 +58,18 @@ export function createInitialBattleSession(): BattleSession {
   }
 
   return drawCards(initialSession, 3)
+}
+
+function getEnemyForEncounter(encounterType: EncounterType): EnemyContent {
+  if (encounterType === 'elite') {
+    return getRandomEliteEnemy()
+  }
+
+  if (encounterType === 'boss') {
+    return getRandomBossEnemy()
+  }
+
+  return getRandomEnemy()
 }
 
 export function getCurrentIntent(session: BattleSession): EnemyIntent {
@@ -145,8 +170,8 @@ function getNextIntentIndex(session: BattleSession): number {
   return (session.currentIntentIndex + 1) % session.enemy.intents.length
 }
 
-function cloneStarterDeck(): CardContent[] {
-  return STARTER_DECK.map((card) => ({ ...card }))
+function cloneDeck(deck: CardContent[]): CardContent[] {
+  return deck.map((card) => ({ ...card }))
 }
 
 function shuffleCards(cards: CardContent[]): CardContent[] {

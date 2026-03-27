@@ -36,5 +36,32 @@ export const STARTER_DECK: CardContent[] = [
   },
 ]
 
+export const REWARD_CARD_OPTIONS: CardContent[] = [
+  {
+    id: 'cleave-reward',
+    title: 'Cleave',
+    description: 'Deal 10 damage',
+    effectType: 'damage',
+    value: 10,
+    cost: 2,
+  },
+  {
+    id: 'barrier-reward',
+    title: 'Barrier',
+    description: 'Gain 8 armor',
+    effectType: 'armor',
+    value: 8,
+    cost: 2,
+  },
+  {
+    id: 'spark-reward',
+    title: 'Spark',
+    description: 'Deal 4 damage',
+    effectType: 'damage',
+    value: 4,
+    cost: 0,
+  },
+]
+
 export const STARTER_HAND = STARTER_DECK
 export const CURRENT_HAND = STARTER_DECK

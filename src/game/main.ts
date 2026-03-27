@@ -1,7 +1,10 @@
 import { PokiPlugin } from '@poki/phaser-3'
 import { LoadingScene } from './scenes/LoadingScene'
+import { MapScene } from './scenes/MapScene'
 import { MenuScene } from './scenes/MenuScene'
 import { PlayScene } from './scenes/PlayScene'
+import { RewardScene } from './scenes/RewardScene'
+import { RunEndScene } from './scenes/RunEndScene'
 import { AUTO, Game, Scale, Types } from 'phaser'
 
 const config: Types.Core.GameConfig = {
@@ -14,7 +17,7 @@ const config: Types.Core.GameConfig = {
     mode: Scale.FIT,
     autoCenter: Scale.CENTER_BOTH,
   },
-  scene: [LoadingScene, MenuScene, PlayScene],
+  scene: [LoadingScene, MenuScene, MapScene, PlayScene, RewardScene, RunEndScene],
   plugins: {
     global: [
       {
