@@ -108,6 +108,7 @@ export class MapScene extends Phaser.Scene {
       setCurrentEncounterType('rest')
       resolveRestEncounter()
       advanceFloorAfterEncounter()
+      saveRun()
       this.scene.restart()
       return
     }

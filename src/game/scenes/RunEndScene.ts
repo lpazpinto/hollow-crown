@@ -8,6 +8,7 @@ export class RunEndScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale
+    const compactLayout = width < 900 || height < 700
 
     clearSave()
 
@@ -29,12 +30,38 @@ export class RunEndScene extends Phaser.Scene {
       color: '#cbd5e1',
     }).setOrigin(0.5)
 
+    const menuButton = this.add.rectangle(
+      width / 2,
+      height / 2 + 122,
+      compactLayout ? 260 : 280,
+      compactLayout ? 68 : 72,
+      0x1e293b,
+    )
+      .setStrokeStyle(2, 0xffffff)
+      .setInteractive({ useHandCursor: true })
+
+    this.add.text(width / 2, height / 2 + 122, 'Return to Menu', {
+      fontSize: compactLayout ? '20px' : '22px',
+      color: '#ffffff',
+    }).setOrigin(0.5)
+
+    const goToMenu = () => {
+      this.tweens.killTweensOf(menuButton)
+      menuButton.setScale(0.97)
+      this.tweens.add({
+        targets: menuButton,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 120,
+        ease: 'Quad.Out',
+      })
+      this.scene.start('MenuScene')
+    }
+
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
     })
 
-    this.input.once('pointerdown', () => {
-      this.scene.start('MenuScene')
-    })
+    menuButton.on('pointerdown', goToMenu)
   }
 }

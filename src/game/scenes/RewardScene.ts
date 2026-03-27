@@ -15,8 +15,6 @@ export class RewardScene extends Phaser.Scene {
     const compactLayout = width < 900 || height < 700
     this.rewardChosen = false
 
-    console.log('[RewardScene] create')
-
     this.cameras.main.setBackgroundColor('#111827')
 
     this.add.text(width / 2, 40, 'Victory Reward', {
@@ -36,7 +34,6 @@ export class RewardScene extends Phaser.Scene {
 
     this.input.keyboard?.removeAllListeners('keydown-ESC')
     this.input.keyboard?.on('keydown-ESC', () => {
-      console.log('[RewardScene] ESC -> MenuScene')
       this.scene.start('MenuScene')
     })
 
@@ -51,8 +48,7 @@ export class RewardScene extends Phaser.Scene {
           this.selectReward(card)
         })
       })
-    } catch (error) {
-      console.error('[RewardScene] create failed', error)
+    } catch {
       this.add.text(width / 2, height / 2, 'Reward screen failed to load', {
         fontSize: '20px',
         color: '#fca5a5',
@@ -105,7 +101,6 @@ export class RewardScene extends Phaser.Scene {
         duration: 120,
         ease: 'Quad.Out',
       })
-      console.log('[RewardScene] reward clicked', cardData.title)
       onClick()
     })
   }
@@ -118,14 +113,12 @@ export class RewardScene extends Phaser.Scene {
     this.rewardChosen = true
 
     try {
-      console.log('[RewardScene] selectReward', card.title)
       addCardToRunDeck(card)
       advanceFloorAfterEncounter()
       saveRun()
       this.scene.start('MapScene')
-    } catch (error) {
+    } catch {
       this.rewardChosen = false
-      console.error('[RewardScene] selectReward failed', error)
     }
   }
 
