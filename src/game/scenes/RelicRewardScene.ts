@@ -17,6 +17,7 @@ export class RelicRewardScene extends Phaser.Scene {
 
   create(data: RelicRewardSceneData = {}) {
     const { width, height } = this.scale
+    const compactLayout = width < 980 || height < 720
     this.rewardChosen = false
     this.nextScene = data.nextScene ?? 'MapScene'
 
@@ -43,35 +44,37 @@ export class RelicRewardScene extends Phaser.Scene {
     })
 
     const rewards = this.getRelicChoices(3)
-    const spacing = 300
+    const spacing = compactLayout ? 220 : 300
     const startX = width / 2 - ((rewards.length - 1) * spacing) / 2
 
     rewards.forEach((relic, index) => {
       const x = startX + index * spacing
-      this.createRelicCard(x, height / 2 + 40, relic, () => {
+      this.createRelicCard(x, height / 2 + 40, compactLayout, relic, () => {
         this.selectRelic(relic)
       })
     })
   }
 
-  private createRelicCard(x: number, y: number, relic: RelicContent, onClick: () => void) {
-    const card = this.add.rectangle(x, y, 220, 220, 0xf8fafc)
+  private createRelicCard(x: number, y: number, compactLayout: boolean, relic: RelicContent, onClick: () => void) {
+    const cardWidth = compactLayout ? 186 : 220
+    const cardHeight = compactLayout ? 212 : 220
+    const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0xf8fafc)
       .setStrokeStyle(3, 0x1f2937)
       .setInteractive({ useHandCursor: true })
 
     this.add.text(x, y - 70, relic.name, {
-      fontSize: '22px',
+      fontSize: compactLayout ? '19px' : '22px',
       color: '#111827',
       fontStyle: 'bold',
       align: 'center',
-      wordWrap: { width: 180 },
+      wordWrap: { width: cardWidth - 28 },
     }).setOrigin(0.5)
 
     this.add.text(x, y + 10, relic.description, {
-      fontSize: '16px',
+      fontSize: compactLayout ? '15px' : '16px',
       color: '#374151',
       align: 'center',
-      wordWrap: { width: 180 },
+      wordWrap: { width: cardWidth - 28 },
     }).setOrigin(0.5)
 
     card.on('pointerover', () => {
@@ -82,7 +85,17 @@ export class RelicRewardScene extends Phaser.Scene {
       card.setStrokeStyle(3, 0x1f2937)
     })
 
-    card.on('pointerdown', onClick)
+    card.on('pointerdown', () => {
+      card.setScale(0.97)
+      this.tweens.add({
+        targets: card,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 120,
+        ease: 'Quad.Out',
+      })
+      onClick()
+    })
   }
 
   private selectRelic(relic: RelicContent) {

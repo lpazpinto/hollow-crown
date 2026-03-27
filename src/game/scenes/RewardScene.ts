@@ -12,6 +12,7 @@ export class RewardScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale
+    const compactLayout = width < 900 || height < 700
     this.rewardChosen = false
 
     console.log('[RewardScene] create')
@@ -41,12 +42,12 @@ export class RewardScene extends Phaser.Scene {
 
     try {
       const rewards = this.getRewardChoices()
-      const spacing = 220
+      const spacing = compactLayout ? 200 : 230
       const startX = width / 2 - ((rewards.length - 1) * spacing) / 2
 
       rewards.forEach((card, index) => {
         const x = startX + index * spacing
-        this.createRewardCard(x, height / 2 + 40, card, () => {
+        this.createRewardCard(x, height / 2 + 40, compactLayout, card, () => {
           this.selectReward(card)
         })
       })
@@ -59,28 +60,30 @@ export class RewardScene extends Phaser.Scene {
     }
   }
 
-  private createRewardCard(x: number, y: number, cardData: CardContent, onClick: () => void) {
-    const cardWidth = 160
-    const cardHeight = 210
+  private createRewardCard(x: number, y: number, compactLayout: boolean, cardData: CardContent, onClick: () => void) {
+    const cardWidth = compactLayout ? 176 : 188
+    const cardHeight = compactLayout ? 224 : 236
     const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0xf8fafc)
       .setStrokeStyle(3, 0x1f2937)
       .setInteractive({ useHandCursor: true })
 
     this.add.text(x, y - 70, cardData.title, {
-      fontSize: '24px',
+      fontSize: compactLayout ? '21px' : '24px',
       color: '#111827',
       fontStyle: 'bold',
+      wordWrap: { width: cardWidth - 24 },
+      align: 'center',
     }).setOrigin(0.5)
 
     this.add.text(x, y, cardData.description, {
-      fontSize: '16px',
+      fontSize: compactLayout ? '15px' : '16px',
       color: '#374151',
       align: 'center',
-      wordWrap: { width: 120 },
+      wordWrap: { width: cardWidth - 36 },
     }).setOrigin(0.5)
 
     this.add.text(x, y + 76, `Cost: ${cardData.cost}`, {
-      fontSize: '16px',
+      fontSize: compactLayout ? '15px' : '16px',
       color: '#111827',
       fontStyle: 'bold',
     }).setOrigin(0.5)
@@ -94,6 +97,14 @@ export class RewardScene extends Phaser.Scene {
     })
 
     card.on('pointerdown', () => {
+      card.setScale(0.97)
+      this.tweens.add({
+        targets: card,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 120,
+        ease: 'Quad.Out',
+      })
       console.log('[RewardScene] reward clicked', cardData.title)
       onClick()
     })
