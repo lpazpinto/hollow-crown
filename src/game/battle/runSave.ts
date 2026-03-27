@@ -2,6 +2,7 @@ import { getRunState, restoreRunState, type RunState } from './runState'
 
 const SAVE_KEY = 'hollow-crown-run'
 const ENCOUNTER_TYPES = new Set(['battle', 'rest', 'elite', 'boss'])
+const CARD_RARITIES = new Set(['common', 'uncommon', 'rare'])
 
 export function saveRun(): void {
   try {
@@ -79,13 +80,18 @@ function isCardContent(value: unknown): boolean {
     return false
   }
 
+  const rarity = value.rarity
+  const isValidRarity =
+    rarity === undefined || (typeof rarity === 'string' && CARD_RARITIES.has(rarity))
+
   return (
     typeof value.id === 'string' &&
     typeof value.title === 'string' &&
     typeof value.description === 'string' &&
     typeof value.effectType === 'string' &&
     isNumber(value.value) &&
-    isNumber(value.cost)
+    isNumber(value.cost) &&
+    isValidRarity
   )
 }
 

@@ -325,7 +325,7 @@ export class PlayScene extends Phaser.Scene {
         if (this.encounterType === 'boss') {
           this.scene.start('RelicRewardScene', { nextScene: 'RunEndScene' })
         } else if (this.encounterType === 'battle') {
-          this.scene.start('RewardScene')
+          this.scene.start('RewardScene', { encounterType: 'battle' })
         } else {
           this.scene.start('RelicRewardScene', { nextScene: 'MapScene' })
         }

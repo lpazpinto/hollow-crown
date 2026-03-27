@@ -1,19 +1,29 @@
 import Phaser from 'phaser'
 import { addCardToRunDeck, advanceFloorAfterEncounter } from '../battle/runState'
 import { saveRun } from '../battle/runSave'
-import { REWARD_CARD_OPTIONS, type CardContent } from '../content/cards'
+import {
+  generateRewardChoices,
+  type CardContent,
+  type RewardEncounterType,
+} from '../content/cards'
+
+type RewardSceneData = {
+  encounterType?: RewardEncounterType
+}
 
 export class RewardScene extends Phaser.Scene {
   private rewardChosen = false
+  private encounterType: RewardEncounterType = 'battle'
 
   constructor() {
     super('RewardScene')
   }
 
-  create() {
+  create(data: RewardSceneData = {}) {
     const { width, height } = this.scale
     const compactLayout = width < 900 || height < 700
     this.rewardChosen = false
+    this.encounterType = data.encounterType ?? 'battle'
 
     this.cameras.main.setBackgroundColor('#111827')
 
@@ -27,7 +37,12 @@ export class RewardScene extends Phaser.Scene {
       color: '#cbd5e1',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 112, 'Press ESC to return to menu', {
+    this.add.text(width / 2, 100, `Reward Type: ${this.encounterType.toUpperCase()}`, {
+      fontSize: '16px',
+      color: '#93c5fd',
+    }).setOrigin(0.5)
+
+    this.add.text(width / 2, 122, 'Press ESC to return to menu', {
       fontSize: '16px',
       color: '#cbd5e1',
     }).setOrigin(0.5)
@@ -84,6 +99,12 @@ export class RewardScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
+    this.add.text(x, y + 98, `Rarity: ${cardData.rarity.toUpperCase()}`, {
+      fontSize: compactLayout ? '13px' : '14px',
+      color: '#334155',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
+
     card.on('pointerover', () => {
       card.setStrokeStyle(3, 0xf59e0b)
     })
@@ -123,15 +144,6 @@ export class RewardScene extends Phaser.Scene {
   }
 
   private getRewardChoices(): CardContent[] {
-    const shuffled = [...REWARD_CARD_OPTIONS]
-
-    for (let i = shuffled.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1))
-      const temp = shuffled[i]
-      shuffled[i] = shuffled[j]
-      shuffled[j] = temp
-    }
-
-    return shuffled.slice(0, 3).map((card) => ({ ...card }))
+    return generateRewardChoices(this.encounterType)
   }
 }
