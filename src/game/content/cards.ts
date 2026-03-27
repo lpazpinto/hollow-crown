@@ -9,7 +9,7 @@ export type CardContent = {
   cost: number
 }
 
-export const STARTER_HAND: CardContent[] = [
+export const STARTER_DECK: CardContent[] = [
   {
     id: 'strike-1',
     title: 'Strike',
@@ -36,4 +36,5 @@ export const STARTER_HAND: CardContent[] = [
   },
 ]
 
-export const CURRENT_HAND = STARTER_HAND
+export const STARTER_HAND = STARTER_DECK
+export const CURRENT_HAND = STARTER_DECK

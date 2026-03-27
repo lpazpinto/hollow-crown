@@ -4,7 +4,7 @@ import {
   type BattleOutcome,
   type BattleState,
 } from './battleLogic'
-import { STARTER_HAND, type CardContent } from '../content/cards'
+import { STARTER_DECK, type CardContent } from '../content/cards'
 import {
   SKELETON_KNIGHT,
   type EnemyContent,
@@ -13,6 +13,8 @@ import {
 
 export type BattleSession = {
   state: BattleState
+  drawPile: CardContent[]
+  discardPile: CardContent[]
   hand: CardContent[]
   enemy: EnemyContent
   currentEnergy: number
@@ -24,20 +26,25 @@ export type BattleSession = {
 export function createInitialBattleSession(): BattleSession {
   const enemy = SKELETON_KNIGHT
   const maxEnergy = 3
+  const shuffledDeck = shuffleCards(cloneStarterDeck())
 
-  return {
+  const initialSession: BattleSession = {
     state: {
       heroHp: 40,
       heroArmor: 0,
       enemyHp: enemy.maxHp,
     },
-    hand: cloneStarterHand(),
+    drawPile: shuffledDeck,
+    discardPile: [],
+    hand: [],
     enemy,
     currentEnergy: maxEnergy,
     maxEnergy,
     currentIntentIndex: -1,
     outcome: 'ongoing',
   }
+
+  return drawCards(initialSession, 3)
 }
 
 export function getCurrentIntent(session: BattleSession): EnemyIntent {
@@ -56,11 +63,13 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
 
   const nextState = applyCardEffect(session.state, card.effectType, card.value)
   const nextHand = session.hand.filter((_, index) => index !== cardIndex)
+  const nextDiscardPile = [...session.discardPile, card]
 
   return {
     ...session,
     state: nextState,
     hand: nextHand,
+    discardPile: nextDiscardPile,
     currentEnergy: session.currentEnergy - card.cost,
     outcome: checkBattleOutcome(nextState),
   }
@@ -68,12 +77,59 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
 
 export function startNewPlayerTurn(session: BattleSession): BattleSession {
   const nextIntentIndex = getNextIntentIndex(session)
+  const withResetEnergy: BattleSession = {
+    ...session,
+    currentEnergy: session.maxEnergy,
+    currentIntentIndex: nextIntentIndex,
+  }
+
+  return drawCards(withResetEnergy, 3)
+}
+
+export function drawCards(session: BattleSession, count: number): BattleSession {
+  let nextSession = session
+
+  for (let i = 0; i < count; i += 1) {
+    if (nextSession.drawPile.length === 0) {
+      nextSession = reshuffleDiscardIntoDrawPile(nextSession)
+    }
+
+    if (nextSession.drawPile.length === 0) {
+      break
+    }
+
+    const [drawnCard, ...remainingDrawPile] = nextSession.drawPile
+    nextSession = {
+      ...nextSession,
+      drawPile: remainingDrawPile,
+      hand: [...nextSession.hand, drawnCard],
+    }
+  }
+
+  return nextSession
+}
+
+export function discardHand(session: BattleSession): BattleSession {
+  if (session.hand.length === 0) {
+    return session
+  }
 
   return {
     ...session,
-    hand: cloneStarterHand(),
-    currentEnergy: session.maxEnergy,
-    currentIntentIndex: nextIntentIndex,
+    hand: [],
+    discardPile: [...session.discardPile, ...session.hand],
+  }
+}
+
+export function reshuffleDiscardIntoDrawPile(session: BattleSession): BattleSession {
+  if (session.drawPile.length > 0 || session.discardPile.length === 0) {
+    return session
+  }
+
+  return {
+    ...session,
+    drawPile: shuffleCards([...session.discardPile]),
+    discardPile: [],
   }
 }
 
@@ -89,6 +145,19 @@ function getNextIntentIndex(session: BattleSession): number {
   return (session.currentIntentIndex + 1) % session.enemy.intents.length
 }
 
-function cloneStarterHand(): CardContent[] {
-  return STARTER_HAND.map((card) => ({ ...card }))
+function cloneStarterDeck(): CardContent[] {
+  return STARTER_DECK.map((card) => ({ ...card }))
+}
+
+function shuffleCards(cards: CardContent[]): CardContent[] {
+  const shuffled = [...cards]
+
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const temp = shuffled[i]
+    shuffled[i] = shuffled[j]
+    shuffled[j] = temp
+  }
+
+  return shuffled
 }

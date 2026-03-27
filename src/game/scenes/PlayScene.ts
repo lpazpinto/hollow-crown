@@ -5,6 +5,7 @@ import {
 } from '../battle/battleLogic'
 import {
   createInitialBattleSession,
+  discardHand,
   getCurrentIntent,
   playCardFromHand,
   startNewPlayerTurn,
@@ -18,6 +19,8 @@ export class PlayScene extends Phaser.Scene {
   private heroHpText!: Phaser.GameObjects.Text
   private heroArmorText!: Phaser.GameObjects.Text
   private energyText!: Phaser.GameObjects.Text
+  private drawPileText!: Phaser.GameObjects.Text
+  private discardPileText!: Phaser.GameObjects.Text
   private enemyHpText!: Phaser.GameObjects.Text
   private intentText!: Phaser.GameObjects.Text
   private resultText!: Phaser.GameObjects.Text
@@ -99,6 +102,16 @@ export class PlayScene extends Phaser.Scene {
     this.energyText = this.add.text(170, height - 85, 'Energy: 3 / 3', {
       fontSize: '18px',
       color: '#bfdbfe',
+    }).setOrigin(0.5)
+
+    this.drawPileText = this.add.text(width / 2 - 220, height - 255, 'Draw: 0', {
+      fontSize: '16px',
+      color: '#cbd5e1',
+    }).setOrigin(0.5)
+
+    this.discardPileText = this.add.text(width / 2 + 220, height - 255, 'Discard: 0', {
+      fontSize: '16px',
+      color: '#cbd5e1',
     }).setOrigin(0.5)
 
     // End turn button
@@ -194,6 +207,7 @@ export class PlayScene extends Phaser.Scene {
       return
     }
 
+    this.session = discardHand(this.session)
     this.resolveEnemyIntent()
     this.session.outcome = checkBattleOutcome(this.session.state)
 
@@ -224,6 +238,8 @@ export class PlayScene extends Phaser.Scene {
     this.heroHpText.setText(`HP: ${this.session.state.heroHp} / ${this.heroMaxHp}`)
     this.heroArmorText.setText(`Armor: ${this.session.state.heroArmor}`)
     this.energyText.setText(`Energy: ${this.session.currentEnergy} / ${this.session.maxEnergy}`)
+    this.drawPileText.setText(`Draw: ${this.session.drawPile.length}`)
+    this.discardPileText.setText(`Discard: ${this.session.discardPile.length}`)
     this.intentText.setText(`Intent: ${getCurrentIntent(this.session).label}`)
 
     if (this.session.outcome === 'ongoing') {
