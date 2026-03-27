@@ -18,6 +18,7 @@ import {
   getRunState,
   type EncounterType,
 } from '../battle/runState'
+import { clearSave, saveRun } from '../battle/runSave'
 
 export class PlayScene extends Phaser.Scene {
   private readonly heroMaxHp = 40
@@ -258,6 +259,7 @@ export class PlayScene extends Phaser.Scene {
 
     if (this.session.outcome === 'victory') {
       applyBattleResult(this.session.state.heroHp, true)
+      saveRun()
       this.transitioningScene = true
 
       if (this.encounterType === 'boss') {
@@ -271,6 +273,7 @@ export class PlayScene extends Phaser.Scene {
       return
     } else if (this.session.outcome === 'defeat') {
       applyBattleResult(this.session.state.heroHp, false)
+      clearSave()
       this.resultText.setText('Defeat')
       this.resultText.setColor('#fca5a5')
     }

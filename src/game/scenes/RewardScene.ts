@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { addCardToRunDeck, advanceFloorAfterEncounter } from '../battle/runState'
+import { saveRun } from '../battle/runSave'
 import { REWARD_CARD_OPTIONS, type CardContent } from '../content/cards'
 
 export class RewardScene extends Phaser.Scene {
@@ -109,6 +110,7 @@ export class RewardScene extends Phaser.Scene {
       console.log('[RewardScene] selectReward', card.title)
       addCardToRunDeck(card)
       advanceFloorAfterEncounter()
+      saveRun()
       this.scene.start('MapScene')
     } catch (error) {
       this.rewardChosen = false

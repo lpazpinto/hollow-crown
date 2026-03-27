@@ -98,6 +98,10 @@ export function advanceFloorAfterEncounter() {
   state.currentEncounterType = null
 }
 
+export function restoreRunState(saved: RunState) {
+  runState = cloneRunState(saved)
+}
+
 export function resetRunDeck() {
   startNewRun()
 }

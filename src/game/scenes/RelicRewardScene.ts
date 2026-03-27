@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { addRelicToRun, advanceFloorAfterEncounter } from '../battle/runState'
+import { saveRun } from '../battle/runSave'
 import { RELIC_POOL, type RelicContent } from '../content/relics'
 
 type RelicRewardSceneData = {
@@ -92,6 +93,7 @@ export class RelicRewardScene extends Phaser.Scene {
     this.rewardChosen = true
     addRelicToRun(relic)
     advanceFloorAfterEncounter()
+    saveRun()
     this.scene.start(this.nextScene)
   }
 

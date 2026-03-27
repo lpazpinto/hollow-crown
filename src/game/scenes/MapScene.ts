@@ -7,6 +7,7 @@ import {
   setCurrentEncounterType,
   type EncounterType,
 } from '../battle/runState'
+import { saveRun } from '../battle/runSave'
 
 export class MapScene extends Phaser.Scene {
   constructor() {
@@ -21,6 +22,8 @@ export class MapScene extends Phaser.Scene {
       this.scene.start('RunEndScene')
       return
     }
+
+    saveRun()
 
     this.cameras.main.setBackgroundColor('#0f172a')
 

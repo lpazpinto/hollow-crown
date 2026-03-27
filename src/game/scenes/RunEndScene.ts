@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { clearSave } from '../battle/runSave'
 
 export class RunEndScene extends Phaser.Scene {
   constructor() {
@@ -7,6 +8,8 @@ export class RunEndScene extends Phaser.Scene {
 
   create() {
     const { width, height } = this.scale
+
+    clearSave()
 
     this.cameras.main.setBackgroundColor('#0f172a')
 
