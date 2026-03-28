@@ -39,7 +39,8 @@ export class PlayScene extends Phaser.Scene {
   private enemyPanel!: Phaser.GameObjects.Rectangle
   private heroSprite?: Phaser.GameObjects.Image
   private heroSpriteBaseY = 0
-  private heroIdleTween?: Phaser.Tweens.Tween
+  private heroIdleTimer?: Phaser.Time.TimerEvent
+  private heroIdleFrame = 0
   private previousEmber = 0
   private relicObjects: Phaser.GameObjects.GameObject[] = []
   private handObjects: Phaser.GameObjects.GameObject[] = []
@@ -224,7 +225,7 @@ export class PlayScene extends Phaser.Scene {
     this.previousEmber = this.session.state.ember
     this.updateBattleText()
     this.showTurnBanner('Player Turn', '#fde68a')
-    this.startHeroIdleTween()
+    this.startHeroIdleAnimation()
   }
 
   private createHeroSprite(x: number, y: number): Phaser.GameObjects.Image | undefined {
@@ -315,7 +316,7 @@ export class PlayScene extends Phaser.Scene {
       return
     }
 
-    this.stopHeroIdleTween()
+    this.stopHeroIdleAnimation()
     this.showTurnBanner('Enemy Turn', '#fca5a5')
 
     this.session = discardHand(this.session)
@@ -328,7 +329,7 @@ export class PlayScene extends Phaser.Scene {
       this.session = startNewPlayerTurn(this.session)
       this.time.delayedCall(220, () => {
         this.showTurnBanner('Player Turn', '#fde68a')
-        this.startHeroIdleTween()
+        this.startHeroIdleAnimation()
       })
     }
 
@@ -343,7 +344,7 @@ export class PlayScene extends Phaser.Scene {
     this.session.outcome = checkBattleOutcome(this.session.state)
 
     if (this.session.outcome === 'victory') {
-      this.stopHeroIdleTween()
+      this.stopHeroIdleAnimation()
       applyBattleResult(this.session.state.heroHp, true)
       saveRun()
       this.resultText.setText('Victory')
@@ -366,7 +367,7 @@ export class PlayScene extends Phaser.Scene {
     }
 
     if (this.session.outcome === 'defeat') {
-      this.stopHeroIdleTween()
+      this.stopHeroIdleAnimation()
       applyBattleResult(this.session.state.heroHp, false)
       clearSave()
       this.resultText.setText('Defeat')
@@ -524,34 +525,30 @@ export class PlayScene extends Phaser.Scene {
     })
   }
 
-  private startHeroIdleTween() {
-    if (!this.heroSprite) {
-      return
-    }
-
-    this.stopHeroIdleTween()
-    this.heroSprite.y = this.heroSpriteBaseY
-    this.heroIdleTween = this.tweens.add({
-      targets: this.heroSprite,
-      y: this.heroSpriteBaseY - 6,
-      duration: 1100,
-      ease: 'Sine.InOut',
-      yoyo: true,
-      repeat: -1,
+  private startHeroIdleAnimation() {
+    if (!this.heroSprite) return
+    this.stopHeroIdleAnimation()
+    this.heroIdleFrame = 0
+    this.heroSprite.y = this.heroSpriteBaseY - 3
+    this.heroIdleTimer = this.time.addEvent({
+      delay: 200,
+      loop: true,
+      callback: () => {
+        if (!this.heroSprite) return
+        this.heroIdleFrame = (this.heroIdleFrame + 1) % 2
+        this.heroSprite.y = this.heroIdleFrame === 0
+          ? this.heroSpriteBaseY - 3
+          : this.heroSpriteBaseY + 3
+      },
     })
   }
 
-  private stopHeroIdleTween() {
-    if (!this.heroSprite) {
-      return
+  private stopHeroIdleAnimation() {
+    if (!this.heroSprite) return
+    if (this.heroIdleTimer) {
+      this.heroIdleTimer.remove()
+      this.heroIdleTimer = undefined
     }
-
-    if (this.heroIdleTween) {
-      this.heroIdleTween.stop()
-      this.heroIdleTween.remove()
-      this.heroIdleTween = undefined
-    }
-
     this.heroSprite.y = this.heroSpriteBaseY
   }
 
@@ -566,60 +563,40 @@ export class PlayScene extends Phaser.Scene {
     const enemyArmorGain = nextState.enemyArmor - previousState.enemyArmor
 
     if (enemyDamage > 0) {
-      this.flashTarget(this.enemyPanel, 0x9f1c1c, 0x7f1d1d)
-      this.showFloatingCombatText(this.enemyPanel.x, this.enemyPanel.y - 96, `-${enemyDamage}`, '#fecaca', true)
+      this.flashTargetRed(this.enemyPanel, 0x7f1d1d)
+      this.showFloatingDamageText(this.enemyPanel.x, this.enemyPanel.y - 96, `-${enemyDamage}`, '#fecaca')
     }
 
     if (heroDamage > 0) {
       const heroTarget = this.heroSprite ?? this.heroPanel
-      this.flashTarget(heroTarget, 0xff8f8f, 0x1e3a8a)
+      this.flashTargetRed(heroTarget, 0x1e3a8a)
       const y = this.heroSprite ? this.heroSprite.y - 94 : this.heroPanel.y - 74
-      this.showFloatingCombatText(this.heroPanel.x, y, `-${heroDamage}`, '#fecaca', true)
+      this.showFloatingDamageText(this.heroPanel.x, y, `-${heroDamage}`, '#fecaca')
     }
 
     if (heroArmorGain > 0) {
-      this.showFloatingCombatText(this.heroPanel.x, this.heroPanel.y - 52, `+${heroArmorGain} Armor`, '#93c5fd', false)
+      this.showFloatingDamageText(this.heroPanel.x, this.heroPanel.y - 52, `+${heroArmorGain} Armor`, '#93c5fd')
     }
 
     if (enemyArmorGain > 0) {
-      this.showFloatingCombatText(this.enemyPanel.x, this.enemyPanel.y - 70, `+${enemyArmorGain} Armor`, '#93c5fd', false)
+      this.showFloatingDamageText(this.enemyPanel.x, this.enemyPanel.y - 70, `+${enemyArmorGain} Armor`, '#93c5fd')
     }
   }
 
-  private flashTarget(
+  private flashTargetRed(
     target: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image,
-    flashColor: number,
     restoreFillColor: number,
   ) {
     if (target instanceof Phaser.GameObjects.Image) {
-      target.setTintFill(flashColor)
-      this.time.delayedCall(130, () => {
-        target.clearTint()
-      })
+      target.setTintFill(0xcc2222)
+      this.time.delayedCall(120, () => { target.clearTint() })
       return
     }
-
-    target.setFillStyle(flashColor)
-    this.tweens.add({
-      targets: target,
-      alpha: 0.78,
-      yoyo: true,
-      duration: 120,
-      repeat: 1,
-      onComplete: () => {
-        target.setAlpha(1)
-        target.setFillStyle(restoreFillColor)
-      },
-    })
+    target.setFillStyle(0xcc2222)
+    this.time.delayedCall(120, () => { target.setFillStyle(restoreFillColor) })
   }
 
-  private showFloatingCombatText(
-    x: number,
-    y: number,
-    text: string,
-    color: string,
-    isDamage: boolean,
-  ) {
+  private showFloatingDamageText(x: number, y: number, text: string, color: string) {
     const label = this.add.text(x, y, text, {
       fontSize: this.compactLayout ? '19px' : '22px',
       color,
@@ -630,13 +607,11 @@ export class PlayScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: label,
-      y: y - (isDamage ? 30 : 24),
+      y: y - 25,
       alpha: 0,
-      duration: isDamage ? 430 : 360,
+      duration: 420,
       ease: 'Cubic.Out',
-      onComplete: () => {
-        label.destroy()
-      },
+      onComplete: () => { label.destroy() },
     })
   }
 
