@@ -41,6 +41,11 @@ export type BattleSession = {
     firstAttackUsed: boolean
     firstBlockUsed: boolean
   }
+  turnCardState: {
+    playedAttack: boolean
+    playedSkill: boolean
+    crownSparkTriggered: boolean
+  }
   outcome: BattleOutcome
 }
 
@@ -57,7 +62,8 @@ export function createInitialBattleSession(
   const encounterType = options.encounterType ?? 'battle'
   const enemy = getEnemyForEncounter(encounterType)
   const relics = cloneRelics(options.relics ?? [])
-  const maxEnergy = 3 + getBattleStartEmberBonus(relics)
+  const maxEnergy = 3
+  const startEmber = getBattleStartEmberBonus(relics)
   const shuffledDeck = shuffleCards(cloneDeck(deck))
   const heroHp = options.heroHp ?? 40
 
@@ -65,6 +71,7 @@ export function createInitialBattleSession(
     state: {
       heroHp,
       heroArmor: 0,
+      ember: startEmber,
       enemyHp: enemy.maxHp,
       enemyArmor: 0,
     },
@@ -84,10 +91,15 @@ export function createInitialBattleSession(
       firstAttackUsed: false,
       firstBlockUsed: false,
     },
+    turnCardState: {
+      playedAttack: false,
+      playedSkill: false,
+      crownSparkTriggered: false,
+    },
     outcome: 'ongoing',
   }
 
-  return drawCards(initialSession, 3)
+  return drawCards(initialSession, 4)
 }
 
 export function getCurrentIntent(session: BattleSession): EnemyIntent {
@@ -108,8 +120,10 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
   }
 
   const withPhaseTransition = maybeEnterBossPhaseTwo(session)
-  const { nextState, nextTriggerState } = applyCardWithRelicBonus(
+  const cardId = getBaseCardId(card.id)
+  const { nextState, nextTriggerState, drawCount } = applyCardWithHooks(
     withPhaseTransition,
+    cardId,
     card.effectType,
     card.value,
   )
@@ -126,16 +140,24 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
 
   const nextHand = session.hand.filter((_, index) => index !== cardIndex)
   const nextDiscardPile = [...session.discardPile, card]
-
-  return {
+  let nextSession: BattleSession = {
     ...withPhaseTransition,
     state: stateAfterReflect,
     hand: nextHand,
     discardPile: nextDiscardPile,
     relicTriggerState: nextTriggerState,
+    turnCardState: getUpdatedTurnCardState(withPhaseTransition.turnCardState, card.effectType),
     currentEnergy: session.currentEnergy - card.cost,
     outcome: checkBattleOutcome(stateAfterReflect),
   }
+
+  if (drawCount > 0) {
+    nextSession = drawCards(nextSession, drawCount)
+  }
+
+  nextSession = applyCrownSparkPassive(nextSession)
+
+  return nextSession
 }
 
 export function startNewPlayerTurn(session: BattleSession): BattleSession {
@@ -149,6 +171,11 @@ export function startNewPlayerTurn(session: BattleSession): BattleSession {
     state: stateAfterBurn,
     heroBurn: nextHeroBurn,
     turnNumber: nextTurnNumber,
+    turnCardState: {
+      playedAttack: false,
+      playedSkill: false,
+      crownSparkTriggered: false,
+    },
   })
 
   const nextIntentIndex = getNextIntentIndex(withPhaseTransition)
@@ -159,7 +186,7 @@ export function startNewPlayerTurn(session: BattleSession): BattleSession {
     currentIntentIndex: nextIntentIndex,
   }
 
-  return drawCards(withResetEnergy, 3 + drawBonus)
+  return drawCards(withResetEnergy, 4 + drawBonus)
 }
 
 export function resolveEnemyIntentAction(session: BattleSession): BattleSession {
@@ -242,12 +269,19 @@ function getEnemyForEncounter(encounterType: EncounterType): EnemyContent {
   return getRandomEnemy()
 }
 
-function applyCardWithRelicBonus(
+function applyCardWithHooks(
   session: BattleSession,
+  cardId: string,
   effectType: CardEffectType,
   baseValue: number,
-): { nextState: BattleState; nextTriggerState: BattleSession['relicTriggerState'] } {
+): {
+  nextState: BattleState
+  nextTriggerState: BattleSession['relicTriggerState']
+  drawCount: number
+} {
   const nextTriggerState = { ...session.relicTriggerState }
+  let nextState = session.state
+  let drawCount = 0
 
   if (effectType === 'armor') {
     let armorValue = baseValue
@@ -257,23 +291,101 @@ function applyCardWithRelicBonus(
       nextTriggerState.firstBlockUsed = true
     }
 
-    return {
-      nextState: applyCardEffect(session.state, effectType, armorValue),
-      nextTriggerState,
+    nextState = applyCardEffect(nextState, effectType, armorValue)
+
+    if (cardId === 'charge') {
+      drawCount += 1
     }
-  }
 
-  let damageValue = baseValue
+    if (cardId === 'crown-diamonds') {
+      nextState = {
+        ...nextState,
+        ember: nextState.ember + 1,
+      }
+      drawCount += 1
+    }
 
-  if (!nextTriggerState.firstAttackUsed) {
-    damageValue += getFirstAttackBonusDamage(session.relics)
-    nextTriggerState.firstAttackUsed = true
+    if (cardId === 'silver-protection' && session.turnCardState.playedAttack) {
+      nextState = {
+        ...nextState,
+        ember: nextState.ember + 1,
+      }
+    }
+
+    if (cardId === 'reliquary-pulse') {
+      const spentEmber = nextState.ember
+      nextState = {
+        ...nextState,
+        ember: 0,
+        heroArmor: nextState.heroArmor + spentEmber,
+      }
+      drawCount += spentEmber
+    }
+  } else {
+    let damageValue = baseValue
+
+    if (!nextTriggerState.firstAttackUsed) {
+      damageValue += getFirstAttackBonusDamage(session.relics)
+      nextTriggerState.firstAttackUsed = true
+    }
+
+    if (cardId === 'ember-fire' && nextState.ember > 0) {
+      damageValue += 3
+    }
+
+    if (cardId === 'crownfall' && nextState.ember > 0) {
+      nextState = {
+        ...nextState,
+        ember: nextState.ember - 1,
+      }
+      damageValue += 6
+    }
+
+    nextState = applyCardEffect(nextState, effectType, damageValue)
   }
 
   return {
-    nextState: applyCardEffect(session.state, effectType, damageValue),
+    nextState,
     nextTriggerState,
+    drawCount,
   }
+}
+
+function getUpdatedTurnCardState(
+  turnCardState: BattleSession['turnCardState'],
+  effectType: CardEffectType,
+): BattleSession['turnCardState'] {
+  return {
+    ...turnCardState,
+    playedAttack: turnCardState.playedAttack || effectType === 'damage',
+    playedSkill: turnCardState.playedSkill || effectType === 'armor',
+  }
+}
+
+function applyCrownSparkPassive(session: BattleSession): BattleSession {
+  const { playedAttack, playedSkill, crownSparkTriggered } = session.turnCardState
+
+  if (!playedAttack || !playedSkill || crownSparkTriggered) {
+    return session
+  }
+
+  return {
+    ...session,
+    state: {
+      ...session.state,
+      ember: session.state.ember + 1,
+    },
+    turnCardState: {
+      ...session.turnCardState,
+      crownSparkTriggered: true,
+    },
+  }
+}
+
+function getBaseCardId(cardId: string): string {
+  return cardId
+    .replace(/-run-\d+$/, '')
+    .replace(/-starter-\d+$/, '')
 }
 
 function getNextIntentIndex(session: BattleSession): number {

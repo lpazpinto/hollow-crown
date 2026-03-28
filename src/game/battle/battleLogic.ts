@@ -1,6 +1,7 @@
 export type BattleState = {
   heroHp: number
   heroArmor: number
+  ember: number
   enemyHp: number
   enemyArmor: number
 }

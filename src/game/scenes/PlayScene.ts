@@ -28,6 +28,7 @@ export class PlayScene extends Phaser.Scene {
   private heroHpText!: Phaser.GameObjects.Text
   private heroArmorText!: Phaser.GameObjects.Text
   private energyText!: Phaser.GameObjects.Text
+  private emberText!: Phaser.GameObjects.Text
   private drawPileCountText!: Phaser.GameObjects.Text
   private discardPileText!: Phaser.GameObjects.Text
   private enemyHpText!: Phaser.GameObjects.Text
@@ -39,6 +40,7 @@ export class PlayScene extends Phaser.Scene {
   private heroSprite?: Phaser.GameObjects.Image
   private heroSpriteBaseY = 0
   private heroIdleTween?: Phaser.Tweens.Tween
+  private relicObjects: Phaser.GameObjects.GameObject[] = []
   private handObjects: Phaser.GameObjects.GameObject[] = []
 
   constructor() {
@@ -105,7 +107,7 @@ export class PlayScene extends Phaser.Scene {
       heroX,
       visualY + (this.compactLayout ? 124 : 138),
       this.compactLayout ? 248 : 266,
-      this.compactLayout ? 128 : 136,
+      this.compactLayout ? 150 : 162,
       0x1e3a8a,
     ).setStrokeStyle(2, 0xffffff)
 
@@ -114,20 +116,27 @@ export class PlayScene extends Phaser.Scene {
       color: '#ffffff',
     }).setOrigin(0.5)
 
-    this.heroHpText = this.add.text(this.heroPanel.x, this.heroPanel.y - 14, 'Hero HP: 40 / 40', {
+    this.heroHpText = this.add.text(this.heroPanel.x, this.heroPanel.y - 26, 'Hero HP: 40 / 40', {
       fontSize: this.compactLayout ? '16px' : '18px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
 
-    this.heroArmorText = this.add.text(this.heroPanel.x, this.heroPanel.y + 14, 'Hero Armor: 0', {
+    this.heroArmorText = this.add.text(this.heroPanel.x, this.heroPanel.y, 'Hero Armor: 0', {
       fontSize: this.compactLayout ? '16px' : '18px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
 
-    this.energyText = this.add.text(this.heroPanel.x, this.heroPanel.y + 42, 'Energy: 3 / 3', {
+    this.energyText = this.add.text(this.heroPanel.x, this.heroPanel.y + 26, 'Energy: 3 / 3', {
       fontSize: this.compactLayout ? '16px' : '18px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
+
+    this.emberText = this.add.text(this.heroPanel.x, this.heroPanel.y + 52, 'Ember: 0', {
+      fontSize: this.compactLayout ? '16px' : '18px',
+      color: '#fca5a5',
+    }).setOrigin(0.5)
+
+    this.renderRelics(heroX, this.heroPanel.y + (this.compactLayout ? 108 : 116))
 
     this.enemyPanel = this.add.rectangle(
       enemyX,
@@ -369,6 +378,7 @@ export class PlayScene extends Phaser.Scene {
     this.heroHpText.setText(`Hero HP: ${this.session.state.heroHp} / ${this.heroMaxHp}`)
     this.heroArmorText.setText(`Hero Armor: ${this.session.state.heroArmor}`)
     this.energyText.setText(`Energy: ${this.session.currentEnergy} / ${this.session.maxEnergy}`)
+    this.emberText.setText(`Ember: ${this.session.state.ember}`)
     this.drawPileCountText.setText(`Draw Pile: ${this.session.drawPile.length} cards`)
     this.discardPileText.setText(`Discard Pile: ${this.session.discardPile.length} cards`)
     this.intentText.setText(`Enemy Intent: ${getCurrentIntent(this.session).label}`)
@@ -421,6 +431,43 @@ export class PlayScene extends Phaser.Scene {
     const maxSpacing = this.compactLayout ? 128 : 164
     const availableWidth = Math.max(360, width - (this.compactLayout ? 240 : 320))
     return Math.min(maxSpacing, availableWidth / (this.session.hand.length - 1))
+  }
+
+  private renderRelics(x: number, startY: number) {
+    if (this.relicObjects.length > 0) {
+      this.relicObjects.forEach((obj) => obj.destroy())
+      this.relicObjects = []
+    }
+
+    const title = this.add.text(x, startY, 'Relics', {
+      fontSize: this.compactLayout ? '14px' : '15px',
+      color: '#e2e8f0',
+      fontStyle: 'bold',
+    }).setOrigin(0.5, 0)
+
+    this.relicObjects.push(title)
+
+    const relics = this.session.relics
+    if (relics.length === 0) {
+      const none = this.add.text(x, startY + 18, 'None', {
+        fontSize: this.compactLayout ? '13px' : '14px',
+        color: '#94a3b8',
+      }).setOrigin(0.5, 0)
+      this.relicObjects.push(none)
+      return
+    }
+
+    relics.forEach((relic, index) => {
+      const chipY = startY + 18 + index * 18
+      const chip = this.add.text(x, chipY, relic.name, {
+        fontSize: this.compactLayout ? '12px' : '13px',
+        color: '#bfdbfe',
+        backgroundColor: '#0f172a',
+        padding: { x: 6, y: 2 },
+        align: 'center',
+      }).setOrigin(0.5, 0)
+      this.relicObjects.push(chip)
+    })
   }
 
   private startHeroIdleTween() {
