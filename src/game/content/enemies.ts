@@ -19,9 +19,9 @@ export type EnemyContent = {
   phaseTwoIntents?: EnemyIntent[]
 }
 
-export const RATO_OCO: EnemyContent = {
-  id: 'rato-oco',
-  name: 'Rato Oco',
+export const HOLLOW_RAT: EnemyContent = {
+  id: 'hollow-rat',
+  name: 'Hollow Rat',
   tier: 'common',
   maxHp: 24,
   initialIntent: {
@@ -36,9 +36,9 @@ export const RATO_OCO: EnemyContent = {
   ],
 }
 
-export const ACOLITO_DE_ESPINHOS: EnemyContent = {
-  id: 'acolito-de-espinhos',
-  name: 'Acólito de Espinhos',
+export const THORN_ACOLYTE: EnemyContent = {
+  id: 'thorn-acolyte',
+  name: 'Thorn Acolyte',
   tier: 'common',
   maxHp: 28,
   initialIntent: {
@@ -54,9 +54,9 @@ export const ACOLITO_DE_ESPINHOS: EnemyContent = {
   ],
 }
 
-export const BESOURO_DAS_RUINAS: EnemyContent = {
-  id: 'besouro-das-ruinas',
-  name: 'Besouro das Ruínas',
+export const RUIN_BEETLE: EnemyContent = {
+  id: 'ruin-beetle',
+  name: 'Ruin Beetle',
   tier: 'common',
   maxHp: 36,
   initialIntent: {
@@ -73,9 +73,9 @@ export const BESOURO_DAS_RUINAS: EnemyContent = {
   ],
 }
 
-export const CAVALEIRO_CINZENTO: EnemyContent = {
-  id: 'cavaleiro-cinzento',
-  name: 'Cavaleiro Cinzento',
+export const ASHEN_KNIGHT: EnemyContent = {
+  id: 'ashen-knight',
+  name: 'Ashen Knight',
   tier: 'elite',
   maxHp: 52,
   initialIntent: {
@@ -103,9 +103,9 @@ export const CAVALEIRO_CINZENTO: EnemyContent = {
   ],
 }
 
-export const SLIME_CORROMPIDA: EnemyContent = {
-  id: 'slime-corrompida',
-  name: 'Slime Corrompida',
+export const CORRUPTED_SLIME: EnemyContent = {
+  id: 'corrupted-slime',
+  name: 'Corrupted Slime',
   tier: 'boss',
   maxHp: 72,
   initialIntent: {
@@ -126,17 +126,17 @@ export const SLIME_CORROMPIDA: EnemyContent = {
 }
 
 export const ENEMY_POOL: EnemyContent[] = [
-  RATO_OCO,
-  ACOLITO_DE_ESPINHOS,
-  BESOURO_DAS_RUINAS,
+  HOLLOW_RAT,
+  THORN_ACOLYTE,
+  RUIN_BEETLE,
 ]
 
 export const ELITE_ENEMY_POOL: EnemyContent[] = [
-  CAVALEIRO_CINZENTO,
+  ASHEN_KNIGHT,
 ]
 
 export const BOSS_ENEMY_POOL: EnemyContent[] = [
-  SLIME_CORROMPIDA,
+  CORRUPTED_SLIME,
 ]
 
 export function getRandomEnemy(): EnemyContent {
