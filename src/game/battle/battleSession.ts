@@ -23,6 +23,8 @@ import {
   getFirstBlockBonusAmount,
 } from './relicEffects'
 
+const MAX_EMBER = 3
+
 export type BattleSession = {
   state: BattleState
   drawPile: CardContent[]
@@ -71,7 +73,7 @@ export function createInitialBattleSession(
     state: {
       heroHp,
       heroArmor: 0,
-      ember: startEmber,
+      ember: clampEmber(startEmber),
       enemyHp: enemy.maxHp,
       enemyArmor: 0,
     },
@@ -162,7 +164,11 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
 
 export function startNewPlayerTurn(session: BattleSession): BattleSession {
   const nextTurnNumber = session.turnNumber + 1
-  const stateAfterBurn = applyBurnAtTurnStart(session.state, session.heroBurn)
+  const stateAfterBurn = applyBurnAtTurnStart({
+    ...session.state,
+    heroArmor: 0,
+    enemyArmor: 0,
+  }, session.heroBurn)
   const nextHeroBurn = Math.max(0, session.heroBurn - 1)
   const drawBonus = getEveryThirdTurnExtraDraw(nextTurnNumber, session.relics)
 
@@ -300,16 +306,9 @@ function applyCardWithHooks(
     if (cardId === 'crown-diamonds') {
       nextState = {
         ...nextState,
-        ember: nextState.ember + 1,
+        ember: clampEmber(nextState.ember + 1),
       }
       drawCount += 1
-    }
-
-    if (cardId === 'silver-protection' && session.turnCardState.playedAttack) {
-      nextState = {
-        ...nextState,
-        ember: nextState.ember + 1,
-      }
     }
 
     if (cardId === 'reliquary-pulse') {
@@ -317,7 +316,7 @@ function applyCardWithHooks(
       nextState = {
         ...nextState,
         ember: 0,
-        heroArmor: nextState.heroArmor + spentEmber,
+        heroArmor: nextState.heroArmor + spentEmber * 4,
       }
       drawCount += spentEmber
     }
@@ -330,7 +329,7 @@ function applyCardWithHooks(
     }
 
     if (cardId === 'ember-fire' && nextState.ember > 0) {
-      damageValue += 3
+      damageValue += 2
     }
 
     if (cardId === 'crownfall' && nextState.ember > 0) {
@@ -338,7 +337,7 @@ function applyCardWithHooks(
         ...nextState,
         ember: nextState.ember - 1,
       }
-      damageValue += 6
+      damageValue += 8
     }
 
     nextState = applyCardEffect(nextState, effectType, damageValue)
@@ -373,7 +372,7 @@ function applyCrownSparkPassive(session: BattleSession): BattleSession {
     ...session,
     state: {
       ...session.state,
-      ember: session.state.ember + 1,
+      ember: clampEmber(session.state.ember + 1),
     },
     turnCardState: {
       ...session.turnCardState,
@@ -386,6 +385,10 @@ function getBaseCardId(cardId: string): string {
   return cardId
     .replace(/-run-\d+$/, '')
     .replace(/-starter-\d+$/, '')
+}
+
+function clampEmber(ember: number): number {
+  return Math.max(0, Math.min(MAX_EMBER, ember))
 }
 
 function getNextIntentIndex(session: BattleSession): number {
