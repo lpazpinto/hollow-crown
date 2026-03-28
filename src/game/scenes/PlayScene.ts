@@ -40,6 +40,7 @@ export class PlayScene extends Phaser.Scene {
   private heroSprite?: Phaser.GameObjects.Image
   private heroSpriteBaseY = 0
   private heroIdleTween?: Phaser.Tweens.Tween
+  private previousEmber = 0
   private relicObjects: Phaser.GameObjects.GameObject[] = []
   private handObjects: Phaser.GameObjects.GameObject[] = []
 
@@ -133,10 +134,11 @@ export class PlayScene extends Phaser.Scene {
 
     this.emberText = this.add.text(this.heroPanel.x, this.heroPanel.y + 52, 'Ember: 0', {
       fontSize: this.compactLayout ? '16px' : '18px',
-      color: '#fca5a5',
-    }).setOrigin(0.5)
+      color: '#fdba74',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(3)
 
-    this.renderRelics(heroX, this.heroPanel.y + (this.compactLayout ? 108 : 116))
+    this.renderRelics(heroX, this.heroPanel.y + (this.compactLayout ? 104 : 110))
 
     this.enemyPanel = this.add.rectangle(
       enemyX,
@@ -219,6 +221,7 @@ export class PlayScene extends Phaser.Scene {
     endTurnButton.setDepth(1)
     endTurnLabel.setDepth(2)
 
+    this.previousEmber = this.session.state.ember
     this.updateBattleText()
     this.showTurnBanner('Player Turn', '#fde68a')
     this.startHeroIdleTween()
@@ -379,6 +382,13 @@ export class PlayScene extends Phaser.Scene {
     this.heroArmorText.setText(`Hero Armor: ${this.session.state.heroArmor}`)
     this.energyText.setText(`Energy: ${this.session.currentEnergy} / ${this.session.maxEnergy}`)
     this.emberText.setText(`Ember: ${this.session.state.ember}`)
+
+    const emberDelta = this.session.state.ember - this.previousEmber
+    if (emberDelta !== 0) {
+      this.highlightEmberChange(emberDelta)
+      this.previousEmber = this.session.state.ember
+    }
+
     this.drawPileCountText.setText(`Draw Pile: ${this.session.drawPile.length} cards`)
     this.discardPileText.setText(`Discard Pile: ${this.session.discardPile.length} cards`)
     this.intentText.setText(`Enemy Intent: ${getCurrentIntent(this.session).label}`)
@@ -439,34 +449,78 @@ export class PlayScene extends Phaser.Scene {
       this.relicObjects = []
     }
 
-    const title = this.add.text(x, startY, 'Relics', {
+    const panelWidth = this.compactLayout ? 250 : 274
+    const panel = this.add.rectangle(
+      x,
+      startY + (this.compactLayout ? 24 : 26),
+      panelWidth,
+      this.compactLayout ? 62 : 68,
+      0x0f172a,
+      0.9,
+    ).setStrokeStyle(1, 0x334155).setDepth(1)
+
+    const title = this.add.text(x - panelWidth / 2 + 8, startY + 5, 'Relics', {
       fontSize: this.compactLayout ? '14px' : '15px',
       color: '#e2e8f0',
       fontStyle: 'bold',
-    }).setOrigin(0.5, 0)
+    }).setOrigin(0, 0).setDepth(2)
 
+    this.relicObjects.push(panel)
     this.relicObjects.push(title)
 
     const relics = this.session.relics
     if (relics.length === 0) {
-      const none = this.add.text(x, startY + 18, 'None', {
+      const none = this.add.text(x - panelWidth / 2 + 8, startY + 26, 'None', {
         fontSize: this.compactLayout ? '13px' : '14px',
         color: '#94a3b8',
-      }).setOrigin(0.5, 0)
+      }).setOrigin(0, 0).setDepth(2)
       this.relicObjects.push(none)
       return
     }
 
+    let chipX = x - panelWidth / 2 + 8
+    let chipY = startY + 24
+    const maxX = x + panelWidth / 2 - 8
+
     relics.forEach((relic, index) => {
-      const chipY = startY + 18 + index * 18
-      const chip = this.add.text(x, chipY, relic.name, {
+      if (index >= 6) {
+        return
+      }
+
+      const chip = this.add.text(chipX, chipY, relic.name, {
         fontSize: this.compactLayout ? '12px' : '13px',
         color: '#bfdbfe',
-        backgroundColor: '#0f172a',
+        backgroundColor: '#1e293b',
         padding: { x: 6, y: 2 },
-        align: 'center',
-      }).setOrigin(0.5, 0)
+      }).setOrigin(0, 0).setDepth(2)
+
+      if (chipX + chip.width > maxX) {
+        chipX = x - panelWidth / 2 + 8
+        chipY += 20
+        chip.setPosition(chipX, chipY)
+      }
+
+      chipX += chip.width + 6
       this.relicObjects.push(chip)
+    })
+  }
+
+  private highlightEmberChange(delta: number) {
+    const gained = delta > 0
+    const color = gained ? '#fdba74' : '#fca5a5'
+
+    this.emberText.setColor(color)
+    this.emberText.setScale(1.08)
+    this.tweens.killTweensOf(this.emberText)
+    this.tweens.add({
+      targets: this.emberText,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 220,
+      ease: 'Quad.Out',
+      onComplete: () => {
+        this.emberText.setColor('#fdba74')
+      },
     })
   }
 

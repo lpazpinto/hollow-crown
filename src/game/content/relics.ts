@@ -24,14 +24,14 @@ export const RELIC_POOL: RelicContent[] = [
   {
     id: 'worn-buckler',
     name: 'Worn Buckler',
-    description: 'The first time each combat that you gain armor, gain +3 more.',
+    description: 'Once per combat, the first time you gain armor, gain +3 more.',
     effectType: 'first_block_bonus',
     value: 3,
   },
   {
     id: 'rat-fang',
     name: 'Rat Fang',
-    description: 'Your first Attack each combat deals +2 damage.',
+    description: 'Once per combat, your first Attack deals +2 damage.',
     effectType: 'first_attack_bonus_damage',
     value: 2,
   },
