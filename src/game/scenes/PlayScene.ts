@@ -1,7 +1,5 @@
 import Phaser from 'phaser'
-import {
-  checkBattleOutcome,
-} from '../battle/battleLogic'
+import { checkBattleOutcome, type BattleState } from '../battle/battleLogic'
 import {
   createInitialBattleSession,
   discardHand,
@@ -19,7 +17,6 @@ import {
   type EncounterType,
 } from '../battle/runState'
 import { clearSave, saveRun } from '../battle/runSave'
-import type { BattleState } from '../battle/battleLogic'
 
 export class PlayScene extends Phaser.Scene {
   private heroMaxHp = 40
@@ -39,6 +36,9 @@ export class PlayScene extends Phaser.Scene {
   private turnBannerText!: Phaser.GameObjects.Text
   private heroPanel!: Phaser.GameObjects.Rectangle
   private enemyPanel!: Phaser.GameObjects.Rectangle
+  private heroSprite?: Phaser.GameObjects.Image
+  private heroSpriteBaseY = 0
+  private heroIdleTween?: Phaser.Tweens.Tween
   private handObjects: Phaser.GameObjects.GameObject[] = []
 
   constructor() {
@@ -49,6 +49,7 @@ export class PlayScene extends Phaser.Scene {
     const { width, height } = this.scale
     this.transitioningScene = false
     this.compactLayout = width < 900 || height < 700
+
     const runState = getRunState()
     this.heroMaxHp = runState.maxHeroHp
     this.encounterType = runState.currentEncounterType ?? 'battle'
@@ -60,131 +61,141 @@ export class PlayScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor('#111827')
 
-    this.add.text(width / 2, 30, 'Battle Prototype', {
-      fontSize: this.compactLayout ? '24px' : '28px',
-      color: '#ffffff',
-    }).setOrigin(0.5)
+    const topInfoY = this.compactLayout ? 18 : 20
+    const heroX = this.compactLayout ? width * 0.25 : width * 0.23
+    const enemyX = width - heroX
+    const visualY = this.compactLayout ? 180 : 196
 
-    this.add.text(width / 2, 50, `Encounter: ${this.encounterType.toUpperCase()}`, {
-      fontSize: this.compactLayout ? '15px' : '16px',
+    this.add.text(width / 2, topInfoY, `Encounter: ${this.encounterType.toUpperCase()}`, {
+      fontSize: this.compactLayout ? '14px' : '15px',
       color: '#cbd5e1',
-    }).setOrigin(0.5)
+    }).setOrigin(0.5, 0)
 
-    this.add.text(width / 2, 70, `Floor ${runState.currentFloor} / ${runState.maxFloors}`, {
-      fontSize: this.compactLayout ? '15px' : '16px',
+    this.add.text(width / 2, topInfoY + 20, `Floor ${runState.currentFloor} / ${runState.maxFloors}`, {
+      fontSize: this.compactLayout ? '14px' : '15px',
       color: '#cbd5e1',
-    }).setOrigin(0.5)
+    }).setOrigin(0.5, 0)
 
-    this.add.text(width / 2, 90, 'Press ESC to return to menu', {
-      fontSize: this.compactLayout ? '15px' : '16px',
-      color: '#cbd5e1',
-    }).setOrigin(0.5)
+    this.add.text(width / 2, topInfoY + 40, 'ESC: Menu', {
+      fontSize: this.compactLayout ? '13px' : '14px',
+      color: '#94a3b8',
+    }).setOrigin(0.5, 0)
 
-    this.resultText = this.add.text(width / 2, 95, '', {
-      fontSize: '26px',
+    this.resultText = this.add.text(width / 2, topInfoY + 62, '', {
+      fontSize: this.compactLayout ? '22px' : '26px',
       color: '#ffffff',
       fontStyle: 'bold',
-    }).setOrigin(0.5)
+    }).setOrigin(0.5, 0)
 
-    this.turnBannerText = this.add.text(width / 2, 120, '', {
+    this.turnBannerText = this.add.text(width / 2, topInfoY + 88, '', {
       fontSize: this.compactLayout ? '24px' : '28px',
       color: '#fde68a',
       fontStyle: 'bold',
       stroke: '#111827',
       strokeThickness: 6,
-    }).setOrigin(0.5).setAlpha(0).setDepth(10)
+    }).setOrigin(0.5).setAlpha(0).setDepth(12)
 
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
     })
 
-    // Enemy area
-    this.enemyPanel = this.add.rectangle(
-      width / 2,
-      this.compactLayout ? 176 : 170,
-      this.compactLayout ? 240 : 260,
-      this.compactLayout ? 150 : 160,
-      0x7f1d1d,
-    ).setStrokeStyle(2, 0xffffff)
+    this.heroSprite = this.createHeroSprite(heroX, visualY)
 
-    this.add.text(width / 2, this.compactLayout ? 122 : 125, this.session.enemy.name, {
-      fontSize: this.compactLayout ? '22px' : '24px',
-      color: '#ffffff',
-    }).setOrigin(0.5)
-
-    this.enemyHpText = this.add.text(
-      width / 2,
-      this.compactLayout ? 156 : 160,
-      `Enemy HP: ${this.session.enemy.maxHp} / ${this.session.enemy.maxHp} | Armor: 0`,
-      {
-        fontSize: this.compactLayout ? '18px' : '20px',
-        color: '#fecaca',
-      },
-    ).setOrigin(0.5)
-
-    this.intentText = this.add.text(width / 2, this.compactLayout ? 198 : 205, `Enemy Intent: ${getCurrentIntent(this.session).label}`, {
-      fontSize: this.compactLayout ? '17px' : '18px',
-      color: '#fde68a',
-      align: 'center',
-      wordWrap: { width: this.compactLayout ? 250 : 320 },
-    }).setOrigin(0.5)
-
-    // Player area
     this.heroPanel = this.add.rectangle(
-      this.compactLayout ? 160 : 180,
-      height - (this.compactLayout ? 165 : 150),
-      this.compactLayout ? 250 : 260,
-      this.compactLayout ? 132 : 126,
+      heroX,
+      visualY + (this.compactLayout ? 124 : 138),
+      this.compactLayout ? 248 : 266,
+      this.compactLayout ? 128 : 136,
       0x1e3a8a,
     ).setStrokeStyle(2, 0xffffff)
 
-    this.add.text(this.heroPanel.x, this.heroPanel.y - 36, 'Hero', {
-      fontSize: this.compactLayout ? '22px' : '24px',
+    this.add.text(this.heroPanel.x, this.heroPanel.y - 44, 'Hero', {
+      fontSize: this.compactLayout ? '20px' : '22px',
       color: '#ffffff',
     }).setOrigin(0.5)
 
-    this.heroHpText = this.add.text(this.heroPanel.x, this.heroPanel.y - 6, 'Hero HP: 40 / 40', {
-      fontSize: this.compactLayout ? '17px' : '18px',
+    this.heroHpText = this.add.text(this.heroPanel.x, this.heroPanel.y - 14, 'Hero HP: 40 / 40', {
+      fontSize: this.compactLayout ? '16px' : '18px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
 
-    this.heroArmorText = this.add.text(this.heroPanel.x, this.heroPanel.y + 22, 'Hero Armor: 0', {
-      fontSize: this.compactLayout ? '17px' : '18px',
+    this.heroArmorText = this.add.text(this.heroPanel.x, this.heroPanel.y + 14, 'Hero Armor: 0', {
+      fontSize: this.compactLayout ? '16px' : '18px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
 
-    this.energyText = this.add.text(this.heroPanel.x, this.heroPanel.y + 50, 'Energy: 3 / 3', {
-      fontSize: this.compactLayout ? '17px' : '18px',
+    this.energyText = this.add.text(this.heroPanel.x, this.heroPanel.y + 42, 'Energy: 3 / 3', {
+      fontSize: this.compactLayout ? '16px' : '18px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
 
-    this.drawPileCountText = this.add.text(width / 2 - (this.compactLayout ? 170 : 220), height - (this.compactLayout ? 265 : 255), 'Draw Pile: 0 cards', {
+    this.enemyPanel = this.add.rectangle(
+      enemyX,
+      visualY,
+      this.compactLayout ? 260 : 280,
+      this.compactLayout ? 190 : 206,
+      0x7f1d1d,
+    ).setStrokeStyle(2, 0xffffff)
+
+    this.add.text(enemyX, visualY - (this.compactLayout ? 68 : 74), this.session.enemy.name, {
+      fontSize: this.compactLayout ? '22px' : '24px',
+      color: '#ffffff',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: this.compactLayout ? 210 : 240 },
+    }).setOrigin(0.5)
+
+    this.enemyHpText = this.add.text(
+      enemyX,
+      visualY + (this.compactLayout ? 20 : 24),
+      `Enemy HP: ${this.session.enemy.maxHp} / ${this.session.enemy.maxHp} | Armor: 0`,
+      {
+        fontSize: this.compactLayout ? '16px' : '18px',
+        color: '#fecaca',
+        align: 'center',
+      },
+    ).setOrigin(0.5)
+
+    this.intentText = this.add.text(enemyX, visualY + (this.compactLayout ? 56 : 62), `Enemy Intent: ${getCurrentIntent(this.session).label}`, {
+      fontSize: this.compactLayout ? '16px' : '17px',
+      color: '#fde68a',
+      align: 'center',
+      wordWrap: { width: this.compactLayout ? 220 : 260 },
+    }).setOrigin(0.5)
+
+    const pilesY = height - (this.compactLayout ? 248 : 232)
+    this.drawPileCountText = this.add.text(width / 2 - (this.compactLayout ? 170 : 220), pilesY, 'Draw Pile: 0 cards', {
       fontSize: this.compactLayout ? '15px' : '16px',
       color: '#cbd5e1',
     }).setOrigin(0.5)
 
-    this.discardPileText = this.add.text(width / 2 + (this.compactLayout ? 170 : 220), height - (this.compactLayout ? 265 : 255), 'Discard Pile: 0 cards', {
+    this.discardPileText = this.add.text(width / 2 + (this.compactLayout ? 170 : 220), pilesY, 'Discard Pile: 0 cards', {
       fontSize: this.compactLayout ? '15px' : '16px',
       color: '#cbd5e1',
     }).setOrigin(0.5)
 
-    // End turn button
+    this.add.text(width / 2, height - (this.compactLayout ? 216 : 200), 'Hand', {
+      fontSize: this.compactLayout ? '20px' : '22px',
+      color: '#ffffff',
+    }).setOrigin(0.5)
+
     const endTurnButton = this.add.rectangle(
-      width - (this.compactLayout ? 130 : 150),
-      height - (this.compactLayout ? 155 : 145),
-      this.compactLayout ? 210 : 220,
-      this.compactLayout ? 78 : 80,
+      width - (this.compactLayout ? 118 : 138),
+      height - (this.compactLayout ? 92 : 102),
+      this.compactLayout ? 208 : 220,
+      this.compactLayout ? 78 : 82,
       0xf59e0b,
     )
       .setStrokeStyle(2, 0xffffff)
       .setInteractive({ useHandCursor: true })
 
-    const endTurnLabel = this.add.text(endTurnButton.x, endTurnButton.y - 8, 'End Turn', {
+    const endTurnLabel = this.add.text(endTurnButton.x, endTurnButton.y - 9, 'End Turn', {
       fontSize: this.compactLayout ? '24px' : '26px',
       color: '#111827',
+      fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    this.add.text(endTurnButton.x, endTurnButton.y + 18, 'Tap to pass to the enemy', {
+    this.add.text(endTurnButton.x, endTurnButton.y + 18, 'Tap to pass', {
       fontSize: this.compactLayout ? '13px' : '14px',
       color: '#3f2b00',
     }).setOrigin(0.5).setDepth(2)
@@ -194,12 +205,6 @@ export class PlayScene extends Phaser.Scene {
       this.resolveEndTurn()
     })
 
-    // Hand area
-    this.add.text(width / 2, height - (this.compactLayout ? 295 : 255), 'Hand', {
-      fontSize: this.compactLayout ? '20px' : '22px',
-      color: '#ffffff',
-    }).setOrigin(0.5)
-
     this.renderHand()
 
     endTurnButton.setDepth(1)
@@ -207,6 +212,21 @@ export class PlayScene extends Phaser.Scene {
 
     this.updateBattleText()
     this.showTurnBanner('Player Turn', '#fde68a')
+    this.startHeroIdleTween()
+  }
+
+  private createHeroSprite(x: number, y: number): Phaser.GameObjects.Image | undefined {
+    if (!this.textures.exists('hero-idle')) {
+      this.add.rectangle(x, y, 120, 150, 0x1e40af).setStrokeStyle(2, 0xffffff)
+      return undefined
+    }
+
+    const sprite = this.add.image(x, y, 'hero-idle')
+    const targetHeight = this.compactLayout ? 150 : 180
+    sprite.setScale(targetHeight / sprite.height)
+    this.heroSpriteBaseY = y
+
+    return sprite
   }
 
   private createCard(
@@ -237,7 +257,7 @@ export class PlayScene extends Phaser.Scene {
     })
 
     const titleText = this.add.text(x, y - 55, title, {
-      fontSize: this.compactLayout ? '19px' : '22px',
+      fontSize: this.compactLayout ? '18px' : '21px',
       color: '#111827',
       fontStyle: 'bold',
       wordWrap: { width: cardWidth - 18 },
@@ -273,7 +293,7 @@ export class PlayScene extends Phaser.Scene {
 
     const previousState = this.cloneBattleState(this.session.state)
     this.session = playCardFromHand(this.session, cardIndex)
-    this.showCombatFeedback(previousState, this.session.state)
+    this.playDamageFeedback(previousState, this.session.state)
 
     this.updateBattleText()
   }
@@ -283,25 +303,24 @@ export class PlayScene extends Phaser.Scene {
       return
     }
 
+    this.stopHeroIdleTween()
     this.showTurnBanner('Enemy Turn', '#fca5a5')
+
     this.session = discardHand(this.session)
     const previousState = this.cloneBattleState(this.session.state)
-    this.resolveEnemyIntent()
-    this.showCombatFeedback(previousState, this.session.state)
+    this.session = resolveEnemyIntentAction(this.session)
+    this.playDamageFeedback(previousState, this.session.state)
     this.session.outcome = checkBattleOutcome(this.session.state)
 
     if (this.session.outcome === 'ongoing') {
       this.session = startNewPlayerTurn(this.session)
       this.time.delayedCall(220, () => {
         this.showTurnBanner('Player Turn', '#fde68a')
+        this.startHeroIdleTween()
       })
     }
 
     this.updateBattleText()
-  }
-
-  private resolveEnemyIntent() {
-    this.session = resolveEnemyIntentAction(this.session)
   }
 
   private updateBattleText() {
@@ -312,6 +331,7 @@ export class PlayScene extends Phaser.Scene {
     this.session.outcome = checkBattleOutcome(this.session.state)
 
     if (this.session.outcome === 'victory') {
+      this.stopHeroIdleTween()
       applyBattleResult(this.session.state.heroHp, true)
       saveRun()
       this.resultText.setText('Victory')
@@ -331,7 +351,10 @@ export class PlayScene extends Phaser.Scene {
       })
 
       return
-    } else if (this.session.outcome === 'defeat') {
+    }
+
+    if (this.session.outcome === 'defeat') {
+      this.stopHeroIdleTween()
       applyBattleResult(this.session.state.heroHp, false)
       clearSave()
       this.resultText.setText('Defeat')
@@ -375,7 +398,7 @@ export class PlayScene extends Phaser.Scene {
 
       const cardObjects = this.createCard(
         cardX,
-        height - (this.compactLayout ? 130 : 128),
+        height - (this.compactLayout ? 108 : 112),
         cardData.id,
         cardData.title,
         cardData.description,
@@ -395,74 +418,123 @@ export class PlayScene extends Phaser.Scene {
       return 0
     }
 
-    const maxSpacing = this.compactLayout ? 134 : 176
-    const availableWidth = Math.max(320, width - 110)
+    const maxSpacing = this.compactLayout ? 128 : 164
+    const availableWidth = Math.max(360, width - (this.compactLayout ? 240 : 320))
     return Math.min(maxSpacing, availableWidth / (this.session.hand.length - 1))
+  }
+
+  private startHeroIdleTween() {
+    if (!this.heroSprite) {
+      return
+    }
+
+    this.stopHeroIdleTween()
+    this.heroSprite.y = this.heroSpriteBaseY
+    this.heroIdleTween = this.tweens.add({
+      targets: this.heroSprite,
+      y: this.heroSpriteBaseY - 6,
+      duration: 1100,
+      ease: 'Sine.InOut',
+      yoyo: true,
+      repeat: -1,
+    })
+  }
+
+  private stopHeroIdleTween() {
+    if (!this.heroSprite) {
+      return
+    }
+
+    if (this.heroIdleTween) {
+      this.heroIdleTween.stop()
+      this.heroIdleTween.remove()
+      this.heroIdleTween = undefined
+    }
+
+    this.heroSprite.y = this.heroSpriteBaseY
   }
 
   private cloneBattleState(state: BattleState): BattleState {
     return { ...state }
   }
 
-  private showCombatFeedback(previousState: BattleState, nextState: BattleState) {
+  private playDamageFeedback(previousState: BattleState, nextState: BattleState) {
     const enemyDamage = previousState.enemyHp - nextState.enemyHp
     const heroDamage = previousState.heroHp - nextState.heroHp
-    const armorGain = nextState.heroArmor - previousState.heroArmor
+    const heroArmorGain = nextState.heroArmor - previousState.heroArmor
     const enemyArmorGain = nextState.enemyArmor - previousState.enemyArmor
 
     if (enemyDamage > 0) {
-      this.showFloatingText(this.enemyPanel.x, this.enemyPanel.y - 16, `-${enemyDamage}`, '#fca5a5')
-      this.flashTarget(this.enemyPanel, 0xfca5a5)
+      this.flashTarget(this.enemyPanel, 0x9f1c1c, 0x7f1d1d)
+      this.showFloatingCombatText(this.enemyPanel.x, this.enemyPanel.y - 96, `-${enemyDamage}`, '#fecaca', true)
     }
 
     if (heroDamage > 0) {
-      this.showFloatingText(this.heroPanel.x, this.heroPanel.y - 6, `-${heroDamage}`, '#fca5a5')
-      this.flashTarget(this.heroPanel, 0xfca5a5)
+      const heroTarget = this.heroSprite ?? this.heroPanel
+      this.flashTarget(heroTarget, 0xff8f8f, 0x1e3a8a)
+      const y = this.heroSprite ? this.heroSprite.y - 94 : this.heroPanel.y - 74
+      this.showFloatingCombatText(this.heroPanel.x, y, `-${heroDamage}`, '#fecaca', true)
     }
 
-    if (armorGain > 0) {
-      this.showFloatingText(this.heroPanel.x, this.heroPanel.y + 28, `+${armorGain} Armor`, '#93c5fd')
-      this.flashTarget(this.heroPanel, 0x93c5fd)
+    if (heroArmorGain > 0) {
+      this.showFloatingCombatText(this.heroPanel.x, this.heroPanel.y - 52, `+${heroArmorGain} Armor`, '#93c5fd', false)
     }
 
     if (enemyArmorGain > 0) {
-      this.showFloatingText(this.enemyPanel.x, this.enemyPanel.y + 20, `+${enemyArmorGain} Armor`, '#93c5fd')
-      this.flashTarget(this.enemyPanel, 0x93c5fd)
+      this.showFloatingCombatText(this.enemyPanel.x, this.enemyPanel.y - 70, `+${enemyArmorGain} Armor`, '#93c5fd', false)
     }
   }
 
-  private showFloatingText(x: number, y: number, text: string, color: string) {
-    const label = this.add.text(x, y, text, {
-      fontSize: this.compactLayout ? '20px' : '24px',
-      color,
-      fontStyle: 'bold',
-      stroke: '#111827',
-      strokeThickness: 5,
-    }).setOrigin(0.5).setDepth(12)
+  private flashTarget(
+    target: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image,
+    flashColor: number,
+    restoreFillColor: number,
+  ) {
+    if (target instanceof Phaser.GameObjects.Image) {
+      target.setTintFill(flashColor)
+      this.time.delayedCall(130, () => {
+        target.clearTint()
+      })
+      return
+    }
 
+    target.setFillStyle(flashColor)
     this.tweens.add({
-      targets: label,
-      y: y - 36,
-      alpha: 0,
-      duration: 450,
-      ease: 'Cubic.Out',
+      targets: target,
+      alpha: 0.78,
+      yoyo: true,
+      duration: 120,
+      repeat: 1,
       onComplete: () => {
-        label.destroy()
+        target.setAlpha(1)
+        target.setFillStyle(restoreFillColor)
       },
     })
   }
 
-  private flashTarget(target: Phaser.GameObjects.Rectangle, tintColor: number) {
-    target.setFillStyle(tintColor)
+  private showFloatingCombatText(
+    x: number,
+    y: number,
+    text: string,
+    color: string,
+    isDamage: boolean,
+  ) {
+    const label = this.add.text(x, y, text, {
+      fontSize: this.compactLayout ? '19px' : '22px',
+      color,
+      fontStyle: 'bold',
+      stroke: '#111827',
+      strokeThickness: 5,
+    }).setOrigin(0.5).setDepth(14)
+
     this.tweens.add({
-      targets: target,
-      alpha: 0.76,
-      yoyo: true,
-      duration: 90,
-      repeat: 1,
+      targets: label,
+      y: y - (isDamage ? 30 : 24),
+      alpha: 0,
+      duration: isDamage ? 430 : 360,
+      ease: 'Cubic.Out',
       onComplete: () => {
-        target.setAlpha(1)
-        target.setFillStyle(target === this.heroPanel ? 0x1e3a8a : 0x7f1d1d)
+        label.destroy()
       },
     })
   }

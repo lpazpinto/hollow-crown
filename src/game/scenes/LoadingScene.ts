@@ -6,7 +6,7 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   preload() {
-    // Later, we will load images, audio, and sprites here.
+    this.load.image('hero-idle', 'assets/hero/hero_idle.png')
   }
 
   create() {
