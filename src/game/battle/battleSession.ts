@@ -1,6 +1,7 @@
 import {
   applyCardEffect,
   checkBattleOutcome,
+  resolveEnemyAttack,
   type BattleOutcome,
   type BattleState,
   type CardEffectType,
@@ -16,10 +17,10 @@ import {
 } from '../content/enemies'
 import type { EncounterType } from './runState'
 import {
-  getBattleStartArmorBonus,
-  getConditionalDamageBonus,
-  getFirstTurnExtraDraw,
-  getTurnStartArmorBonus,
+  getBattleStartEmberBonus,
+  getEveryThirdTurnExtraDraw,
+  getFirstAttackBonusDamage,
+  getFirstBlockBonusAmount,
 } from './relicEffects'
 
 export type BattleSession = {
@@ -32,7 +33,14 @@ export type BattleSession = {
   maxEnergy: number
   currentIntentIndex: number
   turnNumber: number
+  heroBurn: number
+  enemyReflect: number
+  enemyPhase: 1 | 2
   relics: RelicContent[]
+  relicTriggerState: {
+    firstAttackUsed: boolean
+    firstBlockUsed: boolean
+  }
   outcome: BattleOutcome
 }
 
@@ -48,18 +56,17 @@ export function createInitialBattleSession(
 ): BattleSession {
   const encounterType = options.encounterType ?? 'battle'
   const enemy = getEnemyForEncounter(encounterType)
-  const maxEnergy = 3
+  const relics = cloneRelics(options.relics ?? [])
+  const maxEnergy = 3 + getBattleStartEmberBonus(relics)
   const shuffledDeck = shuffleCards(cloneDeck(deck))
   const heroHp = options.heroHp ?? 40
-  const relics = cloneRelics(options.relics ?? [])
-  const battleStartArmor = getBattleStartArmorBonus(relics)
-  const firstTurnDraw = getFirstTurnExtraDraw(relics)
 
   const initialSession: BattleSession = {
     state: {
       heroHp,
-      heroArmor: battleStartArmor,
+      heroArmor: 0,
       enemyHp: enemy.maxHp,
+      enemyArmor: 0,
     },
     drawPile: shuffledDeck,
     discardPile: [],
@@ -67,21 +74,31 @@ export function createInitialBattleSession(
     enemy,
     currentEnergy: maxEnergy,
     maxEnergy,
-    currentIntentIndex: -1,
+    currentIntentIndex: 0,
     turnNumber: 1,
+    heroBurn: 0,
+    enemyReflect: 0,
+    enemyPhase: 1,
     relics,
+    relicTriggerState: {
+      firstAttackUsed: false,
+      firstBlockUsed: false,
+    },
     outcome: 'ongoing',
   }
 
-  return drawCards(initialSession, 3 + firstTurnDraw)
+  return drawCards(initialSession, 3)
 }
 
 export function getCurrentIntent(session: BattleSession): EnemyIntent {
-  if (session.currentIntentIndex < 0) {
+  const intents = getActiveIntentCycle(session)
+
+  if (intents.length === 0) {
     return session.enemy.initialIntent
   }
 
-  return session.enemy.intents[session.currentIntentIndex]
+  const safeIndex = Math.max(0, session.currentIntentIndex % intents.length)
+  return intents[safeIndex]
 }
 
 export function playCardFromHand(session: BattleSession, cardIndex: number): BattleSession {
@@ -90,36 +107,80 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
     return session
   }
 
-  const nextState = applyCardWithRelicBonus(session, card.effectType, card.value)
+  const withPhaseTransition = maybeEnterBossPhaseTwo(session)
+  const { nextState, nextTriggerState } = applyCardWithRelicBonus(
+    withPhaseTransition,
+    card.effectType,
+    card.value,
+  )
+
+  const heroHpAfterReflect =
+    card.effectType === 'damage' && withPhaseTransition.enemyReflect > 0
+      ? Math.max(0, nextState.heroHp - withPhaseTransition.enemyReflect)
+      : nextState.heroHp
+
+  const stateAfterReflect = {
+    ...nextState,
+    heroHp: heroHpAfterReflect,
+  }
+
   const nextHand = session.hand.filter((_, index) => index !== cardIndex)
   const nextDiscardPile = [...session.discardPile, card]
 
   return {
-    ...session,
-    state: nextState,
+    ...withPhaseTransition,
+    state: stateAfterReflect,
     hand: nextHand,
     discardPile: nextDiscardPile,
+    relicTriggerState: nextTriggerState,
     currentEnergy: session.currentEnergy - card.cost,
-    outcome: checkBattleOutcome(nextState),
+    outcome: checkBattleOutcome(stateAfterReflect),
   }
 }
 
 export function startNewPlayerTurn(session: BattleSession): BattleSession {
-  const nextIntentIndex = getNextIntentIndex(session)
-  const turnStartArmor = getTurnStartArmorBonus(session.relics)
+  const nextTurnNumber = session.turnNumber + 1
+  const stateAfterBurn = applyBurnAtTurnStart(session.state, session.heroBurn)
+  const nextHeroBurn = Math.max(0, session.heroBurn - 1)
+  const drawBonus = getEveryThirdTurnExtraDraw(nextTurnNumber, session.relics)
+
+  const withPhaseTransition = maybeEnterBossPhaseTwo({
+    ...session,
+    state: stateAfterBurn,
+    heroBurn: nextHeroBurn,
+    turnNumber: nextTurnNumber,
+  })
+
+  const nextIntentIndex = getNextIntentIndex(withPhaseTransition)
 
   const withResetEnergy: BattleSession = {
-    ...session,
-    state: {
-      ...session.state,
-      heroArmor: session.state.heroArmor + turnStartArmor,
-    },
+    ...withPhaseTransition,
     currentEnergy: session.maxEnergy,
     currentIntentIndex: nextIntentIndex,
-    turnNumber: session.turnNumber + 1,
   }
 
-  return drawCards(withResetEnergy, 3)
+  return drawCards(withResetEnergy, 3 + drawBonus)
+}
+
+export function resolveEnemyIntentAction(session: BattleSession): BattleSession {
+  const withPhaseTransition = maybeEnterBossPhaseTwo(session)
+  const intent = getCurrentIntent(withPhaseTransition)
+
+  let nextState = resolveEnemyAttack(withPhaseTransition.state, intent.damage)
+
+  if (intent.armorValue && intent.armorValue > 0) {
+    nextState = {
+      ...nextState,
+      enemyArmor: nextState.enemyArmor + intent.armorValue,
+    }
+  }
+
+  return {
+    ...withPhaseTransition,
+    state: nextState,
+    heroBurn: withPhaseTransition.heroBurn + (intent.burnValue ?? 0),
+    enemyReflect: intent.reflectValue ?? 0,
+  }
 }
 
 export function drawCards(session: BattleSession, count: number): BattleSession {
@@ -185,25 +246,83 @@ function applyCardWithRelicBonus(
   session: BattleSession,
   effectType: CardEffectType,
   baseValue: number,
-): BattleState {
-  if (effectType !== 'damage') {
-    return applyCardEffect(session.state, effectType, baseValue)
+): { nextState: BattleState; nextTriggerState: BattleSession['relicTriggerState'] } {
+  const nextTriggerState = { ...session.relicTriggerState }
+
+  if (effectType === 'armor') {
+    let armorValue = baseValue
+
+    if (!nextTriggerState.firstBlockUsed) {
+      armorValue += getFirstBlockBonusAmount(session.relics)
+      nextTriggerState.firstBlockUsed = true
+    }
+
+    return {
+      nextState: applyCardEffect(session.state, effectType, armorValue),
+      nextTriggerState,
+    }
   }
 
-  const bonusDamage = getConditionalDamageBonus(session.state, session.relics)
-  return applyCardEffect(session.state, effectType, baseValue + bonusDamage)
+  let damageValue = baseValue
+
+  if (!nextTriggerState.firstAttackUsed) {
+    damageValue += getFirstAttackBonusDamage(session.relics)
+    nextTriggerState.firstAttackUsed = true
+  }
+
+  return {
+    nextState: applyCardEffect(session.state, effectType, damageValue),
+    nextTriggerState,
+  }
 }
 
 function getNextIntentIndex(session: BattleSession): number {
-  if (session.enemy.intents.length === 0) {
+  const intents = getActiveIntentCycle(session)
+
+  if (intents.length === 0) {
     return -1
   }
 
-  if (session.currentIntentIndex < 0) {
-    return 0
+  return (session.currentIntentIndex + 1) % intents.length
+}
+
+function getActiveIntentCycle(session: BattleSession): EnemyIntent[] {
+  if (session.enemyPhase === 2 && session.enemy.phaseTwoIntents && session.enemy.phaseTwoIntents.length > 0) {
+    return session.enemy.phaseTwoIntents
   }
 
-  return (session.currentIntentIndex + 1) % session.enemy.intents.length
+  return session.enemy.intents
+}
+
+function maybeEnterBossPhaseTwo(session: BattleSession): BattleSession {
+  if (!session.enemy.phaseTwoIntents || session.enemy.phaseTwoIntents.length === 0) {
+    return session
+  }
+
+  if (session.enemyPhase === 2) {
+    return session
+  }
+
+  if (session.state.enemyHp > session.enemy.maxHp / 2) {
+    return session
+  }
+
+  return {
+    ...session,
+    enemyPhase: 2,
+    currentIntentIndex: 0,
+  }
+}
+
+function applyBurnAtTurnStart(state: BattleState, burnAmount: number): BattleState {
+  if (burnAmount <= 0) {
+    return state
+  }
+
+  return {
+    ...state,
+    heroHp: Math.max(0, state.heroHp - burnAmount),
+  }
 }
 
 function cloneDeck(deck: CardContent[]): CardContent[] {

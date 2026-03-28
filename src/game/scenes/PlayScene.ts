@@ -1,13 +1,13 @@
 import Phaser from 'phaser'
 import {
   checkBattleOutcome,
-  resolveEnemyAttack,
 } from '../battle/battleLogic'
 import {
   createInitialBattleSession,
   discardHand,
   getCurrentIntent,
   playCardFromHand,
+  resolveEnemyIntentAction,
   startNewPlayerTurn,
   type BattleSession,
 } from '../battle/battleSession'
@@ -115,7 +115,7 @@ export class PlayScene extends Phaser.Scene {
     this.enemyHpText = this.add.text(
       width / 2,
       this.compactLayout ? 156 : 160,
-      `Enemy HP: ${this.session.enemy.maxHp} / ${this.session.enemy.maxHp}`,
+      `Enemy HP: ${this.session.enemy.maxHp} / ${this.session.enemy.maxHp} | Armor: 0`,
       {
         fontSize: this.compactLayout ? '18px' : '20px',
         color: '#fecaca',
@@ -301,8 +301,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private resolveEnemyIntent() {
-    const currentIntent = getCurrentIntent(this.session)
-    this.session.state = resolveEnemyAttack(this.session.state, currentIntent.damage)
+    this.session = resolveEnemyIntentAction(this.session)
   }
 
   private updateBattleText() {
@@ -341,7 +340,9 @@ export class PlayScene extends Phaser.Scene {
       this.cameras.main.shake(180, 0.008)
     }
 
-    this.enemyHpText.setText(`Enemy HP: ${this.session.state.enemyHp} / ${this.session.enemy.maxHp}`)
+    this.enemyHpText.setText(
+      `Enemy HP: ${this.session.state.enemyHp} / ${this.session.enemy.maxHp} | Armor: ${this.session.state.enemyArmor}`,
+    )
     this.heroHpText.setText(`Hero HP: ${this.session.state.heroHp} / ${this.heroMaxHp}`)
     this.heroArmorText.setText(`Hero Armor: ${this.session.state.heroArmor}`)
     this.energyText.setText(`Energy: ${this.session.currentEnergy} / ${this.session.maxEnergy}`)
@@ -407,6 +408,7 @@ export class PlayScene extends Phaser.Scene {
     const enemyDamage = previousState.enemyHp - nextState.enemyHp
     const heroDamage = previousState.heroHp - nextState.heroHp
     const armorGain = nextState.heroArmor - previousState.heroArmor
+    const enemyArmorGain = nextState.enemyArmor - previousState.enemyArmor
 
     if (enemyDamage > 0) {
       this.showFloatingText(this.enemyPanel.x, this.enemyPanel.y - 16, `-${enemyDamage}`, '#fca5a5')
@@ -421,6 +423,11 @@ export class PlayScene extends Phaser.Scene {
     if (armorGain > 0) {
       this.showFloatingText(this.heroPanel.x, this.heroPanel.y + 28, `+${armorGain} Armor`, '#93c5fd')
       this.flashTarget(this.heroPanel, 0x93c5fd)
+    }
+
+    if (enemyArmorGain > 0) {
+      this.showFloatingText(this.enemyPanel.x, this.enemyPanel.y + 20, `+${enemyArmorGain} Armor`, '#93c5fd')
+      this.flashTarget(this.enemyPanel, 0x93c5fd)
     }
   }
 

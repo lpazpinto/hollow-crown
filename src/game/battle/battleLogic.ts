@@ -2,6 +2,7 @@ export type BattleState = {
   heroHp: number
   heroArmor: number
   enemyHp: number
+  enemyArmor: number
 }
 
 export type CardEffectType = 'damage' | 'armor'
@@ -14,9 +15,12 @@ export function applyCardEffect(
   value: number,
 ): BattleState {
   if (effectType === 'damage') {
+    const enemyAfterDamage = applyDamageToArmorThenHp(state.enemyArmor, state.enemyHp, value)
+
     return {
       ...state,
-      enemyHp: Math.max(0, state.enemyHp - value),
+      enemyArmor: enemyAfterDamage.heroArmor,
+      enemyHp: enemyAfterDamage.heroHp,
     }
   }
 

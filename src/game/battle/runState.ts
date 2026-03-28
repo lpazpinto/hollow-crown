@@ -75,7 +75,10 @@ export function applyBattleResult(heroHpAfterBattle: number, wasVictory: boolean
   const state = runState as RunState
   state.heroHp = Math.max(0, Math.min(state.maxHeroHp, heroHpAfterBattle))
 
-  if (wasVictory) {
+  const isEliteOrBossVictory =
+    wasVictory && (state.currentEncounterType === 'elite' || state.currentEncounterType === 'boss')
+
+  if (isEliteOrBossVictory) {
     const healAmount = getPostBattleHealAmount(state.currentRelics)
     state.heroHp = Math.min(state.maxHeroHp, state.heroHp + healAmount)
   }

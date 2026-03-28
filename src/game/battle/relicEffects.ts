@@ -1,28 +1,27 @@
-import type { BattleState } from './battleLogic'
 import type { RelicContent, RelicEffectType } from '../content/relics'
 
-export function getBattleStartArmorBonus(relics: RelicContent[]): number {
-  return getRelicValueTotal(relics, 'battle_start_armor')
+export function getBattleStartEmberBonus(relics: RelicContent[]): number {
+  return getRelicValueTotal(relics, 'battle_start_ember')
 }
 
-export function getTurnStartArmorBonus(relics: RelicContent[]): number {
-  return getRelicValueTotal(relics, 'turn_start_armor')
+export function getFirstBlockBonusAmount(relics: RelicContent[]): number {
+  return getRelicValueTotal(relics, 'first_block_bonus')
 }
 
-export function getFirstTurnExtraDraw(relics: RelicContent[]): number {
-  return getRelicValueTotal(relics, 'first_turn_extra_draw')
+export function getFirstAttackBonusDamage(relics: RelicContent[]): number {
+  return getRelicValueTotal(relics, 'first_attack_bonus_damage')
 }
 
-export function getConditionalDamageBonus(state: BattleState, relics: RelicContent[]): number {
-  if (state.heroHp > 15) {
+export function getEveryThirdTurnExtraDraw(turnNumber: number, relics: RelicContent[]): number {
+  if (turnNumber % 3 !== 0) {
     return 0
   }
 
-  return getRelicValueTotal(relics, 'low_hp_bonus_damage')
+  return getRelicValueTotal(relics, 'every_third_turn_extra_draw')
 }
 
 export function getPostBattleHealAmount(relics: RelicContent[]): number {
-  return getRelicValueTotal(relics, 'post_battle_heal')
+  return getRelicValueTotal(relics, 'post_elite_boss_heal')
 }
 
 function getRelicValueTotal(relics: RelicContent[], effectType: RelicEffectType): number {
