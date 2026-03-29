@@ -77,6 +77,7 @@ function isRunState(value: unknown): value is RunState {
     (value.heroXp === undefined || isNumber(value.heroXp)) &&
     (value.heroLevel === undefined || isNumber(value.heroLevel)) &&
     (value.pendingLevelUps === undefined || isNumber(value.pendingLevelUps)) &&
+    (value.normalBattleVictories === undefined || isNumber(value.normalBattleVictories)) &&
     typeof value.isRunComplete === 'boolean' &&
     isEncounterType(value.currentEncounterType) &&
     Array.isArray(value.currentDeck) &&

@@ -17,16 +17,19 @@ export type RunState = {
   heroXp: number
   heroLevel: number
   pendingLevelUps: number
+  normalBattleVictories: number
   currentEncounterType: EncounterType | null
   isRunComplete: boolean
 }
 
-const LEVEL_XP_THRESHOLDS = [0, 12, 26, 44]
+const LEVEL_XP_THRESHOLDS = [0, 10, 22, 34]
+
+const BATTLE_CARD_REWARD_INTERVAL = 2
 
 const ENCOUNTER_XP_REWARD: Record<'battle' | 'elite' | 'boss', number> = {
-  battle: 5,
-  elite: 9,
-  boss: 14,
+  battle: 6,
+  elite: 10,
+  boss: 16,
 }
 
 let runState: RunState | null = null
@@ -43,9 +46,22 @@ export function startNewRun() {
     heroXp: 0,
     heroLevel: 1,
     pendingLevelUps: 0,
+    normalBattleVictories: 0,
     currentEncounterType: null,
     isRunComplete: false,
   }
+}
+
+export function resolveBattleCardRewardForVictory(): boolean {
+  ensureRunState()
+  const state = runState as RunState
+
+  if (state.currentEncounterType !== 'battle') {
+    return false
+  }
+
+  state.normalBattleVictories += 1
+  return state.normalBattleVictories % BATTLE_CARD_REWARD_INTERVAL === 1
 }
 
 export function getRunState(): RunState {
@@ -316,6 +332,7 @@ function normalizeRunState(saved: RunState): RunState {
     heroXp: saved.heroXp ?? 0,
     heroLevel: saved.heroLevel ?? 1,
     pendingLevelUps: saved.pendingLevelUps ?? 0,
+    normalBattleVictories: saved.normalBattleVictories ?? 0,
   })
 
   if (normalized.heroLevel < 1) {
@@ -328,6 +345,10 @@ function normalizeRunState(saved: RunState): RunState {
 
   if (normalized.pendingLevelUps < 0) {
     normalized.pendingLevelUps = 0
+  }
+
+  if (normalized.normalBattleVictories < 0) {
+    normalized.normalBattleVictories = 0
   }
 
   return normalized

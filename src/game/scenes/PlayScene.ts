@@ -10,6 +10,7 @@ import {
   type BattleSession,
 } from '../battle/battleSession'
 import {
+  advanceFloorAfterEncounter,
   applyBattleResult,
   awardXpForCurrentEncounter,
   getRunDeck,
@@ -17,6 +18,7 @@ import {
   getRunRelics,
   getRunState,
   hasPendingLevelUp,
+  resolveBattleCardRewardForVictory,
   type EncounterType,
 } from '../battle/runState'
 import { clearSave, saveRun } from '../battle/runSave'
@@ -353,7 +355,6 @@ export class PlayScene extends Phaser.Scene {
       this.stopHeroIdleAnimation()
       applyBattleResult(this.session.state.heroHp, true)
       awardXpForCurrentEncounter()
-      saveRun()
       this.resultText.setText('Victory')
       this.resultText.setColor('#86efac')
       this.showTurnBanner('Victory', '#86efac')
@@ -362,6 +363,12 @@ export class PlayScene extends Phaser.Scene {
 
       this.time.delayedCall(320, () => {
         const nextRoute = this.getPostVictoryRoute()
+
+        if (nextRoute.advanceFloorNow) {
+          advanceFloorAfterEncounter()
+        }
+
+        saveRun()
 
         if (hasPendingLevelUp()) {
           this.scene.start('LevelUpScene', {
@@ -719,26 +726,39 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private getPostVictoryRoute(): {
-    scene: 'RewardScene' | 'RelicRewardScene'
+    scene: 'RewardScene' | 'RelicRewardScene' | 'MapScene'
     data?: Record<string, unknown>
+    advanceFloorNow: boolean
   } {
     if (this.encounterType === 'boss') {
       return {
         scene: 'RelicRewardScene',
         data: { nextScene: 'RunEndScene' },
+        advanceFloorNow: false,
       }
     }
 
     if (this.encounterType === 'battle') {
+      const shouldGrantCardReward = resolveBattleCardRewardForVictory()
+
+      if (!shouldGrantCardReward) {
+        return {
+          scene: 'MapScene',
+          advanceFloorNow: true,
+        }
+      }
+
       return {
         scene: 'RewardScene',
         data: { encounterType: 'battle' },
+        advanceFloorNow: false,
       }
     }
 
     return {
       scene: 'RelicRewardScene',
       data: { nextScene: 'MapScene' },
+      advanceFloorNow: false,
     }
   }
 }
