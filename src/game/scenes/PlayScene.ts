@@ -354,16 +354,24 @@ export class PlayScene extends Phaser.Scene {
     if (this.session.outcome === 'victory') {
       this.stopHeroIdleAnimation()
       applyBattleResult(this.session.state.heroHp, true)
-      awardXpForCurrentEncounter()
-      this.resultText.setText('Victory')
+      const xpResult = awardXpForCurrentEncounter()
+      const nextRoute = this.getPostVictoryRoute()
+      const hasLevelUp = hasPendingLevelUp()
+      const rewardSummary = hasLevelUp
+        ? `Level Up x${xpResult.levelsGained}`
+        : nextRoute.scene === 'RewardScene'
+          ? 'Card Draft'
+          : nextRoute.scene === 'RelicRewardScene'
+            ? 'Relic Reward'
+            : 'Onward'
+
+      this.resultText.setText(`Victory  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}`)
       this.resultText.setColor('#86efac')
-      this.showTurnBanner('Victory', '#86efac')
+      this.showTurnBanner(hasLevelUp ? 'Level Up' : 'Victory', hasLevelUp ? '#fde68a' : '#86efac')
       this.cameras.main.flash(180, 140, 255, 180)
       this.transitioningScene = true
 
-      this.time.delayedCall(320, () => {
-        const nextRoute = this.getPostVictoryRoute()
-
+      this.time.delayedCall(hasLevelUp ? 560 : 420, () => {
         if (nextRoute.advanceFloorNow) {
           advanceFloorAfterEncounter()
         }

@@ -27,12 +27,12 @@ export class RewardScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor('#111827')
 
-    this.add.text(width / 2, 40, 'Victory Reward', {
+    this.add.text(width / 2, 40, 'Card Draft', {
       fontSize: '34px',
       color: '#ffffff',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 82, 'Choose 1 card to add to your deck', {
+    this.add.text(width / 2, 82, 'Choose 1 card to deepen your run build', {
       fontSize: '18px',
       color: '#cbd5e1',
     }).setOrigin(0.5)

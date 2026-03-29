@@ -2,7 +2,9 @@ import Phaser from 'phaser'
 import {
   advanceFloorAfterEncounter,
   getAvailableEncountersForCurrentFloor,
+  getNormalBattleRewardPreview,
   getRunState,
+  getXpForNextLevel,
   resolveRestEncounter,
   setCurrentEncounterType,
   type EncounterType,
@@ -18,6 +20,7 @@ export class MapScene extends Phaser.Scene {
     const { width, height } = this.scale
     const compactLayout = width < 900 || height < 700
     const run = getRunState()
+    const nextLevelXp = getXpForNextLevel()
 
     if (run.isRunComplete) {
       this.scene.start('RunEndScene')
@@ -43,12 +46,24 @@ export class MapScene extends Phaser.Scene {
       color: '#bfdbfe',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 132, `Level: ${run.heroLevel}   XP: ${run.heroXp}`, {
+    this.add.text(
+      width / 2,
+      132,
+      nextLevelXp === null
+        ? `Level: ${run.heroLevel}   XP: ${run.heroXp}   Max level this run`
+        : `Level: ${run.heroLevel}   XP: ${run.heroXp} / ${nextLevelXp}`,
+      {
       fontSize: compactLayout ? '16px' : '17px',
       color: '#93c5fd',
+      },
+    ).setOrigin(0.5)
+
+    this.add.text(width / 2, 154, getNormalBattleRewardPreview(), {
+      fontSize: compactLayout ? '14px' : '15px',
+      color: '#fde68a',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 156, 'Press ESC to return to menu', {
+    this.add.text(width / 2, 178, 'Press ESC to return to menu', {
       fontSize: '16px',
       color: '#cbd5e1',
     }).setOrigin(0.5)

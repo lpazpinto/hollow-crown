@@ -22,14 +22,14 @@ export type RunState = {
   isRunComplete: boolean
 }
 
-const LEVEL_XP_THRESHOLDS = [0, 10, 22, 34]
+const LEVEL_XP_THRESHOLDS = [0, 11, 24, 38]
 
 const BATTLE_CARD_REWARD_INTERVAL = 2
 
 const ENCOUNTER_XP_REWARD: Record<'battle' | 'elite' | 'boss', number> = {
   battle: 6,
-  elite: 10,
-  boss: 16,
+  elite: 11,
+  boss: 17,
 }
 
 let runState: RunState | null = null
@@ -62,6 +62,25 @@ export function resolveBattleCardRewardForVictory(): boolean {
 
   state.normalBattleVictories += 1
   return state.normalBattleVictories % BATTLE_CARD_REWARD_INTERVAL === 1
+}
+
+export function getEncounterXpReward(encounterType: EncounterType | null): number {
+  if (!encounterType || encounterType === 'rest') {
+    return 0
+  }
+
+  return ENCOUNTER_XP_REWARD[encounterType]
+}
+
+export function getNormalBattleRewardPreview(): string {
+  ensureRunState()
+  const state = runState as RunState
+
+  if (state.normalBattleVictories % BATTLE_CARD_REWARD_INTERVAL === 0) {
+    return 'Next normal battle grants a card draft'
+  }
+
+  return '1 more normal battle until the next card draft'
 }
 
 export function getRunState(): RunState {

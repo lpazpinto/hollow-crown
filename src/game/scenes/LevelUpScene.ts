@@ -61,7 +61,7 @@ export class LevelUpScene extends Phaser.Scene {
       color: '#bfdbfe',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 114, 'Choose one blessing path', {
+    this.add.text(width / 2, 114, 'Choose your growth', {
       fontSize: compactLayout ? '17px' : '18px',
       color: '#e2e8f0',
     }).setOrigin(0.5)
