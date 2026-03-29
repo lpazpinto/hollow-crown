@@ -168,12 +168,12 @@ export class LevelUpScene extends Phaser.Scene {
     this.clearOptionObjects()
 
     const { width } = this.scale
-    const choices = getAbilityChoicesForRun(getRunAbilities(), 2)
+    const choices = getAbilityChoicesForRun(getRunAbilities(), 3)
 
     this.addOptionText(width / 2, 280, 'Choose a blessing')
 
     if (choices.length === 0) {
-      this.addOptionText(width / 2, 322, 'All blessings are already learned. Choose a card upgrade instead.')
+      this.addOptionText(width / 2, 322, 'All blessings are already learned. Pick a card upgrade instead.')
       this.showCardUpgradeChoices()
       return
     }

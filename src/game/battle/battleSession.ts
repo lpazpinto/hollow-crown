@@ -19,6 +19,8 @@ import {
 import type { EncounterType } from './runState'
 import {
   getAbilityBattleStartEmber,
+  getAbilityEveryThirdTurnExtraDraw,
+  getAbilityFirstBlockBonusAmount,
   getAbilityFirstAttackBonusDamage,
   getAbilityTurnStartArmor,
 } from './abilityEffects'
@@ -184,7 +186,9 @@ export function startNewPlayerTurn(session: BattleSession): BattleSession {
     heroArmor: stateAfterBurn.heroArmor + getAbilityTurnStartArmor(session.abilities),
   }
   const nextHeroBurn = Math.max(0, session.heroBurn - 1)
-  const drawBonus = getEveryThirdTurnExtraDraw(nextTurnNumber, session.relics)
+  const drawBonus =
+    getEveryThirdTurnExtraDraw(nextTurnNumber, session.relics)
+    + getAbilityEveryThirdTurnExtraDraw(nextTurnNumber, session.abilities)
 
   const withPhaseTransition = maybeEnterBossPhaseTwo({
     ...session,
@@ -308,6 +312,7 @@ function applyCardWithHooks(
 
     if (!nextTriggerState.firstBlockUsed) {
       armorValue += getFirstBlockBonusAmount(session.relics)
+      armorValue += getAbilityFirstBlockBonusAmount(session.abilities)
       nextTriggerState.firstBlockUsed = true
     }
 

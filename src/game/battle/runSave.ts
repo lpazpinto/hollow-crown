@@ -3,7 +3,14 @@ import { getRunState, restoreRunState, type RunState } from './runState'
 const SAVE_KEY = 'hollow-crown-run'
 const ENCOUNTER_TYPES = new Set(['battle', 'rest', 'elite', 'boss'])
 const CARD_RARITIES = new Set(['common', 'uncommon', 'rare'])
-const ABILITY_EFFECT_TYPES = new Set(['battle_start_ember', 'turn_start_armor', 'first_attack_bonus_damage'])
+const ABILITY_EFFECT_TYPES = new Set([
+  'battle_start_ember',
+  'turn_start_armor',
+  'first_block_bonus',
+  'every_third_turn_extra_draw',
+  'post_elite_boss_heal',
+  'first_attack_bonus_damage',
+])
 
 export function saveRun(): void {
   try {

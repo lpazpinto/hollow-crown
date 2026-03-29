@@ -38,7 +38,7 @@ export class MapScene extends Phaser.Scene {
       color: '#cbd5e1',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 110, `Hero HP: ${run.heroHp} / ${run.maxHeroHp}   Deck: ${run.currentDeck.length}   Relics: ${run.currentRelics.length}`, {
+    this.add.text(width / 2, 110, `Hero HP: ${run.heroHp} / ${run.maxHeroHp}   Deck: ${run.currentDeck.length}   Relics: ${run.currentRelics.length}   Blessings: ${run.currentAbilities.length}`, {
       fontSize: compactLayout ? '17px' : '18px',
       color: '#bfdbfe',
     }).setOrigin(0.5)

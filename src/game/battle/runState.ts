@@ -1,6 +1,7 @@
 import { type HeroAbilityContent, getAbilityBaseId } from '../content/abilities'
 import { STARTER_DECK, createUpgradedCard, type CardContent } from '../content/cards'
 import type { RelicContent } from '../content/relics'
+import { getAbilityPostEliteBossHeal } from './abilityEffects'
 import { getPostBattleHealAmount } from './relicEffects'
 
 export type EncounterType = 'battle' | 'rest' | 'elite' | 'boss'
@@ -96,7 +97,9 @@ export function applyBattleResult(heroHpAfterBattle: number, wasVictory: boolean
     wasVictory && (state.currentEncounterType === 'elite' || state.currentEncounterType === 'boss')
 
   if (isEliteOrBossVictory) {
-    const healAmount = getPostBattleHealAmount(state.currentRelics)
+    const healAmount =
+      getPostBattleHealAmount(state.currentRelics)
+      + getAbilityPostEliteBossHeal(state.currentAbilities)
     state.heroHp = Math.min(state.maxHeroHp, state.heroHp + healAmount)
   }
 

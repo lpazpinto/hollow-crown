@@ -45,6 +45,7 @@ export class PlayScene extends Phaser.Scene {
   private heroIdleTimer?: Phaser.Time.TimerEvent
   private heroIdleFrame = 0
   private previousEmber = 0
+  private abilityObjects: Phaser.GameObjects.GameObject[] = []
   private relicObjects: Phaser.GameObjects.GameObject[] = []
   private handObjects: Phaser.GameObjects.GameObject[] = []
 
@@ -143,7 +144,8 @@ export class PlayScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(3)
 
-    this.renderRelics(heroX, this.heroPanel.y + (this.compactLayout ? 104 : 110))
+    this.renderAbilities(heroX, this.heroPanel.y + (this.compactLayout ? 78 : 88))
+    this.renderRelics(heroX, this.heroPanel.y + (this.compactLayout ? 134 : 146))
 
     this.enemyPanel = this.add.rectangle(
       enemyX,
@@ -512,6 +514,67 @@ export class PlayScene extends Phaser.Scene {
 
       chipX += chip.width + 6
       this.relicObjects.push(chip)
+    })
+  }
+
+  private renderAbilities(x: number, startY: number) {
+    if (this.abilityObjects.length > 0) {
+      this.abilityObjects.forEach((obj) => obj.destroy())
+      this.abilityObjects = []
+    }
+
+    const panelWidth = this.compactLayout ? 250 : 274
+    const panel = this.add.rectangle(
+      x,
+      startY + (this.compactLayout ? 20 : 22),
+      panelWidth,
+      this.compactLayout ? 56 : 60,
+      0x0b1324,
+      0.94,
+    ).setStrokeStyle(1, 0x475569).setDepth(1)
+
+    const title = this.add.text(x - panelWidth / 2 + 8, startY + 4, 'Blessings', {
+      fontSize: this.compactLayout ? '14px' : '15px',
+      color: '#fef3c7',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0).setDepth(2)
+
+    this.abilityObjects.push(panel, title)
+
+    const abilities = this.session.abilities
+    if (abilities.length === 0) {
+      const none = this.add.text(x - panelWidth / 2 + 8, startY + 24, 'None', {
+        fontSize: this.compactLayout ? '13px' : '14px',
+        color: '#94a3b8',
+      }).setOrigin(0, 0).setDepth(2)
+      this.abilityObjects.push(none)
+      return
+    }
+
+    let chipX = x - panelWidth / 2 + 8
+    let chipY = startY + 22
+    const maxX = x + panelWidth / 2 - 8
+
+    abilities.forEach((ability, index) => {
+      if (index >= 6) {
+        return
+      }
+
+      const chip = this.add.text(chipX, chipY, ability.name, {
+        fontSize: this.compactLayout ? '12px' : '13px',
+        color: '#fde68a',
+        backgroundColor: '#1f2937',
+        padding: { x: 6, y: 2 },
+      }).setOrigin(0, 0).setDepth(2)
+
+      if (chipX + chip.width > maxX) {
+        chipX = x - panelWidth / 2 + 8
+        chipY += 20
+        chip.setPosition(chipX, chipY)
+      }
+
+      chipX += chip.width + 6
+      this.abilityObjects.push(chip)
     })
   }
 

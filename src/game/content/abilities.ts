@@ -1,6 +1,9 @@
 export type HeroAbilityEffectType =
   | 'battle_start_ember'
   | 'turn_start_armor'
+  | 'first_block_bonus'
+  | 'every_third_turn_extra_draw'
+  | 'post_elite_boss_heal'
   | 'first_attack_bonus_damage'
 
 export type HeroAbilityContent = {
@@ -20,8 +23,8 @@ export const HERO_ABILITY_POOL: HeroAbilityContent[] = [
     value: 1,
   },
   {
-    id: 'blessing-iron-prayer',
-    name: 'Iron Prayer',
+    id: 'blessing-steady-heart',
+    name: 'Steady Heart',
     description: 'At the start of each player turn, gain 2 Armor.',
     effectType: 'turn_start_armor',
     value: 2,
@@ -29,9 +32,30 @@ export const HERO_ABILITY_POOL: HeroAbilityContent[] = [
   {
     id: 'blessing-horn-edge',
     name: 'Horn Edge',
-    description: 'Your first Attack each combat deals +2 damage.',
+    description: 'Your first Attack each combat deals +3 damage.',
     effectType: 'first_attack_bonus_damage',
-    value: 2,
+    value: 3,
+  },
+  {
+    id: 'blessing-warding-horn',
+    name: 'Warding Horn',
+    description: 'Your first Armor card each combat gains +3 Armor.',
+    effectType: 'first_block_bonus',
+    value: 3,
+  },
+  {
+    id: 'blessing-rhythm-breath',
+    name: 'Rhythm Breath',
+    description: 'Every 3 turns, draw 1 extra card.',
+    effectType: 'every_third_turn_extra_draw',
+    value: 1,
+  },
+  {
+    id: 'blessing-golden-oath',
+    name: 'Golden Oath',
+    description: 'After elite or boss victories, heal 4 HP.',
+    effectType: 'post_elite_boss_heal',
+    value: 4,
   },
 ]
 
