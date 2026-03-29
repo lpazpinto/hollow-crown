@@ -7,6 +7,7 @@ import {
   type CardEffectType,
 } from './battleLogic'
 import { STARTER_DECK, type CardContent } from '../content/cards'
+import type { HeroAbilityContent } from '../content/abilities'
 import type { RelicContent } from '../content/relics'
 import {
   getRandomBossEnemy,
@@ -16,6 +17,11 @@ import {
   type EnemyIntent,
 } from '../content/enemies'
 import type { EncounterType } from './runState'
+import {
+  getAbilityBattleStartEmber,
+  getAbilityFirstAttackBonusDamage,
+  getAbilityTurnStartArmor,
+} from './abilityEffects'
 import {
   getBattleStartEmberBonus,
   getEveryThirdTurnExtraDraw,
@@ -39,6 +45,7 @@ export type BattleSession = {
   enemyReflect: number
   enemyPhase: 1 | 2
   relics: RelicContent[]
+  abilities: HeroAbilityContent[]
   relicTriggerState: {
     firstAttackUsed: boolean
     firstBlockUsed: boolean
@@ -55,6 +62,7 @@ type CreateBattleSessionOptions = {
   heroHp?: number
   encounterType?: EncounterType
   relics?: RelicContent[]
+  abilities?: HeroAbilityContent[]
 }
 
 export function createInitialBattleSession(
@@ -64,8 +72,9 @@ export function createInitialBattleSession(
   const encounterType = options.encounterType ?? 'battle'
   const enemy = getEnemyForEncounter(encounterType)
   const relics = cloneRelics(options.relics ?? [])
+  const abilities = cloneAbilities(options.abilities ?? [])
   const maxEnergy = 3
-  const startEmber = getBattleStartEmberBonus(relics)
+  const startEmber = getBattleStartEmberBonus(relics) + getAbilityBattleStartEmber(abilities)
   const shuffledDeck = shuffleCards(cloneDeck(deck))
   const heroHp = options.heroHp ?? 40
 
@@ -89,6 +98,7 @@ export function createInitialBattleSession(
     enemyReflect: 0,
     enemyPhase: 1,
     relics,
+    abilities,
     relicTriggerState: {
       firstAttackUsed: false,
       firstBlockUsed: false,
@@ -169,12 +179,16 @@ export function startNewPlayerTurn(session: BattleSession): BattleSession {
     heroArmor: 0,
     enemyArmor: 0,
   }, session.heroBurn)
+  const stateAfterAbilityBonus = {
+    ...stateAfterBurn,
+    heroArmor: stateAfterBurn.heroArmor + getAbilityTurnStartArmor(session.abilities),
+  }
   const nextHeroBurn = Math.max(0, session.heroBurn - 1)
   const drawBonus = getEveryThirdTurnExtraDraw(nextTurnNumber, session.relics)
 
   const withPhaseTransition = maybeEnterBossPhaseTwo({
     ...session,
-    state: stateAfterBurn,
+    state: stateAfterAbilityBonus,
     heroBurn: nextHeroBurn,
     turnNumber: nextTurnNumber,
     turnCardState: {
@@ -325,6 +339,7 @@ function applyCardWithHooks(
 
     if (!nextTriggerState.firstAttackUsed) {
       damageValue += getFirstAttackBonusDamage(session.relics)
+      damageValue += getAbilityFirstAttackBonusDamage(session.abilities)
       nextTriggerState.firstAttackUsed = true
     }
 
@@ -446,6 +461,10 @@ function cloneDeck(deck: CardContent[]): CardContent[] {
 
 function cloneRelics(relics: RelicContent[]): RelicContent[] {
   return relics.map((relic) => ({ ...relic }))
+}
+
+function cloneAbilities(abilities: HeroAbilityContent[]): HeroAbilityContent[] {
+  return abilities.map((ability) => ({ ...ability }))
 }
 
 function shuffleCards(cards: CardContent[]): CardContent[] {

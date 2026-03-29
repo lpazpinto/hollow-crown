@@ -156,6 +156,35 @@ export function generateRewardChoices(encounterType: RewardEncounterType): CardC
   return picks
 }
 
+export function getCardBaseId(cardId: string): string {
+  return cardId
+    .replace(/-run-\d+$/, '')
+    .replace(/-starter-\d+$/, '')
+}
+
+export function createUpgradedCard(card: CardContent): CardContent {
+  const baseId = getCardBaseId(card.id)
+  let nextValue = card.value
+  let nextCost = card.cost
+  const valueUpgradeBonus = 2
+
+  if ((baseId === 'double-strike' || baseId === 'crownfall') && nextCost > 1) {
+    nextCost -= 1
+  } else if ((baseId === 'crown-diamonds' || baseId === 'reliquary-pulse') && nextCost > 0) {
+    nextCost -= 1
+  } else {
+    nextValue += valueUpgradeBonus
+  }
+
+  return {
+    ...card,
+    title: `${card.title}+`,
+    value: nextValue,
+    cost: nextCost,
+    description: getDescriptionForCard(baseId, nextValue),
+  }
+}
+
 function makeStarterCard(baseId: string, index: number): CardContent {
   const template = UN1_CARD_POOL.find((card) => card.id === baseId)
   if (!template) {
@@ -215,6 +244,21 @@ function getFallbackOrder(rolledRarity: CardRarity): CardRarity[] {
   }
 
   return ['rare', 'uncommon', 'common']
+}
+
+function getDescriptionForCard(baseId: string, value: number): string {
+  if (baseId === 'unicorn-strike') return `Deal ${value} damage`
+  if (baseId === 'golden-shield') return `Gain ${value} armor`
+  if (baseId === 'ember-fire') return `Deal ${value} damage. If you have Ember, deal +2 damage`
+  if (baseId === 'charge') return `Gain ${value} armor. Draw 1 card`
+  if (baseId === 'crown-diamonds') return 'Gain 1 Ember. Draw 1 card'
+  if (baseId === 'double-strike') return `Deal ${value} damage`
+  if (baseId === 'silver-protection') return `Gain ${value} armor`
+  if (baseId === 'golden-horseshoe') return `Deal ${value} damage`
+  if (baseId === 'reliquary-pulse') return 'Spend all Ember. Gain 4 armor per Ember spent. Draw 1 card per Ember spent'
+  if (baseId === 'crownfall') return `Deal ${value} damage. If you have Ember, spend 1 to deal +8 damage`
+
+  return 'Upgraded card'
 }
 
 export const STARTER_HAND = STARTER_DECK

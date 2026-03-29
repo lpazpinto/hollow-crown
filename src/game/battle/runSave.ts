@@ -3,6 +3,7 @@ import { getRunState, restoreRunState, type RunState } from './runState'
 const SAVE_KEY = 'hollow-crown-run'
 const ENCOUNTER_TYPES = new Set(['battle', 'rest', 'elite', 'boss'])
 const CARD_RARITIES = new Set(['common', 'uncommon', 'rare'])
+const ABILITY_EFFECT_TYPES = new Set(['battle_start_ember', 'turn_start_armor', 'first_attack_bonus_damage'])
 
 export function saveRun(): void {
   try {
@@ -66,12 +67,17 @@ function isRunState(value: unknown): value is RunState {
     isNumber(value.maxFloors) &&
     isNumber(value.heroHp) &&
     isNumber(value.maxHeroHp) &&
+    (value.heroXp === undefined || isNumber(value.heroXp)) &&
+    (value.heroLevel === undefined || isNumber(value.heroLevel)) &&
+    (value.pendingLevelUps === undefined || isNumber(value.pendingLevelUps)) &&
     typeof value.isRunComplete === 'boolean' &&
     isEncounterType(value.currentEncounterType) &&
     Array.isArray(value.currentDeck) &&
     value.currentDeck.every(isCardContent) &&
     Array.isArray(value.currentRelics) &&
-    value.currentRelics.every(isRelicContent)
+    value.currentRelics.every(isRelicContent) &&
+    (value.currentAbilities === undefined ||
+      (Array.isArray(value.currentAbilities) && value.currentAbilities.every(isAbilityContent)))
   )
 }
 
@@ -111,6 +117,21 @@ function isRelicContent(value: unknown): boolean {
 
 function isEncounterType(value: unknown): boolean {
   return value === null || (typeof value === 'string' && ENCOUNTER_TYPES.has(value))
+}
+
+function isAbilityContent(value: unknown): boolean {
+  if (!isRecord(value)) {
+    return false
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.description === 'string' &&
+    typeof value.effectType === 'string' &&
+    ABILITY_EFFECT_TYPES.has(value.effectType) &&
+    isNumber(value.value)
+  )
 }
 
 function isNumber(value: unknown): value is number {

@@ -11,9 +11,12 @@ import {
 } from '../battle/battleSession'
 import {
   applyBattleResult,
+  awardXpForCurrentEncounter,
   getRunDeck,
+  getRunAbilities,
   getRunRelics,
   getRunState,
+  hasPendingLevelUp,
   type EncounterType,
 } from '../battle/runState'
 import { clearSave, saveRun } from '../battle/runSave'
@@ -61,6 +64,7 @@ export class PlayScene extends Phaser.Scene {
       heroHp: runState.heroHp,
       encounterType: this.encounterType,
       relics: getRunRelics(),
+      abilities: getRunAbilities(),
     })
 
     this.cameras.main.setBackgroundColor('#111827')
@@ -346,6 +350,7 @@ export class PlayScene extends Phaser.Scene {
     if (this.session.outcome === 'victory') {
       this.stopHeroIdleAnimation()
       applyBattleResult(this.session.state.heroHp, true)
+      awardXpForCurrentEncounter()
       saveRun()
       this.resultText.setText('Victory')
       this.resultText.setColor('#86efac')
@@ -354,13 +359,17 @@ export class PlayScene extends Phaser.Scene {
       this.transitioningScene = true
 
       this.time.delayedCall(320, () => {
-        if (this.encounterType === 'boss') {
-          this.scene.start('RelicRewardScene', { nextScene: 'RunEndScene' })
-        } else if (this.encounterType === 'battle') {
-          this.scene.start('RewardScene', { encounterType: 'battle' })
-        } else {
-          this.scene.start('RelicRewardScene', { nextScene: 'MapScene' })
+        const nextRoute = this.getPostVictoryRoute()
+
+        if (hasPendingLevelUp()) {
+          this.scene.start('LevelUpScene', {
+            nextScene: nextRoute.scene,
+            nextData: nextRoute.data,
+          })
+          return
         }
+
+        this.scene.start(nextRoute.scene, nextRoute.data)
       })
 
       return
@@ -531,7 +540,7 @@ export class PlayScene extends Phaser.Scene {
     this.heroIdleFrame = 0
     this.heroSprite.y = this.heroSpriteBaseY - 3
     this.heroIdleTimer = this.time.addEvent({
-      delay: 200,
+      delay: 360,
       loop: true,
       callback: () => {
         if (!this.heroSprite) return
@@ -644,5 +653,29 @@ export class PlayScene extends Phaser.Scene {
       duration: 120,
       ease: 'Quad.Out',
     })
+  }
+
+  private getPostVictoryRoute(): {
+    scene: 'RewardScene' | 'RelicRewardScene'
+    data?: Record<string, unknown>
+  } {
+    if (this.encounterType === 'boss') {
+      return {
+        scene: 'RelicRewardScene',
+        data: { nextScene: 'RunEndScene' },
+      }
+    }
+
+    if (this.encounterType === 'battle') {
+      return {
+        scene: 'RewardScene',
+        data: { encounterType: 'battle' },
+      }
+    }
+
+    return {
+      scene: 'RelicRewardScene',
+      data: { nextScene: 'MapScene' },
+    }
   }
 }

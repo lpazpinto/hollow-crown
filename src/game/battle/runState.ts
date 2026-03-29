@@ -1,4 +1,5 @@
-import { STARTER_DECK, type CardContent } from '../content/cards'
+import { type HeroAbilityContent, getAbilityBaseId } from '../content/abilities'
+import { STARTER_DECK, createUpgradedCard, type CardContent } from '../content/cards'
 import type { RelicContent } from '../content/relics'
 import { getPostBattleHealAmount } from './relicEffects'
 
@@ -9,10 +10,22 @@ export type RunState = {
   maxFloors: number
   currentDeck: CardContent[]
   currentRelics: RelicContent[]
+  currentAbilities: HeroAbilityContent[]
   heroHp: number
   maxHeroHp: number
+  heroXp: number
+  heroLevel: number
+  pendingLevelUps: number
   currentEncounterType: EncounterType | null
   isRunComplete: boolean
+}
+
+const LEVEL_XP_THRESHOLDS = [0, 12, 26, 44]
+
+const ENCOUNTER_XP_REWARD: Record<'battle' | 'elite' | 'boss', number> = {
+  battle: 5,
+  elite: 9,
+  boss: 14,
 }
 
 let runState: RunState | null = null
@@ -23,8 +36,12 @@ export function startNewRun() {
     maxFloors: 4,
     currentDeck: cloneDeck(STARTER_DECK),
     currentRelics: [],
+    currentAbilities: [],
     heroHp: 40,
     maxHeroHp: 40,
+    heroXp: 0,
+    heroLevel: 1,
+    pendingLevelUps: 0,
     currentEncounterType: null,
     isRunComplete: false,
   }
@@ -88,6 +105,72 @@ export function applyBattleResult(heroHpAfterBattle: number, wasVictory: boolean
   }
 }
 
+export function awardXpForCurrentEncounter(): {
+  gainedXp: number
+  levelsGained: number
+  currentLevel: number
+  currentXp: number
+} {
+  ensureRunState()
+  const state = runState as RunState
+
+  if (!state.currentEncounterType || state.currentEncounterType === 'rest') {
+    return {
+      gainedXp: 0,
+      levelsGained: 0,
+      currentLevel: state.heroLevel,
+      currentXp: state.heroXp,
+    }
+  }
+
+  const encounterType = state.currentEncounterType
+  const gainedXp = ENCOUNTER_XP_REWARD[encounterType]
+  state.heroXp += gainedXp
+
+  let levelsGained = 0
+  while (canLevelUp(state)) {
+    state.heroLevel += 1
+    state.pendingLevelUps += 1
+    levelsGained += 1
+  }
+
+  return {
+    gainedXp,
+    levelsGained,
+    currentLevel: state.heroLevel,
+    currentXp: state.heroXp,
+  }
+}
+
+export function hasPendingLevelUp(): boolean {
+  ensureRunState()
+  return (runState as RunState).pendingLevelUps > 0
+}
+
+export function consumePendingLevelUp(): boolean {
+  ensureRunState()
+  const state = runState as RunState
+
+  if (state.pendingLevelUps <= 0) {
+    return false
+  }
+
+  state.pendingLevelUps -= 1
+  return true
+}
+
+export function getXpForNextLevel(): number | null {
+  ensureRunState()
+  const state = runState as RunState
+  const nextLevel = state.heroLevel + 1
+
+  if (nextLevel >= LEVEL_XP_THRESHOLDS.length) {
+    return null
+  }
+
+  return LEVEL_XP_THRESHOLDS[nextLevel]
+}
+
 export function advanceFloorAfterEncounter() {
   ensureRunState()
   const state = runState as RunState
@@ -102,7 +185,7 @@ export function advanceFloorAfterEncounter() {
 }
 
 export function restoreRunState(saved: RunState) {
-  runState = cloneRunState(saved)
+  runState = normalizeRunState(saved)
 }
 
 export function resetRunDeck() {
@@ -126,6 +209,22 @@ export function addCardToRunDeck(card: CardContent) {
   state.currentDeck = [...state.currentDeck, copy]
 }
 
+export function upgradeRunCard(cardId: string): boolean {
+  ensureRunState()
+  const state = runState as RunState
+  const cardIndex = state.currentDeck.findIndex((card) => card.id === cardId)
+
+  if (cardIndex < 0) {
+    return false
+  }
+
+  const nextDeck = [...state.currentDeck]
+  nextDeck[cardIndex] = createUpgradedCard(nextDeck[cardIndex])
+  state.currentDeck = nextDeck
+
+  return true
+}
+
 export function getRunRelics(): RelicContent[] {
   ensureRunState()
   return cloneRelics((runState as RunState).currentRelics)
@@ -143,6 +242,33 @@ export function addRelicToRun(relic: RelicContent) {
   state.currentRelics = [...state.currentRelics, copy]
 }
 
+export function getRunAbilities(): HeroAbilityContent[] {
+  ensureRunState()
+  return cloneAbilities((runState as RunState).currentAbilities)
+}
+
+export function addAbilityToRun(ability: HeroAbilityContent): boolean {
+  ensureRunState()
+  const state = runState as RunState
+  const nextBaseId = getAbilityBaseId(ability.id)
+
+  const alreadyOwned = state.currentAbilities.some(
+    (ownedAbility) => getAbilityBaseId(ownedAbility.id) === nextBaseId,
+  )
+
+  if (alreadyOwned) {
+    return false
+  }
+
+  const copy = {
+    ...ability,
+    id: `${ability.id}-run-${state.currentAbilities.length + 1}`,
+  }
+
+  state.currentAbilities = [...state.currentAbilities, copy]
+  return true
+}
+
 function ensureRunState() {
   if (!runState) {
     startNewRun()
@@ -158,9 +284,48 @@ function cloneRunState(state: RunState): RunState {
     ...state,
     currentDeck: cloneDeck(state.currentDeck),
     currentRelics: cloneRelics(state.currentRelics),
+    currentAbilities: cloneAbilities(state.currentAbilities),
   }
 }
 
 function cloneRelics(relics: RelicContent[]): RelicContent[] {
   return relics.map((relic) => ({ ...relic }))
+}
+
+function cloneAbilities(abilities: HeroAbilityContent[]): HeroAbilityContent[] {
+  return abilities.map((ability) => ({ ...ability }))
+}
+
+function canLevelUp(state: RunState): boolean {
+  const nextLevel = state.heroLevel + 1
+
+  if (nextLevel >= LEVEL_XP_THRESHOLDS.length) {
+    return false
+  }
+
+  return state.heroXp >= LEVEL_XP_THRESHOLDS[nextLevel]
+}
+
+function normalizeRunState(saved: RunState): RunState {
+  const normalized = cloneRunState({
+    ...saved,
+    currentAbilities: saved.currentAbilities ?? [],
+    heroXp: saved.heroXp ?? 0,
+    heroLevel: saved.heroLevel ?? 1,
+    pendingLevelUps: saved.pendingLevelUps ?? 0,
+  })
+
+  if (normalized.heroLevel < 1) {
+    normalized.heroLevel = 1
+  }
+
+  if (normalized.heroXp < 0) {
+    normalized.heroXp = 0
+  }
+
+  if (normalized.pendingLevelUps < 0) {
+    normalized.pendingLevelUps = 0
+  }
+
+  return normalized
 }

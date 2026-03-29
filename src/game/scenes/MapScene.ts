@@ -43,7 +43,12 @@ export class MapScene extends Phaser.Scene {
       color: '#bfdbfe',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 140, 'Press ESC to return to menu', {
+    this.add.text(width / 2, 132, `Level: ${run.heroLevel}   XP: ${run.heroXp}`, {
+      fontSize: compactLayout ? '16px' : '17px',
+      color: '#93c5fd',
+    }).setOrigin(0.5)
+
+    this.add.text(width / 2, 156, 'Press ESC to return to menu', {
       fontSize: '16px',
       color: '#cbd5e1',
     }).setOrigin(0.5)
