@@ -14,6 +14,18 @@ const HERO_PAIN_SHEET = {
   frameHeight: 48,
 }
 
+const FANTASY_BACKDROP_SHEET = {
+  key: 'ui-fantasy-backdrop-sheet',
+  path: 'assets/tittle/Fantasy_Backdrop_animation_sheet.png',
+  frameWidth: 512,
+  frameHeight: 360,
+}
+
+const ENERGY_CRYSTAL_IMAGE = {
+  key: 'ui-energy-crystal',
+  path: 'assets/HUD/Crystal.png',
+}
+
 const ASHEN_KNIGHT_SHEET = {
   key: 'enemy-ashen-knight-idle-sheet',
   path: 'assets/enemies/ashen-knight/ashen-knight-iddle.png',
@@ -27,6 +39,11 @@ export class LoadingScene extends Phaser.Scene {
   }
 
   preload() {
+    this.load.spritesheet(FANTASY_BACKDROP_SHEET.key, FANTASY_BACKDROP_SHEET.path, {
+      frameWidth: FANTASY_BACKDROP_SHEET.frameWidth,
+      frameHeight: FANTASY_BACKDROP_SHEET.frameHeight,
+    })
+    this.load.image(ENERGY_CRYSTAL_IMAGE.key, ENERGY_CRYSTAL_IMAGE.path)
     this.load.spritesheet(HERO_IDLE_SHEET.key, HERO_IDLE_SHEET.path, {
       frameWidth: HERO_IDLE_SHEET.frameWidth,
       frameHeight: HERO_IDLE_SHEET.frameHeight,

@@ -52,6 +52,7 @@ export class PlayScene extends Phaser.Scene {
   private relicObjects: Phaser.GameObjects.GameObject[] = []
   private handObjects: Phaser.GameObjects.GameObject[] = []
   private energyPips: Phaser.GameObjects.Rectangle[] = []
+  private energyCrystalIcons: Phaser.GameObjects.Image[] = []
   private emberPips: Phaser.GameObjects.Rectangle[] = []
   private emberPipLabel?: Phaser.GameObjects.Text
   private handCardY = 0
@@ -83,8 +84,8 @@ export class PlayScene extends Phaser.Scene {
     const enemyX = width - heroX
     const spriteY = C ? Math.floor(height * 0.46) : Math.floor(height * 0.45)
 
-    // Top HUD band + subtle divider to establish the pixel-fantasy frame language.
-    this.add.rectangle(width / 2, hudH / 2, width, hudH, 0x0b1020).setDepth(0)
+    // Top HUD band background.
+    this.add.rectangle(width / 2, hudH / 2, width, hudH, 0x060a13, 0.84).setDepth(0)
     this.add.rectangle(width / 2, hudH - 2, width, 2, 0x2d4666).setDepth(1)
 
     const panelY = C ? 40 : 44
@@ -192,14 +193,22 @@ export class PlayScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0, 0).setDepth(3)
 
+    const hasCrystalEnergy = this.textures.exists('ui-energy-crystal')
     for (let i = 0; i < 6; i += 1) {
-      const pip = this.add.rectangle(energyStartX + i * pipGap, pipBaseY, C ? 10 : 12, C ? 10 : 12, 0x164e63)
-        .setStrokeStyle(1, 0x86c9e9)
-        .setDepth(3)
-      this.energyPips.push(pip)
+      if (hasCrystalEnergy) {
+        const crystal = this.add.image(energyStartX + i * pipGap, pipBaseY, 'ui-energy-crystal')
+          .setScale(C ? 0.33 : 0.38)
+          .setDepth(3)
+        this.energyCrystalIcons.push(crystal)
+      } else {
+        const pip = this.add.rectangle(energyStartX + i * pipGap, pipBaseY, C ? 10 : 12, C ? 10 : 12, 0x164e63)
+          .setStrokeStyle(1, 0x86c9e9)
+          .setDepth(3)
+        this.energyPips.push(pip)
+      }
     }
 
-    this.energyText = this.add.text(centerX - (C ? 82 : 94), C ? 44 : 50, '3 / 3', {
+    this.energyText = this.add.text(centerX - (C ? 82 : 94), C ? 44 : 50, '3/3', {
       fontSize: C ? '12px' : '13px',
       color: '#93e4ff',
       fontStyle: 'bold',
@@ -906,6 +915,19 @@ export class PlayScene extends Phaser.Scene {
   private updateResourcePips() {
     const activeEnergy = this.session.currentEnergy
     const maxEnergy = this.session.maxEnergy
+
+    this.energyCrystalIcons.forEach((icon, index) => {
+      const isAvailable = index < maxEnergy
+      const isActive = index < activeEnergy
+      icon.setVisible(isAvailable)
+      if (!isAvailable) {
+        return
+      }
+      icon.setTint(isActive ? 0xffffff : 0x6b7280)
+      icon.setAlpha(isActive ? 1 : 0.45)
+      icon.setScale(this.compactLayout ? (isActive ? 0.34 : 0.33) : (isActive ? 0.4 : 0.38))
+    })
+
     this.energyPips.forEach((pip, index) => {
       const isAvailable = index < maxEnergy
       const isActive = index < activeEnergy
