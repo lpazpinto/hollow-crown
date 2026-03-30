@@ -39,6 +39,7 @@ export class PlayScene extends Phaser.Scene {
   private discardPileText!: Phaser.GameObjects.Text
   private enemyHpText!: Phaser.GameObjects.Text
   private intentText!: Phaser.GameObjects.Text
+  private enemyNameText!: Phaser.GameObjects.Text
   private resultText!: Phaser.GameObjects.Text
   private turnBannerText!: Phaser.GameObjects.Text
   private heroPanel!: Phaser.GameObjects.Rectangle
@@ -159,13 +160,26 @@ export class PlayScene extends Phaser.Scene {
       0x7f1d1d,
     ).setStrokeStyle(2, 0xffffff)
 
-    this.add.text(enemyX, visualY - (this.compactLayout ? 68 : 74), this.session.enemy.name, {
+    if (this.encounterType === 'boss') {
+      this.enemyPanel.setFillStyle(0x450a0a)
+      this.enemyPanel.setStrokeStyle(3, 0xf59e0b)
+    }
+
+    this.enemyNameText = this.add.text(enemyX, visualY - (this.compactLayout ? 68 : 74), this.session.enemy.name, {
       fontSize: this.compactLayout ? '22px' : '24px',
-      color: '#ffffff',
+      color: this.encounterType === 'boss' ? '#fde68a' : '#ffffff',
       fontStyle: 'bold',
       align: 'center',
       wordWrap: { width: this.compactLayout ? 210 : 240 },
     }).setOrigin(0.5)
+
+    if (this.encounterType === 'boss') {
+      this.add.text(enemyX, visualY - (this.compactLayout ? 94 : 102), 'BOSS', {
+        fontSize: this.compactLayout ? '14px' : '15px',
+        color: '#fca5a5',
+        fontStyle: 'bold',
+      }).setOrigin(0.5)
+    }
 
     this.enemyHpText = this.add.text(
       enemyX,
@@ -234,8 +248,13 @@ export class PlayScene extends Phaser.Scene {
 
     this.previousEmber = this.session.state.ember
     this.updateBattleText()
-    this.showTurnBanner('Player Turn', '#fde68a')
-    this.startHeroIdleAnimation()
+
+    if (this.encounterType === 'boss') {
+      this.playBossIntroMoment()
+    } else {
+      this.showTurnBanner('Player Turn', '#fde68a')
+      this.startHeroIdleAnimation()
+    }
   }
 
   private createHeroSprite(x: number, y: number): Phaser.GameObjects.Image | undefined {
@@ -315,12 +334,14 @@ export class PlayScene extends Phaser.Scene {
     this.stopHeroIdleAnimation()
     const presentation = this.getCardPresentation(card)
     const previousState = this.cloneBattleState(this.session.state)
+    const previousPhase = this.session.enemyPhase
     this.playHeroCardAction(presentation.kind, () => {
       this.session = playCardFromHand(this.session, cardIndex)
       this.playDamageFeedback(previousState, this.session.state, {
         source: 'hero',
         cardKind: presentation.kind,
       })
+      this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
 
       this.updateBattleText()
       this.actionInProgress = false
@@ -343,7 +364,8 @@ export class PlayScene extends Phaser.Scene {
     this.session = discardHand(this.session)
     const intent = getCurrentIntent(this.session)
     const previousState = this.cloneBattleState(this.session.state)
-    this.playEnemyIntentAction(intent.damage, () => {
+    const previousPhase = this.session.enemyPhase
+    this.playEnemyIntentAction(intent.damage, this.encounterType === 'boss', () => {
       this.session = resolveEnemyIntentAction(this.session)
       this.playDamageFeedback(previousState, this.session.state, {
         source: 'enemy',
@@ -353,6 +375,7 @@ export class PlayScene extends Phaser.Scene {
 
       if (this.session.outcome === 'ongoing') {
         this.session = startNewPlayerTurn(this.session)
+        this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
         this.time.delayedCall(260, () => {
           this.showTurnBanner('Player Turn', '#fde68a')
           this.startHeroIdleAnimation()
@@ -374,6 +397,7 @@ export class PlayScene extends Phaser.Scene {
     this.session.outcome = checkBattleOutcome(this.session.state)
 
     if (this.session.outcome === 'victory') {
+      const isBossVictory = this.encounterType === 'boss'
       this.stopHeroIdleAnimation()
       applyBattleResult(this.session.state.heroHp, true)
       const xpResult = awardXpForCurrentEncounter()
@@ -387,13 +411,27 @@ export class PlayScene extends Phaser.Scene {
             ? 'Relic Reward'
             : 'Onward'
 
-      this.resultText.setText(`Victory  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}`)
-      this.resultText.setColor('#86efac')
-      this.showTurnBanner(hasLevelUp ? 'Level Up' : 'Victory', hasLevelUp ? '#fde68a' : '#86efac')
-      this.cameras.main.flash(180, 140, 255, 180)
+      this.resultText.setText(
+        isBossVictory
+          ? `Boss Defeated  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}`
+          : `Victory  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}`,
+      )
+      this.resultText.setColor(isBossVictory ? '#fef08a' : '#86efac')
+      this.showTurnBanner(
+        hasLevelUp ? 'Level Up' : (isBossVictory ? 'Boss Defeated' : 'Victory'),
+        hasLevelUp ? '#fde68a' : (isBossVictory ? '#fef08a' : '#86efac'),
+      )
+
+      if (isBossVictory) {
+        this.cameraPunch(0.01, 220, 1.028)
+        this.cameras.main.flash(260, 255, 244, 180)
+      } else {
+        this.cameras.main.flash(180, 140, 255, 180)
+      }
+
       this.transitioningScene = true
 
-      this.time.delayedCall(hasLevelUp ? 560 : 420, () => {
+      this.time.delayedCall(isBossVictory ? 760 : (hasLevelUp ? 560 : 420), () => {
         if (nextRoute.advanceFloorNow) {
           advanceFloorAfterEncounter()
         }
@@ -424,8 +462,12 @@ export class PlayScene extends Phaser.Scene {
       this.cameras.main.shake(180, 0.008)
     }
 
+    const phaseText = this.encounterType === 'boss'
+      ? ` | Phase ${this.session.enemyPhase}`
+      : ''
+
     this.enemyHpText.setText(
-      `Enemy HP: ${this.session.state.enemyHp} / ${this.session.enemy.maxHp} | Armor: ${this.session.state.enemyArmor}`,
+      `Enemy HP: ${this.session.state.enemyHp} / ${this.session.enemy.maxHp} | Armor: ${this.session.state.enemyArmor}${phaseText}`,
     )
     this.heroHpText.setText(`Hero HP: ${this.session.state.heroHp} / ${this.heroMaxHp}`)
     this.heroArmorText.setText(`Hero Armor: ${this.session.state.heroArmor}`)
@@ -440,7 +482,17 @@ export class PlayScene extends Phaser.Scene {
 
     this.drawPileCountText.setText(`Draw Pile: ${this.session.drawPile.length} cards`)
     this.discardPileText.setText(`Discard Pile: ${this.session.discardPile.length} cards`)
-    this.intentText.setText(`Enemy Intent: ${getCurrentIntent(this.session).label}`)
+    this.intentText.setText(
+      this.encounterType === 'boss'
+        ? `Boss Intent: ${getCurrentIntent(this.session).label}`
+        : `Enemy Intent: ${getCurrentIntent(this.session).label}`,
+    )
+
+    this.enemyNameText.setText(
+      this.encounterType === 'boss'
+        ? `${this.session.enemy.name} • Phase ${this.session.enemyPhase}`
+        : this.session.enemy.name,
+    )
 
     if (this.session.outcome === 'ongoing') {
       this.resultText.setText('')
@@ -676,10 +728,13 @@ export class PlayScene extends Phaser.Scene {
     const heroArmorGain = nextState.heroArmor - previousState.heroArmor
     const enemyArmorGain = nextState.enemyArmor - previousState.enemyArmor
     const heavyEnemyHit = enemyDamage >= 10 || options.cardKind === 'special'
-    const heavyHeroHit = heroDamage >= 10 || (options.intentDamage ?? 0) >= 10
+    const heavyHeroHit =
+      heroDamage >= 10
+      || (options.intentDamage ?? 0) >= 10
+      || (this.encounterType === 'boss' && options.source === 'enemy' && heroDamage >= 8)
 
     if (enemyDamage > 0) {
-      this.flashTargetRed(this.enemyPanel, 0x7f1d1d, heavyEnemyHit)
+      this.flashTargetRed(this.enemyPanel, this.encounterType === 'boss' ? 0x450a0a : 0x7f1d1d, heavyEnemyHit)
       this.showFloatingDamageText(this.enemyPanel.x, this.enemyPanel.y - 96, `-${enemyDamage}`, '#fecaca', heavyEnemyHit)
       if (heavyEnemyHit) {
         this.cameraPunch(0.006, 110, 1.014)
@@ -692,7 +747,11 @@ export class PlayScene extends Phaser.Scene {
       const y = this.heroSprite ? this.heroSprite.y - 94 : this.heroPanel.y - 74
       this.showFloatingDamageText(this.heroPanel.x, y, `-${heroDamage}`, '#fecaca', heavyHeroHit)
       if (heavyHeroHit) {
-        this.cameraPunch(0.008, 130, 1.018)
+        this.cameraPunch(
+          this.encounterType === 'boss' && options.source === 'enemy' ? 0.01 : 0.008,
+          this.encounterType === 'boss' && options.source === 'enemy' ? 150 : 130,
+          this.encounterType === 'boss' && options.source === 'enemy' ? 1.022 : 1.018,
+        )
       }
     }
 
@@ -841,13 +900,17 @@ export class PlayScene extends Phaser.Scene {
     })
   }
 
-  private playEnemyIntentAction(intentDamage: number, onImpact: () => void) {
-    const heavy = intentDamage >= 10
+  private playEnemyIntentAction(intentDamage: number, isBossAttack: boolean, onImpact: () => void) {
+    const heavy = intentDamage >= 10 || (isBossAttack && intentDamage >= 8)
     const startX = this.enemyPanel.x
     const startY = this.enemyPanel.y
 
     if (heavy) {
-      this.cameraPunch(0.007, 130, 1.016)
+      this.cameraPunch(
+        isBossAttack ? 0.009 : 0.007,
+        isBossAttack ? 150 : 130,
+        isBossAttack ? 1.02 : 1.016,
+      )
     }
 
     this.tweens.killTweensOf(this.enemyPanel)
@@ -855,7 +918,7 @@ export class PlayScene extends Phaser.Scene {
       targets: this.enemyPanel,
       x: startX - (heavy ? 18 : 10),
       y: startY + (heavy ? 2 : 0),
-      duration: heavy ? 90 : 70,
+      duration: heavy ? (isBossAttack ? 105 : 90) : 70,
       ease: 'Quad.Out',
       onComplete: () => {
         onImpact()
@@ -863,10 +926,48 @@ export class PlayScene extends Phaser.Scene {
           targets: this.enemyPanel,
           x: startX,
           y: startY,
-          duration: heavy ? 130 : 100,
+          duration: heavy ? (isBossAttack ? 145 : 130) : 100,
           ease: 'Quad.In',
         })
       },
+    })
+  }
+
+  private playBossIntroMoment() {
+    this.actionInProgress = true
+    this.showTurnBanner('Boss Approaches', '#fca5a5')
+    this.resultText.setText(this.session.enemy.name)
+    this.resultText.setColor('#fef08a')
+    this.cameraPunch(0.007, 220, 1.02)
+    this.flashTargetRed(this.enemyPanel, 0x450a0a, true)
+
+    this.time.delayedCall(620, () => {
+      this.resultText.setText('')
+      this.showTurnBanner('Player Turn', '#fde68a')
+      this.startHeroIdleAnimation()
+      this.actionInProgress = false
+    })
+  }
+
+  private handleBossPhaseTransition(previousPhase: 1 | 2, nextPhase: 1 | 2) {
+    if (this.encounterType !== 'boss') {
+      return
+    }
+
+    if (previousPhase === nextPhase || nextPhase !== 2) {
+      return
+    }
+
+    this.showTurnBanner('Boss Phase 2', '#fca5a5')
+    this.resultText.setText(`${this.session.enemy.name} is enraged!`)
+    this.resultText.setColor('#fca5a5')
+    this.cameraPunch(0.009, 180, 1.024)
+    this.flashTargetRed(this.enemyPanel, 0x450a0a, true)
+
+    this.time.delayedCall(420, () => {
+      if (this.session.outcome === 'ongoing') {
+        this.resultText.setText('')
+      }
     })
   }
 
