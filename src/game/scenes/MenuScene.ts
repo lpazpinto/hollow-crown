@@ -34,12 +34,63 @@ export class MenuScene extends Phaser.Scene {
     // Keep menu text/buttons readable on top of backdrop art.
     this.add.rectangle(width / 2, height / 2, width, height, 0x060a13, 0.5).setDepth(0)
 
-    this.add.text(width / 2, 90, 'Hollow Crown', {
-      fontSize: compactLayout ? '34px' : '40px',
-      color: '#ffffff',
-    }).setOrigin(0.5).setDepth(2)
+    if (this.textures.exists('ui-title-crown-shatter-sheet') && !this.anims.exists('titleCrownShatter')) {
+      this.anims.create({
+        key: 'titleCrownShatter',
+        frames: this.anims.generateFrameNumbers('ui-title-crown-shatter-sheet', {
+          start: 0,
+          end: 9,
+        }),
+        frameRate: 14,
+        repeat: 0,
+      })
+    }
 
-    this.add.text(width / 2, 132, 'Touch-friendly prototype for run, battle, reward, and relic flow', {
+    let titleAnchorX = width / 2
+    let titleAnchorY = compactLayout ? 88 : 92
+    let titleVisualWidth = compactLayout ? 260 : 340
+
+    if (this.textures.exists('ui-title-logo')) {
+      const logo = this.add.image(titleAnchorX, titleAnchorY, 'ui-title-logo').setDepth(2)
+      const maxLogoWidth = compactLayout ? Math.floor(width * 0.62) : Math.floor(width * 0.5)
+      if (logo.width > maxLogoWidth) {
+        logo.setScale(maxLogoWidth / logo.width)
+      }
+      titleAnchorX = logo.x
+      titleAnchorY = logo.y
+      titleVisualWidth = logo.displayWidth
+    } else {
+      const titleFallback = this.add.text(width / 2, 90, 'Hollow Crown', {
+        fontSize: compactLayout ? '34px' : '40px',
+        color: '#ffffff',
+      }).setOrigin(0.5).setDepth(2)
+      titleAnchorX = titleFallback.x
+      titleAnchorY = titleFallback.y
+      titleVisualWidth = titleFallback.width
+    }
+
+    if (this.textures.exists('ui-title-crown-shatter-sheet')) {
+      const crown = this.add.sprite(
+        titleAnchorX + titleVisualWidth / 2 + (compactLayout ? 30 : 42),
+        titleAnchorY - (compactLayout ? 6 : 8),
+        'ui-title-crown-shatter-sheet',
+        0,
+      )
+        .setOrigin(0.5, 0.5)
+        .setScale(compactLayout ? 0.56 : 0.7)
+        .setDepth(3)
+
+      if (this.anims.exists('titleCrownShatter')) {
+        crown.play('titleCrownShatter')
+        crown.once(Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + 'titleCrownShatter', () => {
+          crown.stop()
+          crown.setFrame(9)
+          crown.setVisible(true)
+        })
+      }
+    }
+
+    this.add.text(width / 2, compactLayout ? 140 : 148, 'Touch-friendly prototype for run, battle, reward, and relic flow', {
       fontSize: compactLayout ? '15px' : '16px',
       color: '#cbd5e1',
       align: 'center',

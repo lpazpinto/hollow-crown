@@ -26,6 +26,18 @@ const ENERGY_CRYSTAL_IMAGE = {
   path: 'assets/HUD/Crystal.png',
 }
 
+const TITLE_LOGO_IMAGE = {
+  key: 'ui-title-logo',
+  path: 'assets/tittle/Hollow-Crown-tittle.png',
+}
+
+const TITLE_CROWN_SHATTER_SHEET = {
+  key: 'ui-title-crown-shatter-sheet',
+  path: 'assets/tittle/crown_fall_shatter_v4_spritesheet.png',
+  frameWidth: 144,
+  frameHeight: 128,
+}
+
 const ASHEN_KNIGHT_SHEET = {
   key: 'enemy-ashen-knight-idle-sheet',
   path: 'assets/enemies/ashen-knight/ashen-knight-iddle.png',
@@ -43,6 +55,11 @@ export class LoadingScene extends Phaser.Scene {
       frameWidth: FANTASY_BACKDROP_SHEET.frameWidth,
       frameHeight: FANTASY_BACKDROP_SHEET.frameHeight,
     })
+    this.load.spritesheet(TITLE_CROWN_SHATTER_SHEET.key, TITLE_CROWN_SHATTER_SHEET.path, {
+      frameWidth: TITLE_CROWN_SHATTER_SHEET.frameWidth,
+      frameHeight: TITLE_CROWN_SHATTER_SHEET.frameHeight,
+    })
+    this.load.image(TITLE_LOGO_IMAGE.key, TITLE_LOGO_IMAGE.path)
     this.load.image(ENERGY_CRYSTAL_IMAGE.key, ENERGY_CRYSTAL_IMAGE.path)
     this.load.spritesheet(HERO_IDLE_SHEET.key, HERO_IDLE_SHEET.path, {
       frameWidth: HERO_IDLE_SHEET.frameWidth,
