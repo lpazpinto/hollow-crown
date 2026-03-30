@@ -17,7 +17,7 @@ const HERO_PAIN_SHEET = {
 const FANTASY_BACKDROP_SHEET = {
   key: 'ui-fantasy-backdrop-sheet',
   path: 'assets/tittle/Fantasy_Backdrop_animation_sheet.png',
-  frameWidth: 512,
+  frameWidth: 640,
   frameHeight: 360,
 }
 

@@ -18,7 +18,7 @@ export class MenuScene extends Phaser.Scene {
           key: 'ui-fantasy-backdrop-loop',
           frames: this.anims.generateFrameNumbers('ui-fantasy-backdrop-sheet', {
             start: 0,
-            end: 9,
+            end: 7,
           }),
           frameRate: 8,
           repeat: -1,
@@ -26,7 +26,7 @@ export class MenuScene extends Phaser.Scene {
       }
 
       const backdrop = this.add.sprite(width / 2, height / 2, 'ui-fantasy-backdrop-sheet')
-      const scale = Math.max(width / 512, height / 360)
+      const scale = Math.max(width / 640, height / 360)
       backdrop.setScale(scale).setDepth(0)
       backdrop.play('ui-fantasy-backdrop-loop')
     }
