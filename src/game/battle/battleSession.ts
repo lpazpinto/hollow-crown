@@ -44,6 +44,7 @@ export type BattleSession = {
   currentIntentIndex: number
   turnNumber: number
   heroBurn: number
+  enemyBurn: number
   enemyReflect: number
   enemyPhase: 1 | 2
   relics: RelicContent[]
@@ -97,6 +98,7 @@ export function createInitialBattleSession(
     currentIntentIndex: 0,
     turnNumber: 1,
     heroBurn: 0,
+    enemyBurn: 0,
     enemyReflect: 0,
     enemyPhase: 1,
     relics,
@@ -135,7 +137,7 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
 
   const withPhaseTransition = maybeEnterBossPhaseTwo(session)
   const cardId = getBaseCardId(card.id)
-  const { nextState, nextTriggerState, drawCount } = applyCardWithHooks(
+  const { nextState, nextTriggerState, drawCount, enemyBurn } = applyCardWithHooks(
     withPhaseTransition,
     cardId,
     card.effectType,
@@ -157,6 +159,7 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
   let nextSession: BattleSession = {
     ...withPhaseTransition,
     state: stateAfterReflect,
+    enemyBurn,
     hand: nextHand,
     discardPile: nextDiscardPile,
     relicTriggerState: nextTriggerState,
@@ -216,8 +219,10 @@ export function startNewPlayerTurn(session: BattleSession): BattleSession {
 export function resolveEnemyIntentAction(session: BattleSession): BattleSession {
   const withPhaseTransition = maybeEnterBossPhaseTwo(session)
   const intent = getCurrentIntent(withPhaseTransition)
+  const stateAfterEnemyBurn = applyEnemyBurnAtEnemyTurnStart(withPhaseTransition.state, withPhaseTransition.enemyBurn)
+  const nextEnemyBurn = Math.max(0, withPhaseTransition.enemyBurn - 1)
 
-  let nextState = resolveEnemyAttack(withPhaseTransition.state, intent.damage)
+  let nextState = resolveEnemyAttack(stateAfterEnemyBurn, intent.damage)
 
   if (intent.armorValue && intent.armorValue > 0) {
     nextState = {
@@ -230,6 +235,7 @@ export function resolveEnemyIntentAction(session: BattleSession): BattleSession 
     ...withPhaseTransition,
     state: nextState,
     heroBurn: withPhaseTransition.heroBurn + (intent.burnValue ?? 0),
+    enemyBurn: nextEnemyBurn,
     enemyReflect: intent.reflectValue ?? 0,
   }
 }
@@ -302,6 +308,7 @@ function applyCardWithHooks(
   nextState: BattleState
   nextTriggerState: BattleSession['relicTriggerState']
   drawCount: number
+  enemyBurn: number
 } {
   const nextTriggerState = { ...session.relicTriggerState }
   let nextState = session.state
@@ -335,12 +342,20 @@ function applyCardWithHooks(
       nextState = {
         ...nextState,
         ember: 0,
-        heroArmor: nextState.heroArmor + spentEmber * 4,
+        heroArmor: nextState.heroArmor + baseValue,
       }
       drawCount += spentEmber
     }
+
+    if (cardId === 'silver-protection' && session.turnCardState.playedAttack) {
+      nextState = {
+        ...nextState,
+        ember: clampEmber(nextState.ember + 1),
+      }
+    }
   } else {
     let damageValue = baseValue
+    const isDoubleStrike = cardId === 'double-strike'
 
     if (!nextTriggerState.firstAttackUsed) {
       damageValue += getFirstAttackBonusDamage(session.relics)
@@ -349,7 +364,7 @@ function applyCardWithHooks(
     }
 
     if (cardId === 'ember-fire' && nextState.ember > 0) {
-      damageValue += 2
+      damageValue += 3
     }
 
     if (cardId === 'crownfall' && nextState.ember > 0) {
@@ -357,16 +372,31 @@ function applyCardWithHooks(
         ...nextState,
         ember: nextState.ember - 1,
       }
-      damageValue += 8
+      damageValue += 6
     }
 
-    nextState = applyCardEffect(nextState, effectType, damageValue)
+    if (isDoubleStrike) {
+      nextState = applyCardEffect(nextState, effectType, damageValue)
+      nextState = applyCardEffect(nextState, effectType, baseValue)
+    } else {
+      nextState = applyCardEffect(nextState, effectType, damageValue)
+    }
+
+    if (cardId === 'golden-horseshoe') {
+      return {
+        nextState,
+        nextTriggerState,
+        drawCount,
+        enemyBurn: session.enemyBurn + 2,
+      }
+    }
   }
 
   return {
     nextState,
     nextTriggerState,
     drawCount,
+    enemyBurn: session.enemyBurn,
   }
 }
 
@@ -457,6 +487,17 @@ function applyBurnAtTurnStart(state: BattleState, burnAmount: number): BattleSta
   return {
     ...state,
     heroHp: Math.max(0, state.heroHp - burnAmount),
+  }
+}
+
+function applyEnemyBurnAtEnemyTurnStart(state: BattleState, burnAmount: number): BattleState {
+  if (burnAmount <= 0) {
+    return state
+  }
+
+  return {
+    ...state,
+    enemyHp: Math.max(0, state.enemyHp - burnAmount),
   }
 }
 

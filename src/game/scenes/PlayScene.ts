@@ -465,9 +465,10 @@ export class PlayScene extends Phaser.Scene {
     const phaseText = this.encounterType === 'boss'
       ? ` | Phase ${this.session.enemyPhase}`
       : ''
+    const burnText = this.session.enemyBurn > 0 ? ` | Burn ${this.session.enemyBurn}` : ''
 
     this.enemyHpText.setText(
-      `Enemy HP: ${this.session.state.enemyHp} / ${this.session.enemy.maxHp} | Armor: ${this.session.state.enemyArmor}${phaseText}`,
+      `Enemy HP: ${this.session.state.enemyHp} / ${this.session.enemy.maxHp} | Armor: ${this.session.state.enemyArmor}${burnText}${phaseText}`,
     )
     this.heroHpText.setText(`Hero HP: ${this.session.state.heroHp} / ${this.heroMaxHp}`)
     this.heroArmorText.setText(`Hero Armor: ${this.session.state.heroArmor}`)

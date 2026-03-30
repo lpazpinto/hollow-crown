@@ -26,16 +26,16 @@ export const UN1_CARD_POOL: CardContent[] = [
   {
     id: 'golden-shield',
     title: 'Golden Shield',
-    description: 'Gain 6 armor',
+    description: 'Gain 7 armor',
     effectType: 'armor',
-    value: 6,
+    value: 7,
     cost: 1,
     rarity: 'common',
   },
   {
     id: 'ember-fire',
     title: 'Ember Fire',
-    description: 'Deal 5 damage. If you have Ember, deal +2 damage',
+    description: 'Deal 5 damage. If you have Ember, deal +3 damage',
     effectType: 'damage',
     value: 5,
     cost: 1,
@@ -44,9 +44,9 @@ export const UN1_CARD_POOL: CardContent[] = [
   {
     id: 'charge',
     title: 'Charge',
-    description: 'Gain 3 armor. Draw 1 card',
+    description: 'Gain 4 armor. Draw 1 card',
     effectType: 'armor',
-    value: 3,
+    value: 4,
     cost: 0,
     rarity: 'common',
   },
@@ -62,43 +62,43 @@ export const UN1_CARD_POOL: CardContent[] = [
   {
     id: 'double-strike',
     title: 'Double Strike',
-    description: 'Deal 8 damage',
+    description: 'Deal 4 damage twice',
     effectType: 'damage',
-    value: 8,
-    cost: 2,
+    value: 4,
+    cost: 1,
     rarity: 'common',
   },
   {
     id: 'silver-protection',
     title: 'Silver Protection',
-    description: 'Gain 8 armor',
+    description: 'Gain 9 armor. If you played an Attack this turn, gain 1 Ember',
     effectType: 'armor',
-    value: 8,
+    value: 9,
     cost: 1,
     rarity: 'uncommon',
   },
   {
     id: 'golden-horseshoe',
     title: 'Golden Horseshoe',
-    description: 'Deal 9 damage',
+    description: 'Deal 7 damage and apply 2 Burn',
     effectType: 'damage',
-    value: 9,
+    value: 7,
     cost: 1,
     rarity: 'uncommon',
   },
   {
     id: 'reliquary-pulse',
     title: 'Reliquary Pulse',
-    description: 'Spend all Ember. Gain 4 armor per Ember spent. Draw 1 card per Ember spent',
+    description: 'Spend all Ember. Gain 5 armor. Draw 1 card per Ember spent',
     effectType: 'armor',
-    value: 0,
+    value: 5,
     cost: 1,
     rarity: 'rare',
   },
   {
     id: 'crownfall',
     title: 'Crownfall',
-    description: 'Deal 12 damage. If you have Ember, spend 1 to deal +8 damage',
+    description: 'Deal 12 damage. If you have Ember, spend 1 to deal +6 damage',
     effectType: 'damage',
     value: 12,
     cost: 2,
@@ -249,14 +249,14 @@ function getFallbackOrder(rolledRarity: CardRarity): CardRarity[] {
 function getDescriptionForCard(baseId: string, value: number): string {
   if (baseId === 'unicorn-strike') return `Deal ${value} damage`
   if (baseId === 'golden-shield') return `Gain ${value} armor`
-  if (baseId === 'ember-fire') return `Deal ${value} damage. If you have Ember, deal +2 damage`
+  if (baseId === 'ember-fire') return `Deal ${value} damage. If you have Ember, deal +3 damage`
   if (baseId === 'charge') return `Gain ${value} armor. Draw 1 card`
   if (baseId === 'crown-diamonds') return 'Gain 1 Ember. Draw 1 card'
-  if (baseId === 'double-strike') return `Deal ${value} damage`
-  if (baseId === 'silver-protection') return `Gain ${value} armor`
-  if (baseId === 'golden-horseshoe') return `Deal ${value} damage`
-  if (baseId === 'reliquary-pulse') return 'Spend all Ember. Gain 4 armor per Ember spent. Draw 1 card per Ember spent'
-  if (baseId === 'crownfall') return `Deal ${value} damage. If you have Ember, spend 1 to deal +8 damage`
+  if (baseId === 'double-strike') return `Deal ${value} damage twice`
+  if (baseId === 'silver-protection') return `Gain ${value} armor. If you played an Attack this turn, gain 1 Ember`
+  if (baseId === 'golden-horseshoe') return `Deal ${value} damage and apply 2 Burn`
+  if (baseId === 'reliquary-pulse') return `Spend all Ember. Gain ${value} armor. Draw 1 card per Ember spent`
+  if (baseId === 'crownfall') return `Deal ${value} damage. If you have Ember, spend 1 to deal +6 damage`
 
   return 'Upgraded card'
 }
