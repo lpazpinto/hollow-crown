@@ -54,6 +54,7 @@ export class PlayScene extends Phaser.Scene {
   private energyPips: Phaser.GameObjects.Rectangle[] = []
   private emberPips: Phaser.GameObjects.Rectangle[] = []
   private emberPipLabel?: Phaser.GameObjects.Text
+  private handCardY = 0
 
   constructor() {
     super('PlayScene')
@@ -77,20 +78,20 @@ export class PlayScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#111827')
 
     const C = this.compactLayout
-    const hudH = C ? 84 : 96
-    const heroX = C ? Math.floor(width * 0.27) : Math.floor(width * 0.25)
+    const hudH = C ? 82 : 94
+    const heroX = C ? Math.floor(width * 0.28) : Math.floor(width * 0.26)
     const enemyX = width - heroX
-    const spriteY = C ? Math.floor(height * 0.47) : Math.floor(height * 0.44)
+    const spriteY = C ? Math.floor(height * 0.46) : Math.floor(height * 0.45)
 
     // Top HUD band + subtle divider to establish the pixel-fantasy frame language.
     this.add.rectangle(width / 2, hudH / 2, width, hudH, 0x0b1020).setDepth(0)
     this.add.rectangle(width / 2, hudH - 2, width, 2, 0x2d4666).setDepth(1)
 
-    const panelY = C ? 39 : 44
-    const sidePanelW = C ? 250 : 320
-    const sidePanelH = C ? 58 : 64
-    const centerPanelW = C ? 254 : 314
-    const centerPanelH = C ? 58 : 64
+    const panelY = C ? 40 : 44
+    const sidePanelW = C ? 258 : 304
+    const sidePanelH = C ? 56 : 62
+    const centerPanelW = C ? 270 : 318
+    const centerPanelH = C ? 56 : 62
 
     const leftPanel = this.add.rectangle(
       14 + sidePanelW / 2,
@@ -129,7 +130,17 @@ export class PlayScene extends Phaser.Scene {
       0.85,
     ).setDepth(2)
 
-      // ── Battlefield overlays: result text + turn banner ────────────
+    // Battlefield band to anchor both combatants and avoid a floating look.
+    const battleBandY = C ? Math.floor(height * 0.48) : Math.floor(height * 0.47)
+    this.add.rectangle(width / 2, battleBandY, width * 0.9, C ? 170 : 184, 0x0f172a, 0.26)
+      .setStrokeStyle(1, 0x334155, 0.35)
+      .setDepth(0)
+    const battleLineY = spriteY + (C ? 64 : 72)
+    this.add.rectangle(width / 2, battleLineY, width * 0.78, 2, 0x334155, 0.7).setDepth(1)
+    this.add.ellipse(heroX, battleLineY + 10, C ? 120 : 132, C ? 24 : 28, 0x000000, 0.24).setDepth(1)
+    this.add.ellipse(enemyX, battleLineY + 10, C ? 126 : 142, C ? 24 : 28, 0x000000, 0.24).setDepth(1)
+
+    // Battlefield overlays: result text + turn banner.
     this.resultText = this.add.text(width / 2, spriteY - (C ? 76 : 92), '', {
       fontSize: C ? '20px' : '22px',
       color: '#ffffff',
@@ -172,8 +183,8 @@ export class PlayScene extends Phaser.Scene {
     const centerX = width / 2
     const pipBaseY = C ? 34 : 38
     const pipGap = C ? 14 : 16
-    const energyStartX = centerX - (C ? 84 : 95)
-    const emberStartX = centerX + (C ? 20 : 28)
+    const energyStartX = centerX - (C ? 88 : 100)
+    const emberStartX = centerX + (C ? 12 : 20)
 
     this.add.text(centerX - (C ? 82 : 94), C ? 15 : 17, 'Energy', {
       fontSize: C ? '11px' : '12px',
@@ -268,13 +279,13 @@ export class PlayScene extends Phaser.Scene {
     this.enemySprite = this.createEnemySprite(enemyX, spriteY)
 
     if (!this.heroSprite) {
-      this.heroPanel.setAlpha(1).setFillStyle(0x1e3a8a).setStrokeStyle(2, 0x93c5fd)
+      this.heroPanel.setAlpha(0.8).setFillStyle(0x1e3a8a, 0.9).setStrokeStyle(1, 0x93c5fd, 0.8)
     }
 
     if (!this.enemySprite) {
-      this.enemyPanel.setAlpha(1)
-        .setFillStyle(this.encounterType === 'boss' ? 0x450a0a : 0x7f1d1d)
-        .setStrokeStyle(2, this.encounterType === 'boss' ? 0xf59e0b : 0xef4444)
+      this.enemyPanel.setAlpha(0.68)
+        .setFillStyle(this.encounterType === 'boss' ? 0x3f1414 : 0x4a1f1f, 0.92)
+        .setStrokeStyle(1, this.encounterType === 'boss' ? 0xf59e0b : 0xef4444, 0.72)
     }
 
     this.input.keyboard?.on('keydown-ESC', () => {
@@ -282,22 +293,37 @@ export class PlayScene extends Phaser.Scene {
     })
 
     // Bottom command band with matching HUD framing.
-    const bottomBarTopY = height - (C ? 220 : 238)
-    this.add.rectangle(width / 2, bottomBarTopY + (C ? 112 : 118), width, C ? 224 : 236, 0x0b1020, 0.82).setDepth(0)
+    const bottomBarTopY = height - (C ? 218 : 236)
+    this.add.rectangle(width / 2, bottomBarTopY + (C ? 110 : 116), width, C ? 220 : 232, 0x0b1020, 0.84).setDepth(0)
     this.add.rectangle(width / 2, bottomBarTopY, width, 2, 0x2d4666).setDepth(1)
 
-    const pilesY = height - (C ? 210 : 226)
-    const pileW = C ? 74 : 86
+    const handPanelCenterX = width / 2
+    const handPanelCenterY = height - (C ? 150 : 166)
+    const handPanelW = C ? 410 : 560
+    const handPanelH = C ? 144 : 156
+    this.add.rectangle(handPanelCenterX, handPanelCenterY, handPanelW, handPanelH, 0x131d2e, 0.9)
+      .setStrokeStyle(1, 0x4b617f, 0.75)
+      .setDepth(0)
+    this.add.rectangle(handPanelCenterX, handPanelCenterY - handPanelH / 2 + 10, handPanelW - 18, 2, 0x6d87a8, 0.6).setDepth(1)
+
+    const pilesY = handPanelCenterY - handPanelH / 2 + (C ? 18 : 20)
+    const pileW = C ? 76 : 90
     const pileH = C ? 24 : 26
-    this.add.rectangle(width / 2 - (C ? 96 : 124), pilesY, pileW, pileH, 0x1a2439, 0.92).setStrokeStyle(1, 0x5b7699).setDepth(1)
-    this.add.rectangle(width / 2 + (C ? 96 : 124), pilesY, pileW, pileH, 0x1a2439, 0.92).setStrokeStyle(1, 0x5b7699).setDepth(1)
-    this.drawPileCountText = this.add.text(width / 2 - (C ? 96 : 124), pilesY, 'Draw 0', {
+    this.add.rectangle(width / 2 - (C ? 112 : 148), pilesY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(1)
+    this.add.rectangle(width / 2 + (C ? 112 : 148), pilesY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(1)
+    this.add.text(width / 2, pilesY, 'Hand', {
+      fontSize: C ? '12px' : '13px',
+      color: '#c7d6ea',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(2)
+
+    this.drawPileCountText = this.add.text(width / 2 - (C ? 112 : 148), pilesY, 'Draw 0', {
       fontSize: C ? '12px' : '13px',
       color: '#b0c8e3',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(2)
 
-    this.discardPileText = this.add.text(width / 2 + (C ? 96 : 124), pilesY, 'Disc 0', {
+    this.discardPileText = this.add.text(width / 2 + (C ? 112 : 148), pilesY, 'Disc 0', {
       fontSize: C ? '12px' : '13px',
       color: '#b0c8e3',
       fontStyle: 'bold',
@@ -306,7 +332,7 @@ export class PlayScene extends Phaser.Scene {
     // End-turn button: framed, prominent, and consistent with HUD palette.
     const endTurnButton = this.add.rectangle(
       width - (C ? 118 : 138),
-      height - (C ? 88 : 98),
+      height - (C ? 90 : 100),
       C ? 208 : 220,
       C ? 72 : 78,
       0xb9781f,
@@ -334,10 +360,12 @@ export class PlayScene extends Phaser.Scene {
     })
 
     // Compact passives strip on bottom-left.
-    const ablCenterX = C ? 88 : 126
-    const ablY = height - (C ? 148 : 166)
+    const ablCenterX = C ? 94 : 136
+    const ablY = height - (C ? 156 : 172)
     this.renderAbilities(ablCenterX, ablY)
-    this.renderRelics(ablCenterX, ablY + (C ? 48 : 56))
+    this.renderRelics(ablCenterX, ablY + (C ? 36 : 42))
+
+    this.handCardY = height - (C ? 92 : 102)
 
     this.renderHand()
 
@@ -721,7 +749,7 @@ export class PlayScene extends Phaser.Scene {
       this.handObjects = []
     }
 
-    const { width, height } = this.scale
+    const { width } = this.scale
     const cardSpacing = this.getHandSpacing(width)
     const startX = width / 2 - ((this.session.hand.length - 1) * cardSpacing) / 2
 
@@ -731,7 +759,7 @@ export class PlayScene extends Phaser.Scene {
 
       const cardObjects = this.createCard(
         cardX,
-        height - (this.compactLayout ? 108 : 112),
+        this.handCardY,
         cardData,
         canPlay,
         () => {
@@ -748,8 +776,8 @@ export class PlayScene extends Phaser.Scene {
       return 0
     }
 
-    const maxSpacing = this.compactLayout ? 128 : 164
-    const availableWidth = Math.max(360, width - (this.compactLayout ? 240 : 320))
+    const maxSpacing = this.compactLayout ? 118 : 152
+    const availableWidth = Math.max(340, width - (this.compactLayout ? 440 : 560))
     return Math.min(maxSpacing, availableWidth / (this.session.hand.length - 1))
   }
 
@@ -759,18 +787,18 @@ export class PlayScene extends Phaser.Scene {
       this.relicObjects = []
     }
 
-    const panelWidth = this.compactLayout ? 176 : 248
+    const panelWidth = this.compactLayout ? 192 : 256
     const panel = this.add.rectangle(
       x,
-      startY + (this.compactLayout ? 14 : 16),
+      startY + (this.compactLayout ? 12 : 14),
       panelWidth,
-      this.compactLayout ? 28 : 32,
+      this.compactLayout ? 24 : 28,
       0x18253a,
       0.95,
     ).setStrokeStyle(1, 0x536f95).setDepth(1)
 
-    const title = this.add.text(x - panelWidth / 2 + 6, startY + 4, 'Passives', {
-      fontSize: this.compactLayout ? '10px' : '11px',
+    const title = this.add.text(x - panelWidth / 2 + 6, startY + 2, 'Passives', {
+      fontSize: this.compactLayout ? '9px' : '10px',
       color: '#a9c0db',
       fontStyle: 'bold',
     }).setOrigin(0, 0).setDepth(2)
@@ -779,16 +807,16 @@ export class PlayScene extends Phaser.Scene {
 
     const relics = this.session.relics
     if (relics.length === 0) {
-      const none = this.add.text(x - panelWidth / 2 + 66, startY + 4, 'None', {
-        fontSize: this.compactLayout ? '10px' : '11px',
+      const none = this.add.text(x - panelWidth / 2 + 62, startY + 2, 'None', {
+        fontSize: this.compactLayout ? '9px' : '10px',
         color: '#7388a4',
       }).setOrigin(0, 0).setDepth(2)
       this.relicObjects.push(none)
       return
     }
 
-    let chipX = x - panelWidth / 2 + (this.compactLayout ? 58 : 70)
-    const chipY = startY + 4
+    let chipX = x - panelWidth / 2 + (this.compactLayout ? 54 : 66)
+    const chipY = startY + 2
     const maxX = x + panelWidth / 2 - 8
 
     relics.forEach((relic, index) => {
@@ -796,9 +824,9 @@ export class PlayScene extends Phaser.Scene {
         return
       }
 
-      const chipLabel = relic.name.length > 11 ? `${relic.name.slice(0, 10)}…` : relic.name
+      const chipLabel = relic.name.length > 10 ? `${relic.name.slice(0, 9)}…` : relic.name
       const chip = this.add.text(chipX, chipY, chipLabel, {
-        fontSize: this.compactLayout ? '9px' : '10px',
+        fontSize: this.compactLayout ? '8px' : '9px',
         color: '#bfdbfe',
         backgroundColor: '#223854',
         padding: { x: 4, y: 1 },
@@ -820,18 +848,18 @@ export class PlayScene extends Phaser.Scene {
       this.abilityObjects = []
     }
 
-    const panelWidth = this.compactLayout ? 176 : 248
+    const panelWidth = this.compactLayout ? 192 : 256
     const panel = this.add.rectangle(
       x,
-      startY + (this.compactLayout ? 14 : 16),
+      startY + (this.compactLayout ? 12 : 14),
       panelWidth,
-      this.compactLayout ? 28 : 32,
+      this.compactLayout ? 24 : 28,
       0x221f30,
       0.96,
     ).setStrokeStyle(1, 0x8c7450).setDepth(1)
 
-    const title = this.add.text(x - panelWidth / 2 + 6, startY + 4, 'Blessings', {
-      fontSize: this.compactLayout ? '10px' : '11px',
+    const title = this.add.text(x - panelWidth / 2 + 6, startY + 2, 'Blessings', {
+      fontSize: this.compactLayout ? '9px' : '10px',
       color: '#f8dfaf',
       fontStyle: 'bold',
     }).setOrigin(0, 0).setDepth(2)
@@ -840,16 +868,16 @@ export class PlayScene extends Phaser.Scene {
 
     const abilities = this.session.abilities
     if (abilities.length === 0) {
-      const none = this.add.text(x - panelWidth / 2 + 66, startY + 4, 'None', {
-        fontSize: this.compactLayout ? '10px' : '11px',
+      const none = this.add.text(x - panelWidth / 2 + 62, startY + 2, 'None', {
+        fontSize: this.compactLayout ? '9px' : '10px',
         color: '#938676',
       }).setOrigin(0, 0).setDepth(2)
       this.abilityObjects.push(none)
       return
     }
 
-    let chipX = x - panelWidth / 2 + (this.compactLayout ? 58 : 70)
-    const chipY = startY + 4
+    let chipX = x - panelWidth / 2 + (this.compactLayout ? 54 : 66)
+    const chipY = startY + 2
     const maxX = x + panelWidth / 2 - 8
 
     abilities.forEach((ability, index) => {
@@ -857,9 +885,9 @@ export class PlayScene extends Phaser.Scene {
         return
       }
 
-      const chipLabel = ability.name.length > 11 ? `${ability.name.slice(0, 10)}…` : ability.name
+      const chipLabel = ability.name.length > 10 ? `${ability.name.slice(0, 9)}…` : ability.name
       const chip = this.add.text(chipX, chipY, chipLabel, {
-        fontSize: this.compactLayout ? '9px' : '10px',
+        fontSize: this.compactLayout ? '8px' : '9px',
         color: '#fde68a',
         backgroundColor: '#433122',
         padding: { x: 4, y: 1 },
