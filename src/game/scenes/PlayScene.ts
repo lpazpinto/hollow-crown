@@ -51,11 +51,21 @@ export class PlayScene extends Phaser.Scene {
   private abilityObjects: Phaser.GameObjects.GameObject[] = []
   private relicObjects: Phaser.GameObjects.GameObject[] = []
   private handObjects: Phaser.GameObjects.GameObject[] = []
+  private handCardVisuals: Array<{ card: Phaser.GameObjects.Rectangle, objects: Phaser.GameObjects.GameObject[] }> = []
   private energyPips: Phaser.GameObjects.Rectangle[] = []
   private energyCrystalIcons: Phaser.GameObjects.Image[] = []
   private emberPips: Phaser.GameObjects.Rectangle[] = []
   private emberPipLabel?: Phaser.GameObjects.Text
   private handCardY = 0
+  private deckAnchorX = 0
+  private deckAnchorY = 0
+  private discardAnchorX = 0
+  private discardAnchorY = 0
+  private deckPileVisuals: Phaser.GameObjects.Rectangle[] = []
+  private discardPileVisuals: Phaser.GameObjects.Rectangle[] = []
+  private centerActionX = 0
+  private centerActionY = 0
+  private pendingDrawAnimation = false
 
   constructor() {
     super('PlayScene')
@@ -318,25 +328,69 @@ export class PlayScene extends Phaser.Scene {
     const pilesY = handPanelCenterY - handPanelH / 2 + (C ? 18 : 20)
     const pileW = C ? 76 : 90
     const pileH = C ? 24 : 26
-    this.add.rectangle(width / 2 - (C ? 112 : 148), pilesY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(1)
-    this.add.rectangle(width / 2 + (C ? 112 : 148), pilesY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(1)
+    this.deckAnchorX = width / 2 - (C ? 112 : 148)
+    this.deckAnchorY = pilesY
+    this.discardAnchorX = width / 2 + (C ? 112 : 148)
+    this.discardAnchorY = pilesY
+    this.centerActionX = width / 2
+    this.centerActionY = spriteY + (C ? 4 : 6)
+
+    this.add.rectangle(this.deckAnchorX, this.deckAnchorY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(1)
+    this.add.rectangle(this.discardAnchorX, this.discardAnchorY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(1)
+
+    const stackW = C ? 20 : 22
+    const stackH = C ? 28 : 30
+    for (let i = 0; i < 3; i += 1) {
+      const deckCard = this.add.rectangle(
+        this.deckAnchorX - (2 - i) * 3,
+        this.deckAnchorY + (2 - i) * 2,
+        stackW,
+        stackH,
+        0x243144,
+        0.97,
+      ).setStrokeStyle(1, 0x9fb9d8, 0.86).setDepth(3)
+      this.deckPileVisuals.push(deckCard)
+
+      const discardCard = this.add.rectangle(
+        this.discardAnchorX - (2 - i) * 3,
+        this.discardAnchorY + (2 - i) * 2,
+        stackW,
+        stackH,
+        0x3f2b32,
+        0.97,
+      ).setStrokeStyle(1, 0xd4b6bf, 0.86).setDepth(3)
+      this.discardPileVisuals.push(discardCard)
+    }
+
+    this.add.text(this.deckAnchorX, this.deckAnchorY - (C ? 20 : 22), 'Deck', {
+      fontSize: C ? '11px' : '12px',
+      color: '#d7e6f7',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(3)
+
+    this.add.text(this.discardAnchorX, this.discardAnchorY - (C ? 20 : 22), 'Discard', {
+      fontSize: C ? '11px' : '12px',
+      color: '#e8cdd3',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(3)
+
     this.add.text(width / 2, pilesY, 'Hand', {
       fontSize: C ? '12px' : '13px',
       color: '#c7d6ea',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(2)
 
-    this.drawPileCountText = this.add.text(width / 2 - (C ? 112 : 148), pilesY, 'Draw 0', {
+    this.drawPileCountText = this.add.text(this.deckAnchorX, this.deckAnchorY + (C ? 20 : 22), 'Deck 0', {
       fontSize: C ? '12px' : '13px',
       color: '#b0c8e3',
       fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(2)
+    }).setOrigin(0.5).setDepth(3)
 
-    this.discardPileText = this.add.text(width / 2 + (C ? 112 : 148), pilesY, 'Disc 0', {
+    this.discardPileText = this.add.text(this.discardAnchorX, this.discardAnchorY + (C ? 20 : 22), 'Discard 0', {
       fontSize: C ? '12px' : '13px',
       color: '#b0c8e3',
       fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(2)
+    }).setOrigin(0.5).setDepth(3)
 
     // End-turn button: framed, prominent, and consistent with HUD palette.
     const endTurnButton = this.add.rectangle(
@@ -379,6 +433,7 @@ export class PlayScene extends Phaser.Scene {
     this.renderHand()
 
     this.previousEmber = this.session.state.ember
+    this.pendingDrawAnimation = true
     this.updateBattleText()
 
     if (this.encounterType === 'boss') {
@@ -582,26 +637,49 @@ export class PlayScene extends Phaser.Scene {
       return
     }
 
-    this.actionInProgress = true
+    this.lockBattleInput()
     this.stopHeroIdleAnimation()
     const presentation = this.getCardPresentation(card)
     const previousState = this.cloneBattleState(this.session.state)
     const previousPhase = this.session.enemyPhase
-    this.playHeroCardAction(presentation.kind, () => {
-      this.session = playCardFromHand(this.session, cardIndex)
-      this.playDamageFeedback(previousState, this.session.state, {
-        source: 'hero',
-        cardKind: presentation.kind,
+    const visual = this.handCardVisuals[cardIndex]
+
+    const resolvePlay = () => {
+      this.playHeroCardAction(presentation.kind, () => {
+        this.session = playCardFromHand(this.session, cardIndex)
+        this.playDamageFeedback(previousState, this.session.state, {
+          source: 'hero',
+          cardKind: presentation.kind,
+        })
+        this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
+
+        if (visual) {
+          this.animateCardToDiscard(visual, presentation.kind, () => {
+            this.updateBattleText()
+            this.unlockBattleInput()
+
+            if (this.session.outcome === 'ongoing') {
+              this.startHeroIdleAnimation()
+            }
+          })
+          return
+        }
+
+        this.updateBattleText()
+        this.unlockBattleInput()
+
+        if (this.session.outcome === 'ongoing') {
+          this.startHeroIdleAnimation()
+        }
       })
-      this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
+    }
 
-      this.updateBattleText()
-      this.actionInProgress = false
+    if (visual) {
+      this.animateCardToCenter(visual, presentation.kind, resolvePlay)
+      return
+    }
 
-      if (this.session.outcome === 'ongoing') {
-        this.startHeroIdleAnimation()
-      }
-    })
+    resolvePlay()
   }
 
   private resolveEndTurn() {
@@ -609,35 +687,50 @@ export class PlayScene extends Phaser.Scene {
       return
     }
 
-    this.actionInProgress = true
+    this.lockBattleInput()
     this.stopHeroIdleAnimation()
     this.showTurnBanner('Enemy Turn', '#fca5a5')
 
-    this.session = discardHand(this.session)
-    const intent = getCurrentIntent(this.session)
-    const previousState = this.cloneBattleState(this.session.state)
-    const previousPhase = this.session.enemyPhase
-    this.playEnemyIntentAction(intent.damage, this.encounterType === 'boss', () => {
-      this.session = resolveEnemyIntentAction(this.session)
-      this.playDamageFeedback(previousState, this.session.state, {
-        source: 'enemy',
-        intentDamage: intent.damage,
-      })
-      this.session.outcome = checkBattleOutcome(this.session.state)
+    this.animateHandToDiscard(() => {
+      this.session = discardHand(this.session)
+      const intent = getCurrentIntent(this.session)
+      const previousState = this.cloneBattleState(this.session.state)
+      const previousPhase = this.session.enemyPhase
 
-      if (this.session.outcome === 'ongoing') {
-        this.session = startNewPlayerTurn(this.session)
-        this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
-        this.time.delayedCall(260, () => {
-          this.showTurnBanner('Player Turn', '#fde68a')
-          this.startHeroIdleAnimation()
-          this.actionInProgress = false
+      this.playEnemyIntentAction(intent.damage, this.encounterType === 'boss', () => {
+        this.session = resolveEnemyIntentAction(this.session)
+        this.playDamageFeedback(previousState, this.session.state, {
+          source: 'enemy',
+          intentDamage: intent.damage,
         })
-      } else {
-        this.actionInProgress = false
-      }
+        this.session.outcome = checkBattleOutcome(this.session.state)
 
-      this.updateBattleText()
+        if (this.session.outcome === 'ongoing') {
+          const shouldAnimateReshuffle = this.session.drawPile.length === 0 && this.session.discardPile.length > 0
+          const startNextPlayerTurn = () => {
+            this.session = startNewPlayerTurn(this.session)
+            this.pendingDrawAnimation = true
+            this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
+            this.time.delayedCall(260, () => {
+              this.showTurnBanner('Player Turn', '#fde68a')
+              this.startHeroIdleAnimation()
+              this.unlockBattleInput()
+            })
+            this.updateBattleText()
+          }
+
+          if (shouldAnimateReshuffle) {
+            this.animateReshuffleToDeck(startNextPlayerTurn)
+            return
+          }
+
+          startNextPlayerTurn()
+          return
+        }
+
+        this.unlockBattleInput()
+        this.updateBattleText()
+      })
     })
   }
 
@@ -733,8 +826,18 @@ export class PlayScene extends Phaser.Scene {
       this.previousEmber = this.session.state.ember
     }
 
-    this.drawPileCountText.setText(`Draw ${this.session.drawPile.length}`)
-    this.discardPileText.setText(`Disc ${this.session.discardPile.length}`)
+    this.drawPileCountText.setText(`Deck ${this.session.drawPile.length}`)
+    this.discardPileText.setText(`Discard ${this.session.discardPile.length}`)
+
+    const hasDeckCards = this.session.drawPile.length > 0
+    this.deckPileVisuals.forEach((pile, index) => {
+      pile.setAlpha(hasDeckCards ? (0.86 + index * 0.06) : 0.34)
+    })
+
+    const hasDiscardCards = this.session.discardPile.length > 0
+    this.discardPileVisuals.forEach((pile, index) => {
+      pile.setAlpha(hasDiscardCards ? (0.84 + index * 0.06) : 0.3)
+    })
     this.intentText.setText(`Intent · ${getCurrentIntent(this.session).label}`)
 
     this.enemyNameText.setText(
@@ -757,10 +860,13 @@ export class PlayScene extends Phaser.Scene {
       })
       this.handObjects = []
     }
+    this.handCardVisuals = []
 
     const { width } = this.scale
     const cardSpacing = this.getHandSpacing(width)
     const startX = width / 2 - ((this.session.hand.length - 1) * cardSpacing) / 2
+    const animateDraw = this.pendingDrawAnimation
+    this.pendingDrawAnimation = false
 
     this.session.hand.forEach((cardData, index) => {
       const cardX = startX + index * cardSpacing
@@ -776,8 +882,243 @@ export class PlayScene extends Phaser.Scene {
         },
       )
 
+      const cardRect = cardObjects[0] as Phaser.GameObjects.Rectangle
+      const cardVisual = {
+        card: cardRect,
+        objects: cardObjects,
+      }
+      this.handCardVisuals.push(cardVisual)
+
+      if (animateDraw) {
+        this.animateDrawToHand(cardVisual, cardX, this.handCardY, index, canPlay)
+      }
+
       this.handObjects.push(...cardObjects)
     })
+  }
+
+  private animateDrawToHand(
+    visual: { card: Phaser.GameObjects.Rectangle, objects: Phaser.GameObjects.GameObject[] },
+    targetX: number,
+    targetY: number,
+    index: number,
+    canPlay: boolean,
+  ) {
+    const card = visual.card
+    const offsetMap = visual.objects.map((obj) => {
+      const go = obj as Phaser.GameObjects.GameObject & { x: number, y: number, alpha: number, setPosition: (x: number, y: number) => void }
+      const offsetX = go.x - targetX
+      const offsetY = go.y - targetY
+      const finalX = targetX + offsetX
+      const finalY = targetY + offsetY
+      go.setPosition(this.deckAnchorX + offsetX * 0.45, this.deckAnchorY + offsetY * 0.45)
+      go.alpha = 0
+      return { go, finalX, finalY }
+    })
+
+    card.disableInteractive()
+
+    this.tweens.add({
+      targets: offsetMap.map((entry) => entry.go),
+      x: (_target: unknown, _key: string, _value: number, targetIndex: number) => offsetMap[targetIndex].finalX,
+      y: (_target: unknown, _key: string, _value: number, targetIndex: number) => offsetMap[targetIndex].finalY,
+      alpha: 1,
+      duration: 170,
+      delay: index * 34,
+      ease: 'Cubic.Out',
+      onComplete: () => {
+        if (canPlay && this.session.outcome === 'ongoing' && !this.actionInProgress) {
+          card.setInteractive({ useHandCursor: true })
+        }
+      },
+    })
+  }
+
+  private animateCardToCenter(
+    visual: { card: Phaser.GameObjects.Rectangle, objects: Phaser.GameObjects.GameObject[] },
+    kind: 'basic-attack' | 'basic-skill' | 'special',
+    onComplete: () => void,
+  ) {
+    const timing = this.getCardAnimationTiming(kind)
+    const dx = this.centerActionX - visual.card.x
+    const dy = this.centerActionY - visual.card.y
+    visual.card.disableInteractive()
+
+    this.tweens.add({
+      targets: visual.objects as Phaser.GameObjects.GameObject[],
+      x: (_target: unknown, _key: string, _value: number, targetIndex: number, _totalTargets: number) => {
+        const obj = visual.objects[targetIndex] as Phaser.GameObjects.GameObject & { x: number }
+        return obj.x + dx
+      },
+      y: (_target: unknown, _key: string, _value: number, targetIndex: number, _totalTargets: number) => {
+        const obj = visual.objects[targetIndex] as Phaser.GameObjects.GameObject & { y: number }
+        return obj.y + dy
+      },
+      scaleX: timing.centerScale,
+      scaleY: timing.centerScale,
+      duration: timing.centerDuration,
+      ease: kind === 'special' ? 'Back.Out' : 'Cubic.Out',
+      onComplete: () => {
+        if (kind === 'special') {
+          this.cameraPunch(0.0035, 90, 1.01)
+        }
+        this.time.delayedCall(timing.centerHold, onComplete)
+      },
+    })
+  }
+
+  private animateCardToDiscard(
+    visual: { card: Phaser.GameObjects.Rectangle, objects: Phaser.GameObjects.GameObject[] },
+    kind: 'basic-attack' | 'basic-skill' | 'special',
+    onComplete: () => void,
+  ) {
+    const timing = this.getCardAnimationTiming(kind)
+    const dx = this.discardAnchorX - visual.card.x
+    const dy = this.discardAnchorY - visual.card.y
+
+    this.tweens.add({
+      targets: visual.objects as Phaser.GameObjects.GameObject[],
+      x: (_target: unknown, _key: string, _value: number, targetIndex: number) => {
+        const obj = visual.objects[targetIndex] as Phaser.GameObjects.GameObject & { x: number }
+        return obj.x + dx
+      },
+      y: (_target: unknown, _key: string, _value: number, targetIndex: number) => {
+        const obj = visual.objects[targetIndex] as Phaser.GameObjects.GameObject & { y: number }
+        return obj.y + dy
+      },
+      alpha: 0,
+      scaleX: timing.discardScale,
+      scaleY: timing.discardScale,
+      duration: timing.discardDuration,
+      ease: kind === 'special' ? 'Back.In' : 'Quad.In',
+      onComplete: () => {
+        visual.objects.forEach((obj) => obj.destroy())
+        onComplete()
+      },
+    })
+  }
+
+  private animateHandToDiscard(onComplete: () => void) {
+    if (this.handCardVisuals.length === 0) {
+      onComplete()
+      return
+    }
+
+    const pending = this.handCardVisuals.length
+    let completed = 0
+
+    this.handCardVisuals.forEach((visual, index) => {
+      const dx = this.discardAnchorX - visual.card.x
+      const dy = this.discardAnchorY - visual.card.y
+      this.tweens.add({
+        targets: visual.objects as Phaser.GameObjects.GameObject[],
+        x: (_target: unknown, _key: string, _value: number, targetIndex: number) => {
+          const obj = visual.objects[targetIndex] as Phaser.GameObjects.GameObject & { x: number }
+          return obj.x + dx
+        },
+        y: (_target: unknown, _key: string, _value: number, targetIndex: number) => {
+          const obj = visual.objects[targetIndex] as Phaser.GameObjects.GameObject & { y: number }
+          return obj.y + dy
+        },
+        alpha: 0,
+        duration: 120,
+        delay: index * 26,
+        ease: 'Quad.In',
+        onComplete: () => {
+          visual.objects.forEach((obj) => obj.destroy())
+          completed += 1
+          if (completed >= pending) {
+            this.handObjects = []
+            this.handCardVisuals = []
+            onComplete()
+          }
+        },
+      })
+    })
+  }
+
+  private animateReshuffleToDeck(onComplete: () => void) {
+    this.lockBattleInput()
+    const burstCount = this.compactLayout ? 4 : 5
+    let finished = 0
+
+    for (let i = 0; i < burstCount; i += 1) {
+      const cardBack = this.createTemporaryCardBack(
+        this.discardAnchorX + Phaser.Math.Between(-9, 9),
+        this.discardAnchorY + Phaser.Math.Between(-7, 7),
+      )
+
+      this.tweens.add({
+        targets: cardBack,
+        x: this.deckAnchorX + Phaser.Math.Between(-7, 7),
+        y: this.deckAnchorY + Phaser.Math.Between(-5, 5),
+        alpha: 0,
+        scaleX: 0.76,
+        scaleY: 0.76,
+        angle: Phaser.Math.Between(-14, 14),
+        duration: 175,
+        delay: i * 32,
+        ease: 'Cubic.InOut',
+        onComplete: () => {
+          cardBack.forEach((obj) => obj.destroy())
+          finished += 1
+          if (finished >= burstCount) {
+            this.cameras.main.flash(50, 160, 205, 255, false)
+            onComplete()
+          }
+        },
+      })
+    }
+  }
+
+  private getCardAnimationTiming(kind: 'basic-attack' | 'basic-skill' | 'special') {
+    if (kind === 'special') {
+      return {
+        centerDuration: 175,
+        centerHold: 120,
+        centerScale: 1.1,
+        discardDuration: 100,
+        discardScale: 0.78,
+      }
+    }
+
+    if (kind === 'basic-skill') {
+      return {
+        centerDuration: 145,
+        centerHold: 70,
+        centerScale: 1.05,
+        discardDuration: 115,
+        discardScale: 0.87,
+      }
+    }
+
+    return {
+      centerDuration: 125,
+      centerHold: 50,
+      centerScale: 1.04,
+      discardDuration: 105,
+      discardScale: 0.85,
+    }
+  }
+
+  private createTemporaryCardBack(x: number, y: number): Phaser.GameObjects.Rectangle[] {
+    const width = this.compactLayout ? 18 : 20
+    const height = this.compactLayout ? 24 : 26
+    const base = this.add.rectangle(x, y, width, height, 0x1e293b, 0.95)
+      .setStrokeStyle(1, 0xcbd5e1, 0.9)
+      .setDepth(4)
+    const stripe = this.add.rectangle(x, y, width - 6, 3, 0x93c5fd, 0.9)
+      .setDepth(5)
+
+    return [base, stripe]
+  }
+
+  private lockBattleInput() {
+    this.actionInProgress = true
+  }
+
+  private unlockBattleInput() {
+    this.actionInProgress = false
   }
 
   private getHandSpacing(width: number): number {
