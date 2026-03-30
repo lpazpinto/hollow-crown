@@ -183,7 +183,7 @@ export class PlayScene extends Phaser.Scene {
     // Resource HUD panel with pips.
     const centerX = width / 2
     const pipBaseY = C ? 34 : 38
-    const pipGap = C ? 14 : 16
+    const pipGap = C ? 16 : 19
     const energyStartX = centerX - (C ? 88 : 100)
     const emberStartX = centerX + (C ? 12 : 20)
 
@@ -197,7 +197,7 @@ export class PlayScene extends Phaser.Scene {
     for (let i = 0; i < 6; i += 1) {
       if (hasCrystalEnergy) {
         const crystal = this.add.image(energyStartX + i * pipGap, pipBaseY, 'ui-energy-crystal')
-          .setScale(C ? 0.33 : 0.38)
+          .setScale(C ? 0.55 : 0.62)
           .setDepth(3)
         this.energyCrystalIcons.push(crystal)
       } else {
@@ -923,9 +923,13 @@ export class PlayScene extends Phaser.Scene {
       if (!isAvailable) {
         return
       }
-      icon.setTint(isActive ? 0xffffff : 0x6b7280)
-      icon.setAlpha(isActive ? 1 : 0.45)
-      icon.setScale(this.compactLayout ? (isActive ? 0.34 : 0.33) : (isActive ? 0.4 : 0.38))
+      if (isActive) {
+        icon.clearTint()
+      } else {
+        icon.setTint(0x74859e)
+      }
+      icon.setAlpha(isActive ? 1 : 0.62)
+      icon.setScale(this.compactLayout ? (isActive ? 0.58 : 0.52) : (isActive ? 0.66 : 0.6))
     })
 
     this.energyPips.forEach((pip, index) => {
