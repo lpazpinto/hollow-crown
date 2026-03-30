@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { checkBattleOutcome, type BattleState } from '../battle/battleLogic'
+import { getCardBaseId, type CardContent } from '../content/cards'
 import {
   createInitialBattleSession,
   discardHand,
@@ -47,6 +48,7 @@ export class PlayScene extends Phaser.Scene {
   private heroIdleTimer?: Phaser.Time.TimerEvent
   private heroIdleFrame = 0
   private previousEmber = 0
+  private actionInProgress = false
   private abilityObjects: Phaser.GameObjects.GameObject[] = []
   private relicObjects: Phaser.GameObjects.GameObject[] = []
   private handObjects: Phaser.GameObjects.GameObject[] = []
@@ -250,22 +252,14 @@ export class PlayScene extends Phaser.Scene {
     return sprite
   }
 
-  private createCard(
-    x: number,
-    y: number,
-    id: string,
-    title: string,
-    description: string,
-    cost: number,
-    canPlay: boolean,
-    onClick: () => void,
-  ): Phaser.GameObjects.GameObject[] {
+  private createCard(x: number, y: number, cardData: CardContent, canPlay: boolean, onClick: () => void): Phaser.GameObjects.GameObject[] {
     const cardWidth = this.compactLayout ? 126 : 146
     const cardHeight = this.compactLayout ? 170 : 186
-    const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0xf8fafc)
-      .setStrokeStyle(3, 0x1f2937)
+    const presentation = this.getCardPresentation(cardData)
+    const card = this.add.rectangle(x, y, cardWidth, cardHeight, presentation.fillColor)
+      .setStrokeStyle(3, presentation.strokeColor)
       .setInteractive({ useHandCursor: true })
-      .setName(id)
+      .setName(cardData.id)
 
     if (!canPlay) {
       card.setFillStyle(0xd1d5db)
@@ -277,24 +271,24 @@ export class PlayScene extends Phaser.Scene {
       onClick()
     })
 
-    const titleText = this.add.text(x, y - 55, title, {
+    const titleText = this.add.text(x, y - 55, cardData.title, {
       fontSize: this.compactLayout ? '18px' : '21px',
-      color: '#111827',
+      color: presentation.accentColor,
       fontStyle: 'bold',
       wordWrap: { width: cardWidth - 18 },
       align: 'center',
     }).setOrigin(0.5)
 
-    const descriptionText = this.add.text(x, y + 5, description, {
+    const descriptionText = this.add.text(x, y + 5, cardData.description, {
       fontSize: this.compactLayout ? '14px' : '16px',
       color: '#374151',
       align: 'center',
       wordWrap: { width: cardWidth - 26 },
     }).setOrigin(0.5)
 
-    const costText = this.add.text(x, y + 70, `Cost: ${cost}`, {
+    const costText = this.add.text(x, y + 70, `Cost: ${cardData.cost}`, {
       fontSize: this.compactLayout ? '15px' : '16px',
-      color: '#111827',
+      color: presentation.accentColor,
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
@@ -308,40 +302,68 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private playCardFromIndex(cardIndex: number) {
-    if (this.session.outcome !== 'ongoing') {
+    if (this.session.outcome !== 'ongoing' || this.actionInProgress) {
       return
     }
 
-    const previousState = this.cloneBattleState(this.session.state)
-    this.session = playCardFromHand(this.session, cardIndex)
-    this.playDamageFeedback(previousState, this.session.state)
+    const card = this.session.hand[cardIndex]
+    if (!card) {
+      return
+    }
 
-    this.updateBattleText()
+    this.actionInProgress = true
+    this.stopHeroIdleAnimation()
+    const presentation = this.getCardPresentation(card)
+    const previousState = this.cloneBattleState(this.session.state)
+    this.playHeroCardAction(presentation.kind, () => {
+      this.session = playCardFromHand(this.session, cardIndex)
+      this.playDamageFeedback(previousState, this.session.state, {
+        source: 'hero',
+        cardKind: presentation.kind,
+      })
+
+      this.updateBattleText()
+      this.actionInProgress = false
+
+      if (this.session.outcome === 'ongoing') {
+        this.startHeroIdleAnimation()
+      }
+    })
   }
 
   private resolveEndTurn() {
-    if (this.session.outcome !== 'ongoing') {
+    if (this.session.outcome !== 'ongoing' || this.actionInProgress) {
       return
     }
 
+    this.actionInProgress = true
     this.stopHeroIdleAnimation()
     this.showTurnBanner('Enemy Turn', '#fca5a5')
 
     this.session = discardHand(this.session)
+    const intent = getCurrentIntent(this.session)
     const previousState = this.cloneBattleState(this.session.state)
-    this.session = resolveEnemyIntentAction(this.session)
-    this.playDamageFeedback(previousState, this.session.state)
-    this.session.outcome = checkBattleOutcome(this.session.state)
-
-    if (this.session.outcome === 'ongoing') {
-      this.session = startNewPlayerTurn(this.session)
-      this.time.delayedCall(220, () => {
-        this.showTurnBanner('Player Turn', '#fde68a')
-        this.startHeroIdleAnimation()
+    this.playEnemyIntentAction(intent.damage, () => {
+      this.session = resolveEnemyIntentAction(this.session)
+      this.playDamageFeedback(previousState, this.session.state, {
+        source: 'enemy',
+        intentDamage: intent.damage,
       })
-    }
+      this.session.outcome = checkBattleOutcome(this.session.state)
 
-    this.updateBattleText()
+      if (this.session.outcome === 'ongoing') {
+        this.session = startNewPlayerTurn(this.session)
+        this.time.delayedCall(260, () => {
+          this.showTurnBanner('Player Turn', '#fde68a')
+          this.startHeroIdleAnimation()
+          this.actionInProgress = false
+        })
+      } else {
+        this.actionInProgress = false
+      }
+
+      this.updateBattleText()
+    })
   }
 
   private updateBattleText() {
@@ -446,10 +468,7 @@ export class PlayScene extends Phaser.Scene {
       const cardObjects = this.createCard(
         cardX,
         height - (this.compactLayout ? 108 : 112),
-        cardData.id,
-        cardData.title,
-        cardData.description,
-        cardData.cost,
+        cardData,
         canPlay,
         () => {
           this.playCardFromIndex(index)
@@ -643,22 +662,38 @@ export class PlayScene extends Phaser.Scene {
     return { ...state }
   }
 
-  private playDamageFeedback(previousState: BattleState, nextState: BattleState) {
+  private playDamageFeedback(
+    previousState: BattleState,
+    nextState: BattleState,
+    options: {
+      source: 'hero' | 'enemy'
+      cardKind?: 'basic-attack' | 'basic-skill' | 'special'
+      intentDamage?: number
+    },
+  ) {
     const enemyDamage = previousState.enemyHp - nextState.enemyHp
     const heroDamage = previousState.heroHp - nextState.heroHp
     const heroArmorGain = nextState.heroArmor - previousState.heroArmor
     const enemyArmorGain = nextState.enemyArmor - previousState.enemyArmor
+    const heavyEnemyHit = enemyDamage >= 10 || options.cardKind === 'special'
+    const heavyHeroHit = heroDamage >= 10 || (options.intentDamage ?? 0) >= 10
 
     if (enemyDamage > 0) {
-      this.flashTargetRed(this.enemyPanel, 0x7f1d1d)
-      this.showFloatingDamageText(this.enemyPanel.x, this.enemyPanel.y - 96, `-${enemyDamage}`, '#fecaca')
+      this.flashTargetRed(this.enemyPanel, 0x7f1d1d, heavyEnemyHit)
+      this.showFloatingDamageText(this.enemyPanel.x, this.enemyPanel.y - 96, `-${enemyDamage}`, '#fecaca', heavyEnemyHit)
+      if (heavyEnemyHit) {
+        this.cameraPunch(0.006, 110, 1.014)
+      }
     }
 
     if (heroDamage > 0) {
       const heroTarget = this.heroSprite ?? this.heroPanel
-      this.flashTargetRed(heroTarget, 0x1e3a8a)
+      this.flashTargetRed(heroTarget, 0x1e3a8a, heavyHeroHit)
       const y = this.heroSprite ? this.heroSprite.y - 94 : this.heroPanel.y - 74
-      this.showFloatingDamageText(this.heroPanel.x, y, `-${heroDamage}`, '#fecaca')
+      this.showFloatingDamageText(this.heroPanel.x, y, `-${heroDamage}`, '#fecaca', heavyHeroHit)
+      if (heavyHeroHit) {
+        this.cameraPunch(0.008, 130, 1.018)
+      }
     }
 
     if (heroArmorGain > 0) {
@@ -673,32 +708,181 @@ export class PlayScene extends Phaser.Scene {
   private flashTargetRed(
     target: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image,
     restoreFillColor: number,
+    heavy = false,
   ) {
+    const flashColor = heavy ? 0xff5555 : 0xcc2222
+    const flashDuration = heavy ? 145 : 120
+
     if (target instanceof Phaser.GameObjects.Image) {
-      target.setTintFill(0xcc2222)
-      this.time.delayedCall(120, () => { target.clearTint() })
+      const baseScaleX = target.scaleX
+      const baseScaleY = target.scaleY
+      target.setTintFill(flashColor)
+      if (heavy) {
+        target.setScale(baseScaleX * 1.03, baseScaleY * 1.03)
+      }
+      this.time.delayedCall(flashDuration, () => {
+        target.clearTint()
+        if (heavy) {
+          target.setScale(baseScaleX, baseScaleY)
+        }
+      })
       return
     }
-    target.setFillStyle(0xcc2222)
-    this.time.delayedCall(120, () => { target.setFillStyle(restoreFillColor) })
+    target.setFillStyle(flashColor)
+    target.setAlpha(heavy ? 0.84 : 1)
+    this.time.delayedCall(flashDuration, () => {
+      target.setFillStyle(restoreFillColor)
+      target.setAlpha(1)
+    })
   }
 
-  private showFloatingDamageText(x: number, y: number, text: string, color: string) {
+  private showFloatingDamageText(x: number, y: number, text: string, color: string, heavy = false) {
     const label = this.add.text(x, y, text, {
-      fontSize: this.compactLayout ? '19px' : '22px',
+      fontSize: heavy
+        ? (this.compactLayout ? '24px' : '28px')
+        : (this.compactLayout ? '19px' : '22px'),
       color,
       fontStyle: 'bold',
       stroke: '#111827',
       strokeThickness: 5,
     }).setOrigin(0.5).setDepth(14)
 
+    if (heavy) {
+      label.setScale(1.06)
+    }
+
     this.tweens.add({
       targets: label,
-      y: y - 25,
+      y: y - (heavy ? 30 : 25),
       alpha: 0,
-      duration: 420,
+      duration: heavy ? 470 : 420,
       ease: 'Cubic.Out',
       onComplete: () => { label.destroy() },
+    })
+  }
+
+  private getCardPresentation(card: CardContent): {
+    kind: 'basic-attack' | 'basic-skill' | 'special'
+    strokeColor: number
+    fillColor: number
+    accentColor: string
+  } {
+    const baseId = getCardBaseId(card.id)
+    const isSpecial = card.rarity === 'rare'
+      || card.cost >= 2
+      || baseId === 'double-strike'
+      || baseId === 'golden-horseshoe'
+
+    if (isSpecial) {
+      return {
+        kind: 'special',
+        strokeColor: 0xf59e0b,
+        fillColor: 0xfffbeb,
+        accentColor: '#b45309',
+      }
+    }
+
+    if (card.effectType === 'damage') {
+      return {
+        kind: 'basic-attack',
+        strokeColor: 0xb91c1c,
+        fillColor: 0xfff1f2,
+        accentColor: '#991b1b',
+      }
+    }
+
+    return {
+      kind: 'basic-skill',
+      strokeColor: 0x1d4ed8,
+      fillColor: 0xeff6ff,
+      accentColor: '#1d4ed8',
+    }
+  }
+
+  private playHeroCardAction(kind: 'basic-attack' | 'basic-skill' | 'special', onImpact: () => void) {
+    const target = this.heroSprite ?? this.heroPanel
+    const startX = target.x
+    const startY = target.y
+
+    let forwardX = startX + 16
+    let forwardY = startY - 2
+    let duration = 70
+
+    if (kind === 'basic-skill') {
+      forwardX = startX + 8
+      forwardY = startY - 12
+      duration = 80
+    }
+
+    if (kind === 'special') {
+      forwardX = startX + 24
+      forwardY = startY - 10
+      duration = 85
+      this.cameraPunch(0.004, 120, 1.012)
+    }
+
+    this.tweens.killTweensOf(target)
+    this.tweens.add({
+      targets: target,
+      x: forwardX,
+      y: forwardY,
+      duration,
+      ease: 'Quad.Out',
+      onComplete: () => {
+        onImpact()
+        this.tweens.add({
+          targets: target,
+          x: startX,
+          y: startY,
+          duration: kind === 'special' ? 120 : 95,
+          ease: 'Quad.In',
+        })
+      },
+    })
+  }
+
+  private playEnemyIntentAction(intentDamage: number, onImpact: () => void) {
+    const heavy = intentDamage >= 10
+    const startX = this.enemyPanel.x
+    const startY = this.enemyPanel.y
+
+    if (heavy) {
+      this.cameraPunch(0.007, 130, 1.016)
+    }
+
+    this.tweens.killTweensOf(this.enemyPanel)
+    this.tweens.add({
+      targets: this.enemyPanel,
+      x: startX - (heavy ? 18 : 10),
+      y: startY + (heavy ? 2 : 0),
+      duration: heavy ? 90 : 70,
+      ease: 'Quad.Out',
+      onComplete: () => {
+        onImpact()
+        this.tweens.add({
+          targets: this.enemyPanel,
+          x: startX,
+          y: startY,
+          duration: heavy ? 130 : 100,
+          ease: 'Quad.In',
+        })
+      },
+    })
+  }
+
+  private cameraPunch(shakeIntensity: number, duration: number, zoomPeak: number) {
+    this.cameras.main.shake(duration, shakeIntensity)
+    this.tweens.killTweensOf(this.cameras.main)
+    this.cameras.main.setZoom(1)
+    this.tweens.add({
+      targets: this.cameras.main,
+      zoom: zoomPeak,
+      duration: Math.max(50, Math.floor(duration / 2)),
+      yoyo: true,
+      ease: 'Quad.Out',
+      onComplete: () => {
+        this.cameras.main.setZoom(1)
+      },
     })
   }
 
