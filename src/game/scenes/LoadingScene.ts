@@ -1,5 +1,12 @@
 import Phaser from 'phaser'
 
+const ASHEN_KNIGHT_SHEET = {
+  key: 'enemy-ashen-knight-idle-sheet',
+  path: 'assets/enemies/ashen-knight/ashen-knight-iddle.png',
+  frameWidth: 88,
+  frameHeight: 88,
+}
+
 export class LoadingScene extends Phaser.Scene {
   constructor() {
     super('LoadingScene')
@@ -7,6 +14,10 @@ export class LoadingScene extends Phaser.Scene {
 
   preload() {
     this.load.image('hero-idle', 'assets/hero/hero_idle.png')
+    this.load.spritesheet(ASHEN_KNIGHT_SHEET.key, ASHEN_KNIGHT_SHEET.path, {
+      frameWidth: ASHEN_KNIGHT_SHEET.frameWidth,
+      frameHeight: ASHEN_KNIGHT_SHEET.frameHeight,
+    })
   }
 
   create() {

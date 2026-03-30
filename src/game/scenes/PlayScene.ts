@@ -45,6 +45,7 @@ export class PlayScene extends Phaser.Scene {
   private heroPanel!: Phaser.GameObjects.Rectangle
   private enemyPanel!: Phaser.GameObjects.Rectangle
   private heroSprite?: Phaser.GameObjects.Image
+  private enemySprite?: Phaser.GameObjects.Sprite
   private heroSpriteBaseY = 0
   private heroIdleTimer?: Phaser.Time.TimerEvent
   private heroIdleFrame = 0
@@ -165,6 +166,8 @@ export class PlayScene extends Phaser.Scene {
       this.enemyPanel.setStrokeStyle(3, 0xf59e0b)
     }
 
+    this.enemySprite = this.createEnemySprite(enemyX, visualY)
+
     this.enemyNameText = this.add.text(enemyX, visualY - (this.compactLayout ? 68 : 74), this.session.enemy.name, {
       fontSize: this.compactLayout ? '22px' : '24px',
       color: this.encounterType === 'boss' ? '#fde68a' : '#ffffff',
@@ -269,6 +272,41 @@ export class PlayScene extends Phaser.Scene {
     this.heroSpriteBaseY = y
 
     return sprite
+  }
+
+  private createEnemySprite(x: number, y: number): Phaser.GameObjects.Sprite | undefined {
+    if (this.session.enemy.id !== 'ashen-knight') {
+      return undefined
+    }
+
+    if (!this.textures.exists('enemy-ashen-knight-idle-sheet')) {
+      return undefined
+    }
+
+    this.ensureAshenKnightIdleAnimation()
+    const sprite = this.add.sprite(x, y + (this.compactLayout ? 10 : 12), 'enemy-ashen-knight-idle-sheet')
+    const targetHeight = this.compactLayout ? 136 : 152
+    sprite.setScale(targetHeight / 88)
+    sprite.setFlipX(true)
+    sprite.play('enemy-ashen-knight-idle')
+
+    return sprite
+  }
+
+  private ensureAshenKnightIdleAnimation() {
+    if (this.anims.exists('enemy-ashen-knight-idle')) {
+      return
+    }
+
+    this.anims.create({
+      key: 'enemy-ashen-knight-idle',
+      frames: this.anims.generateFrameNumbers('enemy-ashen-knight-idle-sheet', {
+        start: 0,
+        end: 7,
+      }),
+      frameRate: 8,
+      repeat: -1,
+    })
   }
 
   private createCard(x: number, y: number, cardData: CardContent, canPlay: boolean, onClick: () => void): Phaser.GameObjects.GameObject[] {
@@ -735,8 +773,10 @@ export class PlayScene extends Phaser.Scene {
       || (this.encounterType === 'boss' && options.source === 'enemy' && heroDamage >= 8)
 
     if (enemyDamage > 0) {
-      this.flashTargetRed(this.enemyPanel, this.encounterType === 'boss' ? 0x450a0a : 0x7f1d1d, heavyEnemyHit)
-      this.showFloatingDamageText(this.enemyPanel.x, this.enemyPanel.y - 96, `-${enemyDamage}`, '#fecaca', heavyEnemyHit)
+      const enemyTarget = this.enemySprite ?? this.enemyPanel
+      this.flashTargetRed(enemyTarget, this.encounterType === 'boss' ? 0x450a0a : 0x7f1d1d, heavyEnemyHit)
+      const enemyY = this.enemySprite ? this.enemySprite.y - 80 : this.enemyPanel.y - 96
+      this.showFloatingDamageText(this.enemyPanel.x, enemyY, `-${enemyDamage}`, '#fecaca', heavyEnemyHit)
       if (heavyEnemyHit) {
         this.cameraPunch(0.006, 110, 1.014)
       }
@@ -766,33 +806,34 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private flashTargetRed(
-    target: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image,
+    target: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image | Phaser.GameObjects.Sprite,
     restoreFillColor: number,
     heavy = false,
   ) {
     const flashColor = heavy ? 0xff5555 : 0xcc2222
     const flashDuration = heavy ? 145 : 120
 
-    if (target instanceof Phaser.GameObjects.Image) {
-      const baseScaleX = target.scaleX
-      const baseScaleY = target.scaleY
-      target.setTintFill(flashColor)
-      if (heavy) {
-        target.setScale(baseScaleX * 1.03, baseScaleY * 1.03)
-      }
+    if (target instanceof Phaser.GameObjects.Rectangle) {
+      target.setFillStyle(flashColor)
+      target.setAlpha(heavy ? 0.84 : 1)
       this.time.delayedCall(flashDuration, () => {
-        target.clearTint()
-        if (heavy) {
-          target.setScale(baseScaleX, baseScaleY)
-        }
+        target.setFillStyle(restoreFillColor)
+        target.setAlpha(1)
       })
       return
     }
-    target.setFillStyle(flashColor)
-    target.setAlpha(heavy ? 0.84 : 1)
+
+    const baseScaleX = target.scaleX
+    const baseScaleY = target.scaleY
+    target.setTintFill(flashColor)
+    if (heavy) {
+      target.setScale(baseScaleX * 1.03, baseScaleY * 1.03)
+    }
     this.time.delayedCall(flashDuration, () => {
-      target.setFillStyle(restoreFillColor)
-      target.setAlpha(1)
+      target.clearTint()
+      if (heavy) {
+        target.setScale(baseScaleX, baseScaleY)
+      }
     })
   }
 
@@ -903,8 +944,9 @@ export class PlayScene extends Phaser.Scene {
 
   private playEnemyIntentAction(intentDamage: number, isBossAttack: boolean, onImpact: () => void) {
     const heavy = intentDamage >= 10 || (isBossAttack && intentDamage >= 8)
-    const startX = this.enemyPanel.x
-    const startY = this.enemyPanel.y
+    const target = this.enemySprite ?? this.enemyPanel
+    const startX = target.x
+    const startY = target.y
 
     if (heavy) {
       this.cameraPunch(
@@ -914,9 +956,9 @@ export class PlayScene extends Phaser.Scene {
       )
     }
 
-    this.tweens.killTweensOf(this.enemyPanel)
+    this.tweens.killTweensOf(target)
     this.tweens.add({
-      targets: this.enemyPanel,
+      targets: target,
       x: startX - (heavy ? 18 : 10),
       y: startY + (heavy ? 2 : 0),
       duration: heavy ? (isBossAttack ? 105 : 90) : 70,
@@ -924,7 +966,7 @@ export class PlayScene extends Phaser.Scene {
       onComplete: () => {
         onImpact()
         this.tweens.add({
-          targets: this.enemyPanel,
+          targets: target,
           x: startX,
           y: startY,
           duration: heavy ? (isBossAttack ? 145 : 130) : 100,
@@ -940,7 +982,7 @@ export class PlayScene extends Phaser.Scene {
     this.resultText.setText(this.session.enemy.name)
     this.resultText.setColor('#fef08a')
     this.cameraPunch(0.007, 220, 1.02)
-    this.flashTargetRed(this.enemyPanel, 0x450a0a, true)
+    this.flashTargetRed(this.enemySprite ?? this.enemyPanel, 0x450a0a, true)
 
     this.time.delayedCall(620, () => {
       this.resultText.setText('')
@@ -963,7 +1005,7 @@ export class PlayScene extends Phaser.Scene {
     this.resultText.setText(`${this.session.enemy.name} is enraged!`)
     this.resultText.setColor('#fca5a5')
     this.cameraPunch(0.009, 180, 1.024)
-    this.flashTargetRed(this.enemyPanel, 0x450a0a, true)
+    this.flashTargetRed(this.enemySprite ?? this.enemyPanel, 0x450a0a, true)
 
     this.time.delayedCall(420, () => {
       if (this.session.outcome === 'ongoing') {
