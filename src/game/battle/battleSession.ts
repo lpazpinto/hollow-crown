@@ -221,6 +221,16 @@ export function resolveEnemyIntentAction(session: BattleSession): BattleSession 
   const intent = getCurrentIntent(withPhaseTransition)
   const stateAfterEnemyBurn = applyEnemyBurnAtEnemyTurnStart(withPhaseTransition.state, withPhaseTransition.enemyBurn)
   const nextEnemyBurn = Math.max(0, withPhaseTransition.enemyBurn - 1)
+  const outcomeAfterEnemyBurn = checkBattleOutcome(stateAfterEnemyBurn)
+
+  if (outcomeAfterEnemyBurn !== 'ongoing') {
+    return {
+      ...withPhaseTransition,
+      state: stateAfterEnemyBurn,
+      enemyBurn: nextEnemyBurn,
+      outcome: outcomeAfterEnemyBurn,
+    }
+  }
 
   let nextState = resolveEnemyAttack(stateAfterEnemyBurn, intent.damage)
 
