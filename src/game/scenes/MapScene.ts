@@ -149,6 +149,7 @@ export class MapScene extends Phaser.Scene {
         compactLayout,
         choice.encounterType,
         choice.label,
+        choice.rewardHint,
         () => {
           this.handleEncounterSelection(selectedRoute.id, choice.nodeId, choice.encounterType)
         },
@@ -171,6 +172,7 @@ export class MapScene extends Phaser.Scene {
     compactLayout: boolean,
     encounterType: EncounterType,
     nodeLabel: string,
+    rewardHint: string | null,
     onClick: () => void,
   ) {
     const button = this.add.rectangle(x, y, buttonWidth, compactLayout ? 86 : 92, 0x1e293b)
@@ -190,6 +192,15 @@ export class MapScene extends Phaser.Scene {
       color: '#cbd5e1',
       align: 'center',
     }).setOrigin(0.5)
+
+    if (rewardHint) {
+      // Route-node reward opportunities are telegraphed here for strategic pathing.
+      this.add.text(x, y + (compactLayout ? 34 : 36), rewardHint, {
+        fontSize: compactLayout ? '11px' : '12px',
+        color: '#93c5fd',
+        fontStyle: 'bold',
+      }).setOrigin(0.5)
+    }
 
     button.on('pointerdown', () => {
       button.setScale(0.97)
@@ -292,6 +303,7 @@ export class MapScene extends Phaser.Scene {
       const isCompleted = completedNodeSet.has(node.id)
       const isReachable = reachableNodeSet.has(node.id)
       const isBoss = node.encounterType === 'boss'
+      const hasShardOpportunity = (node.rewards?.shardChance ?? 0) > 0
 
       const fillColor = isCompleted
         ? 0x16a34a
@@ -300,7 +312,11 @@ export class MapScene extends Phaser.Scene {
           : isBoss
             ? 0x7f1d1d
             : 0x334155
-      const strokeColor = isReachable ? 0xfef3c7 : 0x94a3b8
+      const strokeColor = hasShardOpportunity
+        ? 0x7dd3fc
+        : isReachable
+          ? 0xfef3c7
+          : 0x94a3b8
 
       this.add.circle(position.x, position.y, nodeRadius, fillColor)
         .setStrokeStyle(2, strokeColor)
@@ -310,6 +326,14 @@ export class MapScene extends Phaser.Scene {
         color: isReachable ? '#fef3c7' : '#cbd5e1',
         fontStyle: isReachable ? 'bold' : 'normal',
       }).setOrigin(0.5)
+
+      if (hasShardOpportunity) {
+        this.add.text(position.x, position.y - nodeRadius - 10, 'SHARD', {
+          fontSize: compactLayout ? '9px' : '10px',
+          color: '#7dd3fc',
+          fontStyle: 'bold',
+        }).setOrigin(0.5)
+      }
     })
 
     this.add.text(width / 2, centerY + (compactLayout ? 108 : 116), 'Choose one highlighted node to advance this run.', {

@@ -15,6 +15,9 @@ export type RouteGraphNode = {
   label: string
   encounterType: RouteEncounterType
   nextNodeIds: string[]
+  rewards?: {
+    shardChance?: number
+  }
 }
 
 export type RouteGraphLayout = {
@@ -34,17 +37,23 @@ export type RouteContent = {
   graphLayouts: RouteGraphLayout[]
 }
 
+// Shard opportunities are defined directly on route nodes so reward cadence is data-driven.
+const SHARD_ROUTE_CHANCE_LOW = 0.35
+const SHARD_ROUTE_CHANCE_MEDIUM = 0.5
+const SHARD_ROUTE_CHANCE_HIGH = 0.7
+const SHARD_ROUTE_CHANCE_GUARANTEED = 1
+
 const ASHEN_ROUTE_LAYOUT_A: RouteGraphLayout = {
   id: 'ashen-a',
   startNodeId: 'start',
   nodes: [
     { id: 'start', label: 'Scorched Crossing', encounterType: 'battle', nextNodeIds: ['fork-battle', 'fork-rest'] },
-    { id: 'fork-battle', label: 'Char Patrol', encounterType: 'battle', nextNodeIds: ['mid-battle'] },
+    { id: 'fork-battle', label: 'Char Patrol', encounterType: 'battle', nextNodeIds: ['mid-battle'], rewards: { shardChance: SHARD_ROUTE_CHANCE_LOW } },
     { id: 'fork-rest', label: 'Mire Refuge', encounterType: 'rest', nextNodeIds: ['mid-battle'] },
-    { id: 'mid-battle', label: 'Bog Ambush', encounterType: 'battle', nextNodeIds: ['lane-rest', 'lane-battle'] },
+    { id: 'mid-battle', label: 'Bog Ambush', encounterType: 'battle', nextNodeIds: ['lane-rest', 'lane-battle'], rewards: { shardChance: SHARD_ROUTE_CHANCE_MEDIUM } },
     { id: 'lane-rest', label: 'Ash Shrine', encounterType: 'rest', nextNodeIds: ['elite-gate'] },
-    { id: 'lane-battle', label: 'Tarbound Hunt', encounterType: 'battle', nextNodeIds: ['elite-gate'] },
-    { id: 'elite-gate', label: 'Knight of Cinders', encounterType: 'elite', nextNodeIds: ['recovery'] },
+    { id: 'lane-battle', label: 'Tarbound Hunt', encounterType: 'battle', nextNodeIds: ['elite-gate'], rewards: { shardChance: SHARD_ROUTE_CHANCE_HIGH } },
+    { id: 'elite-gate', label: 'Knight of Cinders', encounterType: 'elite', nextNodeIds: ['recovery'], rewards: { shardChance: SHARD_ROUTE_CHANCE_GUARANTEED } },
     { id: 'recovery', label: 'Mire Camp', encounterType: 'rest', nextNodeIds: ['boss'] },
     { id: 'boss', label: 'Crown Slime Heart', encounterType: 'boss', nextNodeIds: [] },
   ],
@@ -55,11 +64,11 @@ const ASHEN_ROUTE_LAYOUT_B: RouteGraphLayout = {
   startNodeId: 'start',
   nodes: [
     { id: 'start', label: 'Mire Edge', encounterType: 'battle', nextNodeIds: ['upper-battle', 'lower-rest'] },
-    { id: 'upper-battle', label: 'Soot Marauders', encounterType: 'battle', nextNodeIds: ['upper-rest'] },
+    { id: 'upper-battle', label: 'Soot Marauders', encounterType: 'battle', nextNodeIds: ['upper-rest'], rewards: { shardChance: SHARD_ROUTE_CHANCE_LOW } },
     { id: 'lower-rest', label: 'Sunken Chapel', encounterType: 'rest', nextNodeIds: ['lower-battle'] },
-    { id: 'lower-battle', label: 'Swamp Striders', encounterType: 'battle', nextNodeIds: ['merge-elite'] },
+    { id: 'lower-battle', label: 'Swamp Striders', encounterType: 'battle', nextNodeIds: ['merge-elite'], rewards: { shardChance: SHARD_ROUTE_CHANCE_MEDIUM } },
     { id: 'upper-rest', label: 'Kindling Pool', encounterType: 'rest', nextNodeIds: ['merge-elite'] },
-    { id: 'merge-elite', label: 'Mire Warden', encounterType: 'elite', nextNodeIds: ['prep'] },
+    { id: 'merge-elite', label: 'Mire Warden', encounterType: 'elite', nextNodeIds: ['prep'], rewards: { shardChance: SHARD_ROUTE_CHANCE_GUARANTEED } },
     { id: 'prep', label: 'Ember Encampment', encounterType: 'rest', nextNodeIds: ['boss'] },
     { id: 'boss', label: 'Corrupted Slime', encounterType: 'boss', nextNodeIds: [] },
   ],
@@ -387,33 +396,40 @@ function createAshenProceduralLayout(layoutId: string, key: number): RouteGraphL
       encounterType: 'battle',
       nextNodeIds: splitLaneIds,
     },
-    ...splitLaneIds.map((laneId, index) => ({
-      id: laneId,
-      label: index === 0
-        ? 'Char Patrol'
-        : index === 1 && hasThreeWaySplit
-          ? 'Sunken Path'
-          : 'Mire Refuge',
-      encounterType: index === 0
+    ...splitLaneIds.map((laneId, index) => {
+      const laneEncounterType: RouteEncounterType = index === 0
         ? 'battle'
         : (index === 1 && hasThreeWaySplit)
           ? (introRestLane ? 'rest' : 'battle')
-          : (introRestLane ? 'rest' : 'battle'),
-      nextNodeIds: laneId === 'lane-north' || laneId === 'lane-mid'
-        ? ['merge-west']
-        : ['merge-east'],
-    })),
+          : (introRestLane ? 'rest' : 'battle')
+
+      return {
+        id: laneId,
+        label: index === 0
+          ? 'Char Patrol'
+          : index === 1 && hasThreeWaySplit
+            ? 'Sunken Path'
+            : 'Mire Refuge',
+        encounterType: laneEncounterType,
+        nextNodeIds: laneId === 'lane-north' || laneId === 'lane-mid'
+          ? ['merge-west']
+          : ['merge-east'],
+        rewards: laneEncounterType === 'battle' ? { shardChance: SHARD_ROUTE_CHANCE_LOW } : undefined,
+      }
+    }),
     {
       id: 'merge-west',
       label: 'Bog Ambush',
       encounterType: laneRestBias ? 'battle' : 'rest',
       nextNodeIds: hasMidReSplit ? ['resplit-west', 'resplit-east'] : ['elite-gate'],
+      rewards: laneRestBias ? { shardChance: SHARD_ROUTE_CHANCE_MEDIUM } : undefined,
     },
     {
       id: 'merge-east',
       label: 'Ashen Crossing',
       encounterType: laneRestBias ? 'rest' : 'battle',
       nextNodeIds: hasMidReSplit ? ['resplit-west', 'resplit-east'] : ['elite-gate'],
+      rewards: laneRestBias ? undefined : { shardChance: SHARD_ROUTE_CHANCE_MEDIUM },
     },
   ]
 
@@ -424,6 +440,7 @@ function createAshenProceduralLayout(layoutId: string, key: number): RouteGraphL
         label: 'Tarbound Hunt',
         encounterType: 'battle',
         nextNodeIds: ['elite-gate'],
+        rewards: { shardChance: SHARD_ROUTE_CHANCE_HIGH },
       },
       {
         id: 'resplit-east',
@@ -440,6 +457,7 @@ function createAshenProceduralLayout(layoutId: string, key: number): RouteGraphL
       label: eliteLabelVariant,
       encounterType: 'elite',
       nextNodeIds: ['prep'],
+      rewards: { shardChance: SHARD_ROUTE_CHANCE_GUARANTEED },
     },
     {
       id: 'prep',

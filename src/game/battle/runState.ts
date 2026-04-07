@@ -51,6 +51,7 @@ export type RouteChoice = {
   nodeId: string
   encounterType: EncounterType
   label: string
+  rewardHint: string | null
 }
 
 const LEVEL_XP_STEP_COSTS = [8, 12, 16, 20]
@@ -72,7 +73,6 @@ const ENCOUNTER_XP_REWARD: Record<'battle' | 'elite' | 'boss', number> = {
 }
 
 const SHARDS_FOR_FORGE = 3
-const SHARD_BATTLE_REWARD_CHANCE = 0.45
 
 let runState: RunState | null = null
 
@@ -187,19 +187,15 @@ export function tryGrantShardForCurrentEncounter(): {
     }
   }
 
-  const encounterType = state.currentEncounterType
-  let shouldGrant = false
-
-  // Shards are out-of-deck micro rewards from normal and elite fights.
-  if (encounterType === 'elite') {
-    shouldGrant = true
-  } else if (encounterType === 'battle') {
-    shouldGrant = Math.random() < SHARD_BATTLE_REWARD_CHANCE
-  }
+  const shardChance = getShardChanceForCurrentEncounterNode(state)
+  // Shard rewards are no longer default battle rewards; they come from route node reward data.
+  const shouldGrant = shardChance > 0 && Math.random() < shardChance
 
   if (shouldGrant) {
+    // Shard progress is updated here as an out-of-deck run resource.
     state.shardCount = Math.min(SHARDS_FOR_FORGE, state.shardCount + 1)
     if (state.shardCount >= SHARDS_FOR_FORGE) {
+      // 3/3 shard payoff becomes available here.
       state.isForgeAvailable = true
     }
   }
@@ -209,6 +205,31 @@ export function tryGrantShardForCurrentEncounter(): {
     shardCount: state.shardCount,
     isForgeAvailable: state.isForgeAvailable,
   }
+}
+
+function getRouteChoiceRewardHint(shardChance: number | undefined): string | null {
+  if (!shardChance || shardChance <= 0) {
+    return null
+  }
+
+  if (shardChance >= 1) {
+    return 'Guaranteed Shard'
+  }
+
+  if (shardChance >= 0.65) {
+    return 'High Shard Chance'
+  }
+
+  return 'Shard Chance'
+}
+
+function getShardChanceForCurrentEncounterNode(state: RunState): number {
+  if (!state.selectedRouteId || !state.currentRouteNodeId) {
+    return 0
+  }
+
+  const node = getRouteNodeById(state.selectedRouteId, state.selectedRouteLayoutId, state.currentRouteNodeId)
+  return node?.rewards?.shardChance ?? 0
 }
 
 export function setCurrentEncounterType(encounterType: EncounterType) {
@@ -269,6 +290,7 @@ export function getAvailableRouteChoices(): RouteChoice[] {
     nodeId: node.id,
     encounterType: node.encounterType,
     label: node.label,
+    rewardHint: getRouteChoiceRewardHint(node.rewards?.shardChance),
   }))
 }
 
