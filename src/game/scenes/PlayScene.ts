@@ -824,6 +824,11 @@ export class PlayScene extends Phaser.Scene {
             this.pendingDrawAnimation = true
             this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
             this.time.delayedCall(260, () => {
+              // Guard: status damage at turn start may have ended the battle.
+              // Do not show Player Turn banner or unlock input if the hero died.
+              if (this.session.outcome !== 'ongoing') {
+                return
+              }
               this.showTurnBanner('Player Turn', '#fde68a')
               this.startHeroIdleAnimation()
               this.unlockBattleInput()
@@ -1018,14 +1023,17 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private getHeroStatusSummary(): string {
+    // Display format: icon + stack count. The stack count equals both the damage on the next tick
+    // and the number of turns remaining until the effect expires (they are the same value in the
+    // stack model: 2 stacks → takes 2 dmg, then 1 dmg, then expires).
     const parts: string[] = []
 
     if (this.session.heroBurn > 0) {
-      parts.push(`🔥 ${this.session.heroBurn} · ${this.session.heroBurn}T`)
+      parts.push(`🔥 ×${this.session.heroBurn}`)
     }
 
     if (this.session.heroPoison > 0) {
-      parts.push(`☠ ${this.session.heroPoison} · ${this.session.heroPoison}T`)
+      parts.push(`☠ ×${this.session.heroPoison}`)
     }
 
     return parts.length > 0 ? parts.join('   ') : ''

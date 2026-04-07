@@ -216,9 +216,14 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
 
 export function startNewPlayerTurn(session: BattleSession): BattleSession {
   const nextTurnNumber = session.turnNumber + 1
-  // Temporary armor reset timing: player armor clears at player turn start.
-  // Enemy armor is cleared at enemy turn start so defend intents remain visible/meaningful during player turn.
-  // Hero status effects tick down at player turn start after applying their damage.
+  // Status effect lifecycle — tick phase:
+  //   1. Hero armor is cleared (status damage bypasses armor — intentional).
+  //   2. Burn damage is applied: hero takes heroBurn HP damage.
+  //   3. Poison damage is applied: hero takes heroPoison HP damage.
+  //   4. Both stacks decrement by 1 (minimum 0).
+  //   5. When a stack reaches 0 it is expired and no longer displayed.
+  // This all happens before cards are drawn or energy is restored, so the player
+  // sees the damage reflected in their HP before they act.
   const statusTick = applyHeroStatusAtTurnStart(
     {
       burn: session.heroBurn,
@@ -229,6 +234,21 @@ export function startNewPlayerTurn(session: BattleSession): BattleSession {
       heroArmor: 0,
     },
   )
+
+  // If status damage kills the hero, record defeat immediately.
+  // Do not draw cards or restore energy for a dead hero.
+  const outcomeAfterStatus = checkBattleOutcome(statusTick.state)
+  if (outcomeAfterStatus !== 'ongoing') {
+    return {
+      ...session,
+      state: statusTick.state,
+      heroBurn: statusTick.nextStatus.burn,
+      heroPoison: statusTick.nextStatus.poison,
+      turnNumber: nextTurnNumber,
+      outcome: outcomeAfterStatus,
+    }
+  }
+
   const stateAfterAbilityBonus = {
     ...statusTick.state,
     heroArmor: statusTick.state.heroArmor + getAbilityTurnStartArmor(session.abilities),
@@ -318,6 +338,9 @@ export function resolveEnemyIntentAction(session: BattleSession): BattleSession 
     }
   })
 
+  // Check outcome after all intent actions resolve.
+  // Enemy attack can reduce heroHp to 0; outcome must be set so PlayScene reacts correctly.
+  // Status stacks added here (burn/poison) will deal damage at the NEXT player turn start, not now.
   return {
     ...withPhaseTransition,
     state: nextState,
@@ -325,6 +348,7 @@ export function resolveEnemyIntentAction(session: BattleSession): BattleSession 
     heroPoison: nextHeroPoison,
     enemyBurn: nextEnemyBurn,
     enemyReflect: nextEnemyReflect,
+    outcome: checkBattleOutcome(nextState),
   }
 }
 
@@ -568,6 +592,27 @@ function maybeEnterBossPhaseTwo(session: BattleSession): BattleSession {
   }
 }
 
+// Status effect lifecycle (burn and poison share the same stack model):
+//
+//   APPLY    — stacks are added to heroBurn / heroPoison when an enemy intent resolves
+//              (in resolveEnemyIntentAction). Multiple stacks can accumulate across turns.
+//
+//   DISPLAY  — heroStatusText in PlayScene is updated after every session change.
+//              The displayed number equals the damage the player will take next tick.
+//
+//   TICK     — this function runs at the start of every player turn, before cards are drawn.
+//              Damage is applied first, then stacks decrement.
+//
+//   DAMAGE   — each stack point reduces heroHp by 1 (burn damage bypasses hero armor).
+//
+//   DECREMENT — stacks reduce by 1 each turn. 1-stack burn deals 1 damage then expires
+//              in the same tick. 3-stack burn deals 3 damage, then 2, then 1, then expires.
+//
+//   EXPIRE   — when stacks reach 0 via decrement, the effect is gone.
+//              The status icon disappears from the HUD.
+//
+// Burn and poison both use this stack model. They are differentiated by icon (🔥 vs ☠)
+// and source (burn from fire attacks, poison from venom attacks) only.
 function applyHeroStatusAtTurnStart(
   status: { burn: number; poison: number },
   state: BattleState,
@@ -577,6 +622,7 @@ function applyHeroStatusAtTurnStart(
 } {
   let nextState = state
 
+  // Burn tick: hero takes damage equal to current burn stacks, bypassing armor.
   if (status.burn > 0) {
     nextState = {
       ...nextState,
@@ -584,6 +630,7 @@ function applyHeroStatusAtTurnStart(
     }
   }
 
+  // Poison tick: hero takes damage equal to current poison stacks, bypassing armor.
   if (status.poison > 0) {
     nextState = {
       ...nextState,
@@ -591,6 +638,7 @@ function applyHeroStatusAtTurnStart(
     }
   }
 
+  // Decrement both stacks by 1. When they reach 0 the effect expires.
   return {
     state: nextState,
     nextStatus: {
