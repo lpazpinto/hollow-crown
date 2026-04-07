@@ -74,6 +74,8 @@ function isRunState(value: unknown): value is RunState {
     isNumber(value.maxFloors) &&
     (value.selectedRouteId === undefined || value.selectedRouteId === null || typeof value.selectedRouteId === 'string') &&
     (value.currentRouteStep === undefined || isNumber(value.currentRouteStep)) &&
+    (value.shardCount === undefined || isNumber(value.shardCount)) &&
+    (value.isForgeAvailable === undefined || typeof value.isForgeAvailable === 'boolean') &&
     isNumber(value.heroHp) &&
     isNumber(value.maxHeroHp) &&
     (value.heroXp === undefined || isNumber(value.heroXp)) &&

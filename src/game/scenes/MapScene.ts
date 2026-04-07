@@ -3,6 +3,7 @@ import {
   advanceFloorAfterEncounter,
   getAvailableEncountersForCurrentFloor,
   getRunState,
+  getShardTarget,
   getXpForNextLevel,
   resolveRestEncounter,
   setSelectedRouteId,
@@ -42,6 +43,9 @@ export class MapScene extends Phaser.Scene {
 
     const selectedRoute = getRouteById(run.selectedRouteId)
     const statusXp = nextLevelXp === null ? `${run.heroXp}` : `${run.heroXp}/${nextLevelXp}`
+    const shardStatus = run.isForgeAvailable
+      ? `Shards ${run.shardCount}/${getShardTarget()} • Forge Ready`
+      : `Shards ${run.shardCount}/${getShardTarget()}`
 
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
@@ -54,10 +58,10 @@ export class MapScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    this.add.rectangle(width / 2, compactLayout ? 82 : 88, compactLayout ? width * 0.88 : 760, 34, 0x111a2d, 0.86)
+    this.add.rectangle(width / 2, compactLayout ? 82 : 88, compactLayout ? width * 0.9 : 860, 34, 0x111a2d, 0.86)
       .setStrokeStyle(1, 0x3b4e6d, 0.9)
-    this.add.text(width / 2, compactLayout ? 82 : 88, `HP ${run.heroHp}/${run.maxHeroHp}   |   Level ${run.heroLevel}   |   XP ${statusXp}`, {
-      fontSize: compactLayout ? '14px' : '15px',
+    this.add.text(width / 2, compactLayout ? 82 : 88, `HP ${run.heroHp}/${run.maxHeroHp}   |   Level ${run.heroLevel}   |   XP ${statusXp}   |   ${shardStatus}`, {
+      fontSize: compactLayout ? '13px' : '14px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
 

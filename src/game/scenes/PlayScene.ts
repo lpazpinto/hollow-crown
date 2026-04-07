@@ -19,11 +19,14 @@ import {
   getRunAbilities,
   getRunRelics,
   getRunState,
+  getShardTarget,
   hasPendingLevelUp,
-  resolveBattleCardRewardForVictory,
+  tryGrantShardForCurrentEncounter,
   type EncounterType,
 } from '../battle/runState'
 import { clearSave, saveRun } from '../battle/runSave'
+
+type VictoryRewardType = 'none' | 'elite-relic' | 'boss-signature'
 
 export class PlayScene extends Phaser.Scene {
   private heroMaxHp = 40
@@ -783,6 +786,7 @@ export class PlayScene extends Phaser.Scene {
       this.stopHeroIdleAnimation()
       applyBattleResult(this.session.state.heroHp, true)
       const xpResult = awardXpForCurrentEncounter()
+      const shardReward = tryGrantShardForCurrentEncounter()
       const nextRoute = this.getPostVictoryRoute()
       const hasLevelUp = hasPendingLevelUp()
       const rewardSummary = hasLevelUp
@@ -792,11 +796,16 @@ export class PlayScene extends Phaser.Scene {
           : nextRoute.scene === 'RelicRewardScene'
             ? 'Relic Reward'
             : 'Onward'
+      const shardSummary = shardReward.granted
+        ? shardReward.isForgeAvailable
+          ? ` • Shard +1 (${shardReward.shardCount}/${getShardTarget()}) • Forge Ready`
+          : ` • Shard +1 (${shardReward.shardCount}/${getShardTarget()})`
+        : ''
 
       this.resultText.setText(
         isBossVictory
-          ? `Boss Defeated  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}`
-          : `Victory  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}`,
+          ? `Boss Defeated  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}${shardSummary}`
+          : `Victory  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}${shardSummary}`,
       )
       this.resultText.setColor(isBossVictory ? '#fef08a' : '#86efac')
       this.showTurnBanner(
@@ -1715,7 +1724,10 @@ export class PlayScene extends Phaser.Scene {
     data?: Record<string, unknown>
     advanceFloorNow: boolean
   } {
-    if (this.encounterType === 'boss') {
+    // Reward type is determined by encounter type.
+    const rewardType = this.getVictoryRewardType(this.encounterType)
+
+    if (rewardType === 'boss-signature') {
       const runState = getRunState()
       const selectedRoute = getRouteById(runState.selectedRouteId)
 
@@ -1733,20 +1745,11 @@ export class PlayScene extends Phaser.Scene {
       }
     }
 
-    if (this.encounterType === 'battle') {
-      const shouldGrantCardReward = resolveBattleCardRewardForVictory()
-
-      if (!shouldGrantCardReward) {
-        return {
-          scene: 'MapScene',
-          advanceFloorNow: true,
-        }
-      }
-
+    if (rewardType === 'none') {
+      // Normal battles grant XP but no default permanent card reward.
       return {
-        scene: 'RewardScene',
-        data: { encounterType: 'battle' },
-        advanceFloorNow: false,
+        scene: 'MapScene',
+        advanceFloorNow: true,
       }
     }
 
@@ -1755,5 +1758,17 @@ export class PlayScene extends Phaser.Scene {
       data: { nextScene: 'MapScene' },
       advanceFloorNow: false,
     }
+  }
+
+  private getVictoryRewardType(encounterType: EncounterType): VictoryRewardType {
+    if (encounterType === 'boss') {
+      return 'boss-signature'
+    }
+
+    if (encounterType === 'elite') {
+      return 'elite-relic'
+    }
+
+    return 'none'
   }
 }

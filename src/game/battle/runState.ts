@@ -12,6 +12,8 @@ export type RunState = {
   maxFloors: number
   selectedRouteId: string | null
   currentRouteStep: number
+  shardCount: number
+  isForgeAvailable: boolean
   currentDeck: CardContent[]
   currentRelics: RelicContent[]
   currentAbilities: HeroAbilityContent[]
@@ -35,6 +37,9 @@ const ENCOUNTER_XP_REWARD: Record<'battle' | 'elite' | 'boss', number> = {
   boss: 17,
 }
 
+const SHARDS_FOR_FORGE = 3
+const SHARD_BATTLE_REWARD_CHANCE = 0.45
+
 let runState: RunState | null = null
 
 export function startNewRun() {
@@ -45,6 +50,8 @@ export function startNewRun() {
     maxFloors: defaultPath.length,
     selectedRouteId: null,
     currentRouteStep: 0,
+    shardCount: 0,
+    isForgeAvailable: false,
     currentDeck: cloneDeck(STARTER_DECK),
     currentRelics: [],
     currentAbilities: [],
@@ -93,6 +100,52 @@ export function getNormalBattleRewardPreview(): string {
 export function getRunState(): RunState {
   ensureRunState()
   return cloneRunState(runState as RunState)
+}
+
+export function getShardTarget(): number {
+  return SHARDS_FOR_FORGE
+}
+
+export function tryGrantShardForCurrentEncounter(): {
+  granted: boolean
+  shardCount: number
+  isForgeAvailable: boolean
+} {
+  ensureRunState()
+  const state = runState as RunState
+
+  if (state.isForgeAvailable || state.shardCount >= SHARDS_FOR_FORGE) {
+    state.shardCount = SHARDS_FOR_FORGE
+    state.isForgeAvailable = true
+    return {
+      granted: false,
+      shardCount: state.shardCount,
+      isForgeAvailable: state.isForgeAvailable,
+    }
+  }
+
+  const encounterType = state.currentEncounterType
+  let shouldGrant = false
+
+  // Shards are out-of-deck micro rewards from normal and elite fights.
+  if (encounterType === 'elite') {
+    shouldGrant = true
+  } else if (encounterType === 'battle') {
+    shouldGrant = Math.random() < SHARD_BATTLE_REWARD_CHANCE
+  }
+
+  if (shouldGrant) {
+    state.shardCount = Math.min(SHARDS_FOR_FORGE, state.shardCount + 1)
+    if (state.shardCount >= SHARDS_FOR_FORGE) {
+      state.isForgeAvailable = true
+    }
+  }
+
+  return {
+    granted: shouldGrant,
+    shardCount: state.shardCount,
+    isForgeAvailable: state.isForgeAvailable,
+  }
 }
 
 export function setCurrentEncounterType(encounterType: EncounterType) {
@@ -422,6 +475,8 @@ function normalizeRunState(saved: RunState): RunState {
     ...saved,
     selectedRouteId: saved.selectedRouteId ?? null,
     currentRouteStep: saved.currentRouteStep ?? Math.max(0, (saved.currentFloor ?? 1) - 1),
+    shardCount: saved.shardCount ?? 0,
+    isForgeAvailable: saved.isForgeAvailable ?? false,
     currentAbilities: saved.currentAbilities ?? [],
     heroXp: saved.heroXp ?? 0,
     heroLevel: saved.heroLevel ?? 1,
@@ -443,6 +498,22 @@ function normalizeRunState(saved: RunState): RunState {
 
   if (normalized.normalBattleVictories < 0) {
     normalized.normalBattleVictories = 0
+  }
+
+  if (!Number.isFinite(normalized.shardCount)) {
+    normalized.shardCount = 0
+  }
+
+  if (normalized.shardCount < 0) {
+    normalized.shardCount = 0
+  }
+
+  if (normalized.shardCount > SHARDS_FOR_FORGE) {
+    normalized.shardCount = SHARDS_FOR_FORGE
+  }
+
+  if (normalized.shardCount >= SHARDS_FOR_FORGE) {
+    normalized.isForgeAvailable = true
   }
 
   if (!Number.isFinite(normalized.currentRouteStep)) {
