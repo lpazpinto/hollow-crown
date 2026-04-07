@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { getAbilityChoicesForRun, type HeroAbilityContent } from '../content/abilities'
 import { createUpgradedCard } from '../content/cards'
 import {
+  applyLevelUpRecoveryChoice,
   addAbilityToRun,
   consumePendingLevelUp,
   getRunAbilities,
@@ -12,6 +13,18 @@ import {
   upgradeRunCard,
 } from '../battle/runState'
 import { saveRun } from '../battle/runSave'
+
+type LevelUpRewardType = 'upgrade-card' | 'gain-passive' | 'stabilize'
+
+type LevelUpOption = {
+  type: LevelUpRewardType
+  title: string
+  description: string
+  x: number
+  y: number
+  width: number
+  onSelect: () => void
+}
 
 type LevelUpSceneData = {
   nextScene?: 'RewardScene' | 'RelicRewardScene' | 'MapScene' | 'RunEndScene'
@@ -71,27 +84,17 @@ export class LevelUpScene extends Phaser.Scene {
       this.scene.start('MenuScene')
     })
 
-    this.createActionButton(
-      width / 2 - (compactLayout ? 0 : 190),
-      compactLayout ? 178 : 188,
-      compactLayout ? 340 : 320,
-      'Upgrade a Card',
-      'Choose 1 card from your deck and improve it.',
-      () => {
-        this.showCardUpgradeChoices()
-      },
-    )
-
-    this.createActionButton(
-      width / 2 + (compactLayout ? 0 : 190),
-      compactLayout ? 298 : 188,
-      compactLayout ? 340 : 320,
-      'Gain an Ability',
-      'Pick a hero blessing with passive run bonuses.',
-      () => {
-        this.showAbilityChoices()
-      },
-    )
+    const options = this.getLevelUpOptions(compactLayout)
+    options.forEach((option) => {
+      this.createActionButton(
+        option.x,
+        option.y,
+        option.width,
+        option.title,
+        option.description,
+        option.onSelect,
+      )
+    })
   }
 
   private showCardUpgradeChoices() {
@@ -170,7 +173,7 @@ export class LevelUpScene extends Phaser.Scene {
     const { width } = this.scale
     const choices = getAbilityChoicesForRun(getRunAbilities(), 3)
 
-    this.addOptionText(width / 2, 280, 'Choose a blessing')
+    this.addOptionText(width / 2, 280, 'Choose a passive ability')
 
     if (choices.length === 0) {
       this.addOptionText(width / 2, 322, 'All blessings are already learned. Pick a card upgrade instead.')
@@ -216,7 +219,7 @@ export class LevelUpScene extends Phaser.Scene {
 
       this.choiceLocked = true
       addAbilityToRun(ability)
-      this.finishLevelUp(`Blessing gained: ${ability.name}`)
+      this.finishLevelUp(`Passive gained: ${ability.name}`)
     })
 
     this.optionObjects.push(box, name, description)
@@ -275,6 +278,82 @@ export class LevelUpScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     this.optionObjects.push(optionText)
+  }
+
+  private chooseStabilityGrowth() {
+    if (this.choiceLocked) {
+      return
+    }
+
+    this.choiceLocked = true
+    const result = applyLevelUpRecoveryChoice(3, 7)
+    this.finishLevelUp(`Fortified: Max HP ${result.maxHeroHp}, HP ${result.heroHp}`)
+  }
+
+  private getLevelUpOptions(compactLayout: boolean): LevelUpOption[] {
+    const { width } = this.scale
+
+    if (compactLayout) {
+      return [
+        {
+          type: 'upgrade-card',
+          title: 'Upgrade a Card',
+          description: 'Improve 1 card in your deck.',
+          x: width / 2,
+          y: 174,
+          width: 360,
+          onSelect: () => this.showCardUpgradeChoices(),
+        },
+        {
+          type: 'gain-passive',
+          title: 'Gain a Passive',
+          description: 'Choose a small run-long hero passive.',
+          x: width / 2,
+          y: 282,
+          width: 360,
+          onSelect: () => this.showAbilityChoices(),
+        },
+        {
+          type: 'stabilize',
+          title: 'Stabilize',
+          description: '+3 Max HP and heal 7 HP.',
+          x: width / 2,
+          y: 390,
+          width: 360,
+          onSelect: () => this.chooseStabilityGrowth(),
+        },
+      ]
+    }
+
+    return [
+      {
+        type: 'upgrade-card',
+        title: 'Upgrade a Card',
+        description: 'Improve 1 card in your deck.',
+        x: width / 2 - 228,
+        y: 188,
+        width: 300,
+        onSelect: () => this.showCardUpgradeChoices(),
+      },
+      {
+        type: 'gain-passive',
+        title: 'Gain a Passive',
+        description: 'Choose a small run-long hero passive.',
+        x: width / 2,
+        y: 188,
+        width: 300,
+        onSelect: () => this.showAbilityChoices(),
+      },
+      {
+        type: 'stabilize',
+        title: 'Stabilize',
+        description: '+3 Max HP and heal 7 HP.',
+        x: width / 2 + 228,
+        y: 188,
+        width: 300,
+        onSelect: () => this.chooseStabilityGrowth(),
+      },
+    ]
   }
 
   private finishLevelUp(message: string) {

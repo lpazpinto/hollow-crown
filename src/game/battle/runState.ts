@@ -468,6 +468,23 @@ export function addAbilityToRun(ability: HeroAbilityContent): boolean {
   return true
 }
 
+export function applyLevelUpRecoveryChoice(maxHpGain = 3, healAmount = 7): {
+  maxHeroHp: number
+  heroHp: number
+} {
+  ensureRunState()
+  const state = runState as RunState
+
+  // Level-up survival reward is semi-permanent: increase max HP and heal.
+  state.maxHeroHp = Math.max(1, state.maxHeroHp + Math.max(0, maxHpGain))
+  state.heroHp = Math.min(state.maxHeroHp, state.heroHp + Math.max(0, healAmount))
+
+  return {
+    maxHeroHp: state.maxHeroHp,
+    heroHp: state.heroHp,
+  }
+}
+
 function ensureRunState() {
   if (!runState) {
     startNewRun()
