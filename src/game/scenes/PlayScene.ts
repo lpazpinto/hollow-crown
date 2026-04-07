@@ -22,6 +22,7 @@ import {
   getRunState,
   getShardTarget,
   hasPendingLevelUp,
+  resolveBattleCardRewardForVictory,
   tryGrantShardForCurrentEncounter,
   type EncounterType,
 } from '../battle/runState'
@@ -1750,7 +1751,17 @@ export class PlayScene extends Phaser.Scene {
     }
 
     if (rewardType === 'none') {
-      // Normal battles grant XP but no default permanent card reward.
+      // Milestone cadence: only selected normal-battle wins grant permanent card drafts.
+      const shouldGrantMilestoneDraft = resolveBattleCardRewardForVictory()
+
+      if (shouldGrantMilestoneDraft) {
+        return {
+          scene: 'RewardScene',
+          data: { encounterType: 'battle' },
+          advanceFloorNow: false,
+        }
+      }
+
       return {
         scene: 'MapScene',
         advanceFloorNow: true,

@@ -32,7 +32,10 @@ export type RunState = {
 const LEVEL_XP_STEP_COSTS = [8, 12, 16, 20]
 const LEVEL_XP_THRESHOLDS = buildLevelXpThresholds(LEVEL_XP_STEP_COSTS)
 
-const BATTLE_CARD_REWARD_INTERVAL = 2
+// Milestone card cadence control:
+// normal battles do not grant permanent cards by default;
+// every N normal battle wins grants one card draft.
+const BATTLE_CARD_REWARD_INTERVAL = 3
 
 // Tuning target (route-rewards-levelup-direction-update.md):
 // - normal battle: 4-5 XP
@@ -83,7 +86,7 @@ export function resolveBattleCardRewardForVictory(): boolean {
   }
 
   state.normalBattleVictories += 1
-  return state.normalBattleVictories % BATTLE_CARD_REWARD_INTERVAL === 1
+  return state.normalBattleVictories % BATTLE_CARD_REWARD_INTERVAL === 0
 }
 
 export function getEncounterXpReward(encounterType: EncounterType | null): number {
@@ -98,11 +101,14 @@ export function getNormalBattleRewardPreview(): string {
   ensureRunState()
   const state = runState as RunState
 
-  if (state.normalBattleVictories % BATTLE_CARD_REWARD_INTERVAL === 0) {
+  const winsUntilDraft =
+    BATTLE_CARD_REWARD_INTERVAL - (state.normalBattleVictories % BATTLE_CARD_REWARD_INTERVAL)
+
+  if (winsUntilDraft === BATTLE_CARD_REWARD_INTERVAL) {
     return 'Next normal battle grants a card draft'
   }
 
-  return '1 more normal battle until the next card draft'
+  return `${winsUntilDraft} more normal battle${winsUntilDraft > 1 ? 's' : ''} until the next card draft`
 }
 
 export function getRunState(): RunState {
