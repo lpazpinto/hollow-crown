@@ -1,5 +1,5 @@
 import Phaser from 'phaser'
-import { startNewRun } from '../battle/runState'
+import { getRunState, startNewRun } from '../battle/runState'
 import { clearSave, hasSave, loadSavedRun } from '../battle/runSave'
 
 export class MenuScene extends Phaser.Scene {
@@ -112,7 +112,7 @@ export class MenuScene extends Phaser.Scene {
       this.animatePress(newBtn)
       clearSave()
       startNewRun()
-      this.scene.start('MapScene')
+      this.scene.start('DomainSelectScene')
     })
 
     if (hasSave()) {
@@ -132,7 +132,9 @@ export class MenuScene extends Phaser.Scene {
         if (!loadSavedRun()) {
           startNewRun()
         }
-        this.scene.start('MapScene')
+
+        const run = getRunState()
+        this.scene.start(run.selectedRouteId ? 'MapScene' : 'DomainSelectScene')
       })
     }
 

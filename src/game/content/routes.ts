@@ -79,7 +79,7 @@ const LOCKED_ROUTE_LAYOUT: RouteGraphLayout = {
   ],
 }
 
-// Route Select flavor source of truth: name, short theme line, boss pairing, and reward hint.
+// Domain selection data is defined here: available domains, lock status, boss pairing, and route graphs.
 export const ROUTE_SELECT_ROUTES: RouteContent[] = [
   {
     id: 'ashen-march',

@@ -1,4 +1,5 @@
 import { PokiPlugin } from '@poki/phaser-3'
+import { DomainSelectScene } from './scenes/DomainSelectScene'
 import { LoadingScene } from './scenes/LoadingScene'
 import { LevelUpScene } from './scenes/LevelUpScene'
 import { MapScene } from './scenes/MapScene'
@@ -19,7 +20,7 @@ const config: Types.Core.GameConfig = {
     mode: Scale.FIT,
     autoCenter: Scale.CENTER_BOTH,
   },
-  scene: [LoadingScene, MenuScene, MapScene, PlayScene, LevelUpScene, RewardScene, RelicRewardScene, RunEndScene],
+  scene: [LoadingScene, MenuScene, DomainSelectScene, MapScene, PlayScene, LevelUpScene, RewardScene, RelicRewardScene, RunEndScene],
   plugins: {
     global: [
       {
