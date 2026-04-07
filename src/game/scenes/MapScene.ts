@@ -9,6 +9,7 @@ import {
   getXpForNextLevel,
   resolveRestEncounter,
   setCurrentRouteChoiceNode,
+  setSelectedRouteId,
   type EncounterType,
 } from '../battle/runState'
 import { saveRun } from '../battle/runSave'
