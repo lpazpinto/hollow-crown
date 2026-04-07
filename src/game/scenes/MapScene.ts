@@ -35,6 +35,50 @@ export class MapScene extends Phaser.Scene {
 
     this.cameras.main.setBackgroundColor('#0f172a')
 
+    const selectedRoute = getRouteById(run.selectedRouteId)
+
+    this.input.keyboard?.on('keydown-ESC', () => {
+      this.scene.start('MenuScene')
+    })
+
+    if (!selectedRoute) {
+      this.add.rectangle(width / 2, height / 2, width, height, 0x060a13, 0.35)
+      this.add.rectangle(width / 2, 58, compactLayout ? width * 0.9 : 900, compactLayout ? 84 : 94, 0x111a2d, 0.86)
+        .setStrokeStyle(2, 0x4c5f7c, 0.92)
+
+      this.add.text(width / 2, compactLayout ? 44 : 46, 'Choose A Domain', {
+        fontSize: compactLayout ? '34px' : '40px',
+        color: '#f8fafc',
+        fontStyle: 'bold',
+      }).setOrigin(0.5)
+
+      this.add.text(width / 2, compactLayout ? 72 : 76, 'Select the next hunt and face its ruling boss', {
+        fontSize: compactLayout ? '14px' : '16px',
+        color: '#cbd5e1',
+      }).setOrigin(0.5)
+
+      this.add.text(width / 2, compactLayout ? 104 : 112, 'Playable domains glow. Sealed domains are visible but inaccessible.', {
+        fontSize: compactLayout ? '13px' : '14px',
+        color: '#94a3b8',
+      }).setOrigin(0.5)
+
+      this.renderRouteSelect(compactLayout)
+
+      const runInfoText = `HP ${run.heroHp}/${run.maxHeroHp}  |  L${run.heroLevel} ${nextLevelXp === null ? `(XP ${run.heroXp})` : `(XP ${run.heroXp}/${nextLevelXp})`}  |  Deck ${run.currentDeck.length}  |  Relics ${run.currentRelics.length}  |  Blessings ${run.currentAbilities.length}`
+      this.add.rectangle(width / 2, height - 58, compactLayout ? width * 0.94 : 960, 52, 0x0b1220, 0.78)
+        .setStrokeStyle(1, 0x334155, 0.8)
+      this.add.text(width / 2, height - 62, runInfoText, {
+        fontSize: compactLayout ? '13px' : '14px',
+        color: '#93c5fd',
+      }).setOrigin(0.5)
+      this.add.text(width / 2, height - 40, getNormalBattleRewardPreview(), {
+        fontSize: compactLayout ? '12px' : '13px',
+        color: '#fde68a',
+      }).setOrigin(0.5)
+
+      return
+    }
+
     this.add.text(width / 2, 44, 'Route Select', {
       fontSize: '34px',
       color: '#ffffff',
@@ -72,17 +116,6 @@ export class MapScene extends Phaser.Scene {
       color: '#cbd5e1',
     }).setOrigin(0.5)
 
-    const selectedRoute = getRouteById(run.selectedRouteId)
-
-    this.input.keyboard?.on('keydown-ESC', () => {
-      this.scene.start('MenuScene')
-    })
-
-    if (!selectedRoute) {
-      this.renderRouteSelect(compactLayout)
-      return
-    }
-
     this.renderRouteProgress(compactLayout, selectedRoute)
   }
 
@@ -92,16 +125,16 @@ export class MapScene extends Phaser.Scene {
     const playableEncounterType = this.getPrimaryEncounterType(options)
     const routes = ROUTE_SELECT_ROUTES
 
-    const panelWidth = compactLayout ? 252 : 300
-    const panelHeight = compactLayout ? 188 : 204
-    const spacing = compactLayout ? panelWidth + 18 : panelWidth + 28
+    const panelWidth = compactLayout ? 268 : 324
+    const panelHeight = compactLayout ? 236 : 252
+    const spacing = compactLayout ? panelWidth + 16 : panelWidth + 24
     const startX = width / 2 - ((routes.length - 1) * spacing) / 2
 
     routes.forEach((route, index) => {
       const x = startX + index * spacing
       this.createRoutePanel(
         x,
-        height / 2 + 42,
+        height / 2 + 22,
         panelWidth,
         panelHeight,
         compactLayout,
@@ -185,52 +218,75 @@ export class MapScene extends Phaser.Scene {
     playableEncounterType: EncounterType,
   ) {
     const isPlayable = route.status === 'playable'
-    const fillColor = isPlayable ? 0x172033 : 0x0b1220
-    const strokeColor = isPlayable ? 0xf8fafc : 0x64748b
+    const fillColor = isPlayable ? 0x19243a : 0x0a111d
+    const strokeColor = isPlayable ? 0xdbeafe : 0x475569
 
     const panel = this.add.rectangle(x, y, panelWidth, panelHeight, fillColor)
       .setStrokeStyle(2, strokeColor)
 
+    this.add.rectangle(x, y - panelHeight / 2 + 28, panelWidth - 12, 40, isPlayable ? 0x223457 : 0x162235, 0.92)
+      .setStrokeStyle(1, isPlayable ? 0x9fb6da : 0x64748b, 0.9)
+
+    this.add.rectangle(x, y + panelHeight / 2 - 20, panelWidth - 14, 30, 0x0f172a, 0.66)
+      .setStrokeStyle(1, isPlayable ? 0x7c93b5 : 0x475569, 0.82)
+
     if (isPlayable) {
       panel.setInteractive({ useHandCursor: true })
+      panel.on('pointerover', () => {
+        panel.setStrokeStyle(2, 0xfef3c7)
+      })
+
+      panel.on('pointerout', () => {
+        panel.setStrokeStyle(2, strokeColor)
+      })
     }
 
-    this.add.text(x, y - 68, route.name, {
-      fontSize: compactLayout ? '25px' : '28px',
-      color: isPlayable ? '#f8fafc' : '#94a3b8',
+    this.add.text(x, y - panelHeight / 2 + 28, isPlayable ? 'Open Domain' : 'Sealed Domain', {
+      fontSize: compactLayout ? '13px' : '14px',
+      color: isPlayable ? '#fef3c7' : '#94a3b8',
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    this.add.text(x, y - 28, route.theme, {
+    this.add.text(x, y - 46, route.name, {
+      fontSize: compactLayout ? '26px' : '30px',
+      color: isPlayable ? '#f8fafc' : '#94a3b8',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: panelWidth - 28 },
+    }).setOrigin(0.5)
+
+    this.add.text(x, y - 4, route.theme, {
       fontSize: compactLayout ? '14px' : '15px',
       color: isPlayable ? '#cbd5e1' : '#64748b',
       align: 'center',
-      wordWrap: { width: panelWidth - 24 },
+      wordWrap: { width: panelWidth - 34 },
     }).setOrigin(0.5)
 
     const panelHint = isPlayable
       ? `${route.rewardHint} ${this.getRouteHint(playableEncounterType)}`
       : route.rewardHint
 
-    this.add.text(x, y + 16, panelHint, {
+    this.add.text(x, y + 52, panelHint, {
       fontSize: compactLayout ? '13px' : '14px',
-      color: isPlayable ? '#cbd5e1' : '#64748b',
+      color: isPlayable ? '#bfdbfe' : '#64748b',
       align: 'center',
-      wordWrap: { width: panelWidth - 24 },
+      wordWrap: { width: panelWidth - 34 },
     }).setOrigin(0.5)
 
-    this.add.text(x, y + 46, `Boss: ${route.bossId}`, {
+    this.add.text(x, y + 88, `Boss: ${this.formatBossName(route.bossId)}`, {
       fontSize: compactLayout ? '12px' : '13px',
       color: isPlayable ? '#a5f3fc' : '#64748b',
     }).setOrigin(0.5)
 
-    this.add.text(x, y + 72, isPlayable ? 'Playable' : 'Locked', {
+    this.add.text(x, y + panelHeight / 2 - 20, isPlayable ? 'Playable - Enter Domain' : 'Locked - Not Yet Unsealed', {
       fontSize: compactLayout ? '15px' : '16px',
       color: isPlayable ? '#86efac' : '#94a3b8',
       fontStyle: isPlayable ? 'bold' : 'normal',
     }).setOrigin(0.5)
 
     if (!isPlayable) {
+      this.add.line(x, y, -panelWidth / 2 + 22, -panelHeight / 2 + 58, panelWidth / 2 - 22, panelHeight / 2 - 36, 0x334155, 0.45)
+      this.add.line(x, y, panelWidth / 2 - 22, -panelHeight / 2 + 58, -panelWidth / 2 + 22, panelHeight / 2 - 36, 0x334155, 0.45)
       return
     }
 
@@ -304,18 +360,26 @@ export class MapScene extends Phaser.Scene {
 
   private getRouteHint(encounterType: EncounterType): string {
     if (encounterType === 'boss') {
-      return 'Boss hunt. Relic reward on victory.'
+      return 'Final trial awaits this hunt.'
     }
 
     if (encounterType === 'elite') {
-      return 'Elite contract. High risk, relic chance.'
+      return 'Elite vanguard patrols this domain.'
     }
 
     if (encounterType === 'rest') {
-      return 'Sanctuary stop. Recover then advance.'
+      return 'A sanctuary stop may appear on this path.'
     }
 
-    return 'Main hunt. Battle for growth and drafts.'
+    return 'Begin with skirmishes and gather strength.'
+  }
+
+  private formatBossName(bossId: string): string {
+    return bossId
+      .split('-')
+      .filter((part) => part.length > 0)
+      .map((part) => part[0].toUpperCase() + part.slice(1))
+      .join(' ')
   }
 
   private handleEncounterSelection(routeId: string, encounterType: EncounterType) {
