@@ -72,6 +72,14 @@ export class PlayScene extends Phaser.Scene {
   private centerActionX = 0
   private centerActionY = 0
   private pendingDrawAnimation = false
+  private isPileInspectOpen = false
+  private pileInspectObjects: Phaser.GameObjects.GameObject[] = []
+  private pileInspectCards: CardContent[] = []
+  private pileInspectTitle = ''
+  private pileInspectPage = 0
+  private pileInspectPageSize = 12
+  private pileInspectListText?: Phaser.GameObjects.Text
+  private pileInspectPageText?: Phaser.GameObjects.Text
 
   constructor() {
     super('PlayScene')
@@ -299,6 +307,11 @@ export class PlayScene extends Phaser.Scene {
     }).setOrigin(0, 0).setDepth(7)
 
     this.input.keyboard?.on('keydown-ESC', () => {
+      if (this.isPileInspectOpen) {
+        this.closePileInspection()
+        return
+      }
+
       this.scene.start('MenuScene')
     })
 
@@ -387,6 +400,31 @@ export class PlayScene extends Phaser.Scene {
       color: '#b0c8e3',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(3)
+
+    const inspectHitW = pileW + (C ? 24 : 28)
+    const inspectHitH = pileH + (C ? 32 : 36)
+    const deckInspectHit = this.add.rectangle(deckPileX, pilesY, inspectHitW, inspectHitH, 0x000000, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(4)
+    const discardInspectHit = this.add.rectangle(discardPileX, pilesY, inspectHitW, inspectHitH, 0x000000, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(4)
+
+    deckInspectHit.on('pointerdown', () => {
+      if (this.transitioningScene || this.actionInProgress || this.isPileInspectOpen) {
+        return
+      }
+
+      this.openPileInspection('deck')
+    })
+
+    discardInspectHit.on('pointerdown', () => {
+      if (this.transitioningScene || this.actionInProgress || this.isPileInspectOpen) {
+        return
+      }
+
+      this.openPileInspection('discard')
+    })
 
     // End-turn button: framed, prominent, and consistent with HUD palette.
     const endTurnButton = this.add.rectangle(
@@ -624,7 +662,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private playCardFromIndex(cardIndex: number) {
-    if (this.session.outcome !== 'ongoing' || this.actionInProgress) {
+    if (this.session.outcome !== 'ongoing' || this.actionInProgress || this.isPileInspectOpen) {
       return
     }
 
@@ -710,7 +748,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private resolveEndTurn() {
-    if (this.session.outcome !== 'ongoing' || this.actionInProgress) {
+    if (this.session.outcome !== 'ongoing' || this.actionInProgress || this.isPileInspectOpen) {
       return
     }
 
@@ -1738,6 +1776,172 @@ export class PlayScene extends Phaser.Scene {
       duration: 120,
       ease: 'Quad.Out',
     })
+  }
+
+  private openPileInspection(type: 'deck' | 'discard') {
+    this.closePileInspection()
+
+    const cards = type === 'deck'
+      ? [...this.session.drawPile]
+      : [...this.session.discardPile].reverse()
+    this.pileInspectCards = cards
+    this.pileInspectTitle = type === 'deck' ? 'Draw Pile' : 'Discard Pile'
+    this.pileInspectPage = 0
+    this.isPileInspectOpen = true
+
+    const { width, height } = this.scale
+    const C = this.compactLayout
+    const panelW = C ? Math.min(560, width - 44) : Math.min(650, width - 120)
+    const panelH = C ? Math.min(420, height - 84) : Math.min(500, height - 120)
+    const panelX = width / 2
+    const panelY = height / 2
+    const depth = 60
+
+    const scrim = this.add.rectangle(panelX, panelY, width, height, 0x020617, 0.72)
+      .setDepth(depth)
+      .setInteractive()
+    scrim.on('pointerdown', () => {
+      this.closePileInspection()
+    })
+
+    const panel = this.add.rectangle(panelX, panelY, panelW, panelH, 0x0f172a, 0.98)
+      .setStrokeStyle(2, 0x64748b, 0.9)
+      .setDepth(depth + 1)
+
+    const title = this.add.text(panelX - panelW / 2 + 20, panelY - panelH / 2 + 14, this.pileInspectTitle, {
+      fontSize: C ? '20px' : '22px',
+      color: '#e2e8f0',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0).setDepth(depth + 2)
+
+    const subtitle = this.add.text(panelX - panelW / 2 + 20, panelY - panelH / 2 + 44, `${cards.length} cards`, {
+      fontSize: C ? '12px' : '13px',
+      color: '#94a3b8',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0).setDepth(depth + 2)
+
+    const closeButton = this.add.text(panelX + panelW / 2 - 18, panelY - panelH / 2 + 12, 'X', {
+      fontSize: C ? '18px' : '20px',
+      color: '#e2e8f0',
+      fontStyle: 'bold',
+      backgroundColor: '#1e293b',
+      padding: { x: 8, y: 2 },
+    }).setOrigin(1, 0).setDepth(depth + 3).setInteractive({ useHandCursor: true })
+    closeButton.on('pointerdown', () => {
+      this.closePileInspection()
+    })
+
+    const listPanelY = panelY + 8
+    const listPanelH = panelH - 120
+    const listPanel = this.add.rectangle(panelX, listPanelY, panelW - 28, listPanelH, 0x111b30, 0.95)
+      .setStrokeStyle(1, 0x334155, 0.85)
+      .setDepth(depth + 1)
+
+    this.pileInspectListText = this.add.text(panelX - panelW / 2 + 26, listPanelY - listPanelH / 2 + 12, '', {
+      fontSize: C ? '12px' : '13px',
+      color: '#dbeafe',
+      lineSpacing: 4,
+      wordWrap: { width: panelW - 60 },
+    }).setOrigin(0, 0).setDepth(depth + 2)
+
+    const prevButton = this.add.text(panelX - 60, panelY + panelH / 2 - 42, 'Prev', {
+      fontSize: C ? '12px' : '13px',
+      color: '#dbeafe',
+      backgroundColor: '#1e293b',
+      padding: { x: 8, y: 3 },
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(depth + 3).setInteractive({ useHandCursor: true })
+
+    const nextButton = this.add.text(panelX + 60, panelY + panelH / 2 - 42, 'Next', {
+      fontSize: C ? '12px' : '13px',
+      color: '#dbeafe',
+      backgroundColor: '#1e293b',
+      padding: { x: 8, y: 3 },
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(depth + 3).setInteractive({ useHandCursor: true })
+
+    this.pileInspectPageText = this.add.text(panelX, panelY + panelH / 2 - 42, '', {
+      fontSize: C ? '12px' : '13px',
+      color: '#94a3b8',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(depth + 2)
+
+    prevButton.on('pointerdown', () => {
+      if (this.pileInspectPage <= 0) {
+        return
+      }
+      this.pileInspectPage -= 1
+      this.refreshPileInspectionPage()
+    })
+
+    nextButton.on('pointerdown', () => {
+      const maxPage = Math.max(0, Math.ceil(this.pileInspectCards.length / this.pileInspectPageSize) - 1)
+      if (this.pileInspectPage >= maxPage) {
+        return
+      }
+      this.pileInspectPage += 1
+      this.refreshPileInspectionPage()
+    })
+
+    this.pileInspectObjects.push(
+      scrim,
+      panel,
+      title,
+      subtitle,
+      closeButton,
+      listPanel,
+      this.pileInspectListText,
+      prevButton,
+      nextButton,
+      this.pileInspectPageText,
+    )
+
+    this.refreshPileInspectionPage()
+  }
+
+  private refreshPileInspectionPage() {
+    if (!this.pileInspectListText || !this.pileInspectPageText) {
+      return
+    }
+
+    const totalCards = this.pileInspectCards.length
+    if (totalCards === 0) {
+      this.pileInspectListText.setText('No cards in this pile.')
+      this.pileInspectPageText.setText('Page 1/1')
+      return
+    }
+
+    const maxPage = Math.max(0, Math.ceil(totalCards / this.pileInspectPageSize) - 1)
+    this.pileInspectPage = Phaser.Math.Clamp(this.pileInspectPage, 0, maxPage)
+    const start = this.pileInspectPage * this.pileInspectPageSize
+    const end = Math.min(totalCards, start + this.pileInspectPageSize)
+
+    const lines = this.pileInspectCards.slice(start, end).map((card, index) => {
+      const absoluteIndex = start + index + 1
+      const rarity = card.rarity.charAt(0).toUpperCase()
+      return `${absoluteIndex}. ${card.title}  [${card.cost}]  ${rarity}`
+    })
+
+    this.pileInspectListText.setText(lines.join('\n'))
+    this.pileInspectPageText.setText(`Page ${this.pileInspectPage + 1}/${maxPage + 1}`)
+  }
+
+  private closePileInspection() {
+    this.isPileInspectOpen = false
+    this.pileInspectCards = []
+    this.pileInspectTitle = ''
+    this.pileInspectPage = 0
+    this.pileInspectListText = undefined
+    this.pileInspectPageText = undefined
+
+    if (this.pileInspectObjects.length === 0) {
+      return
+    }
+
+    this.pileInspectObjects.forEach((obj) => {
+      obj.destroy()
+    })
+    this.pileInspectObjects = []
   }
 
   private getPostVictoryRoute(): {
