@@ -110,7 +110,9 @@ const LOCKED_ROUTE_LAYOUT: RouteGraphLayout = {
   ],
 }
 
-// Domain selection data is defined here: available domains, lock status, boss pairing, and route graphs.
+// Playable vs locked domain availability is defined here.
+// Current direction: one playable domain for now; additional domains remain visible but locked.
+// Route variation should happen inside the selected domain path graph, not by opening more domains.
 export const ROUTE_SELECT_ROUTES: RouteContent[] = [
   {
     id: 'ashen-march',
@@ -126,7 +128,7 @@ export const ROUTE_SELECT_ROUTES: RouteContent[] = [
     id: 'veil-of-thorns',
     name: 'Veil of Thorns',
     theme: 'Briar sanctum watched by thornbound zealots.',
-    status: 'playable',
+    status: 'locked',
     bossId: 'thorn-queen',
     rewardHint: 'Pierce the briar veil for relentless growth rewards.',
     signatureCardId: null,
@@ -174,12 +176,31 @@ export function getRoutePathById(routeId: string | null | undefined, layoutId?: 
 
 export function getDefaultRouteLayoutId(routeId: string | null | undefined): string | null {
   const route = getRouteById(routeId)
-  return route?.graphLayouts[0]?.id ?? null
+  if (!route) {
+    return null
+  }
+
+  if (route.status === 'playable') {
+    return `${route.id}-proc-default`
+  }
+
+  return route.graphLayouts[0]?.id ?? null
 }
 
 export function pickRandomRouteLayoutId(routeId: string | null | undefined): string | null {
   const route = getRouteById(routeId)
-  if (!route || route.graphLayouts.length === 0) {
+  if (!route) {
+    return null
+  }
+
+  // Domain path graph data is generated from lightweight procedural rules.
+  // The generated layout id encodes a deterministic seed token so save/load can rebuild the same graph.
+  if (route.status === 'playable') {
+    const variantToken = Math.floor(Math.random() * 0x7fffffff).toString(36)
+    return `${route.id}-proc-${variantToken}`
+  }
+
+  if (route.graphLayouts.length === 0) {
     return null
   }
 
@@ -189,15 +210,28 @@ export function pickRandomRouteLayoutId(routeId: string | null | undefined): str
 
 export function getRouteLayoutById(routeId: string | null | undefined, layoutId?: string | null): RouteGraphLayout | null {
   const route = getRouteById(routeId)
-  if (!route || route.graphLayouts.length === 0) {
+  if (!route) {
     return null
   }
 
-  if (!layoutId) {
+  const resolvedLayoutId = layoutId ?? getDefaultRouteLayoutId(route.id)
+  const generatedLayout = resolvedLayoutId
+    ? generateProceduralRouteLayoutById(route, resolvedLayoutId)
+    : null
+
+  if (generatedLayout) {
+    return generatedLayout
+  }
+
+  if (route.graphLayouts.length === 0) {
+    return null
+  }
+
+  if (!resolvedLayoutId) {
     return route.graphLayouts[0]
   }
 
-  return route.graphLayouts.find((layout) => layout.id === layoutId) ?? route.graphLayouts[0]
+  return route.graphLayouts.find((layout) => layout.id === resolvedLayoutId) ?? route.graphLayouts[0]
 }
 
 export function getRouteChoiceNodes(
@@ -306,4 +340,124 @@ function analyzeRouteLayout(layout: RouteGraphLayout): {
   })
 
   return { depthById, nodesByDepth }
+}
+
+function generateProceduralRouteLayoutById(route: RouteContent, layoutId: string): RouteGraphLayout | null {
+  const prefix = `${route.id}-proc-`
+  if (!layoutId.startsWith(prefix)) {
+    return null
+  }
+
+  const token = layoutId.slice(prefix.length)
+  const key = getProceduralKeyFromToken(token)
+
+  // Keep procedural generation focused to the currently playable domain.
+  if (route.id === 'ashen-march') {
+    return createAshenProceduralLayout(layoutId, key)
+  }
+
+  return null
+}
+
+function getProceduralKeyFromToken(token: string): number {
+  let hash = 2166136261
+
+  for (let i = 0; i < token.length; i += 1) {
+    hash ^= token.charCodeAt(i)
+    hash = Math.imul(hash, 16777619)
+  }
+
+  return Math.abs(hash >>> 0)
+}
+
+function createAshenProceduralLayout(layoutId: string, key: number): RouteGraphLayout {
+  const hasThreeWaySplit = key % 3 === 0
+  const hasMidReSplit = ((key >> 1) & 1) === 1
+  const laneRestBias = ((key >> 2) & 1) === 1
+  const introRestLane = ((key >> 3) & 1) === 1
+  const eliteLabelVariant = key % 2 === 0 ? 'Mire Warden' : 'Knight of Cinders'
+  const prepLabelVariant = key % 2 === 0 ? 'Kindling Sanctuary' : 'Mire Encampment'
+
+  const splitLaneIds = hasThreeWaySplit ? ['lane-north', 'lane-mid', 'lane-south'] : ['lane-north', 'lane-south']
+
+  const nodes: RouteGraphNode[] = [
+    {
+      id: 'start',
+      label: 'Scorched Crossing',
+      encounterType: 'battle',
+      nextNodeIds: splitLaneIds,
+    },
+    ...splitLaneIds.map((laneId, index) => ({
+      id: laneId,
+      label: index === 0
+        ? 'Char Patrol'
+        : index === 1 && hasThreeWaySplit
+          ? 'Sunken Path'
+          : 'Mire Refuge',
+      encounterType: index === 0
+        ? 'battle'
+        : (index === 1 && hasThreeWaySplit)
+          ? (introRestLane ? 'rest' : 'battle')
+          : (introRestLane ? 'rest' : 'battle'),
+      nextNodeIds: laneId === 'lane-north' || laneId === 'lane-mid'
+        ? ['merge-west']
+        : ['merge-east'],
+    })),
+    {
+      id: 'merge-west',
+      label: 'Bog Ambush',
+      encounterType: laneRestBias ? 'battle' : 'rest',
+      nextNodeIds: hasMidReSplit ? ['resplit-west', 'resplit-east'] : ['elite-gate'],
+    },
+    {
+      id: 'merge-east',
+      label: 'Ashen Crossing',
+      encounterType: laneRestBias ? 'rest' : 'battle',
+      nextNodeIds: hasMidReSplit ? ['resplit-west', 'resplit-east'] : ['elite-gate'],
+    },
+  ]
+
+  if (hasMidReSplit) {
+    nodes.push(
+      {
+        id: 'resplit-west',
+        label: 'Tarbound Hunt',
+        encounterType: 'battle',
+        nextNodeIds: ['elite-gate'],
+      },
+      {
+        id: 'resplit-east',
+        label: 'Ash Shrine',
+        encounterType: 'rest',
+        nextNodeIds: ['elite-gate'],
+      },
+    )
+  }
+
+  nodes.push(
+    {
+      id: 'elite-gate',
+      label: eliteLabelVariant,
+      encounterType: 'elite',
+      nextNodeIds: ['prep'],
+    },
+    {
+      id: 'prep',
+      label: prepLabelVariant,
+      encounterType: 'rest',
+      nextNodeIds: ['boss'],
+    },
+    {
+      id: 'boss',
+      label: 'Mire-Crowned Slime',
+      encounterType: 'boss',
+      nextNodeIds: [],
+    },
+  )
+
+  return {
+    id: layoutId,
+    startNodeId: 'start',
+    nodes,
+  }
 }

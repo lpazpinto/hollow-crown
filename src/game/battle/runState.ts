@@ -19,12 +19,18 @@ export type EncounterType = 'battle' | 'rest' | 'elite' | 'boss'
 export type RunState = {
   currentFloor: number
   maxFloors: number
+  // Route progression state is stored here for save/load continuity.
+  // - currentRouteChoiceNodeIds: currently reachable next nodes the player can pick from
+  // - currentRouteNodeId: node selected for the encounter currently being resolved
+  // - pendingRouteChoiceNodeIds: node ids that become reachable after current encounter resolves
+  // - completedRouteNodeIds: nodes already completed this run, used for graph progression visuals
   selectedRouteId: string | null
   selectedRouteLayoutId: string | null
   currentRouteStep: number
   currentRouteChoiceNodeIds: string[]
   currentRouteNodeId: string | null
   pendingRouteChoiceNodeIds: string[]
+  completedRouteNodeIds: string[]
   shardCount: number
   isForgeAvailable: boolean
   currentBoonId: string | null
@@ -82,6 +88,7 @@ export function startNewRun() {
     currentRouteChoiceNodeIds: [],
     currentRouteNodeId: null,
     pendingRouteChoiceNodeIds: [],
+    completedRouteNodeIds: [],
     shardCount: 0,
     isForgeAvailable: false,
     currentBoonId: null,
@@ -224,6 +231,7 @@ export function setSelectedRouteId(routeId: string | null) {
     state.currentRouteChoiceNodeIds = []
     state.currentRouteNodeId = null
     state.pendingRouteChoiceNodeIds = []
+    state.completedRouteNodeIds = []
     return
   }
 
@@ -235,6 +243,7 @@ export function setSelectedRouteId(routeId: string | null) {
   state.currentRouteChoiceNodeIds = firstChoices
   state.currentRouteNodeId = null
   state.pendingRouteChoiceNodeIds = []
+  state.completedRouteNodeIds = []
   state.currentEncounterType = null
   state.isRunComplete = false
   state.currentRouteStep = 0
@@ -420,6 +429,10 @@ export function advanceFloorAfterEncounter() {
   const routePath = getRoutePathById(state.selectedRouteId, state.selectedRouteLayoutId)
 
   if (state.selectedRouteId) {
+    if (state.currentRouteNodeId && !state.completedRouteNodeIds.includes(state.currentRouteNodeId)) {
+      state.completedRouteNodeIds = [...state.completedRouteNodeIds, state.currentRouteNodeId]
+    }
+
     state.currentRouteStep += 1
     state.currentFloor = Math.min(routePath.length, state.currentRouteStep + 1)
 
@@ -563,6 +576,7 @@ function cloneRunState(state: RunState): RunState {
     ...state,
     currentRouteChoiceNodeIds: [...state.currentRouteChoiceNodeIds],
     pendingRouteChoiceNodeIds: [...state.pendingRouteChoiceNodeIds],
+    completedRouteNodeIds: [...state.completedRouteNodeIds],
     currentDeck: cloneDeck(state.currentDeck),
     currentRelics: cloneRelics(state.currentRelics),
     currentAbilities: cloneAbilities(state.currentAbilities),
@@ -612,6 +626,7 @@ function normalizeRunState(saved: RunState): RunState {
     currentRouteChoiceNodeIds: saved.currentRouteChoiceNodeIds ?? fallbackChoices,
     currentRouteNodeId: saved.currentRouteNodeId ?? null,
     pendingRouteChoiceNodeIds: saved.pendingRouteChoiceNodeIds ?? [],
+    completedRouteNodeIds: saved.completedRouteNodeIds ?? [],
     shardCount: saved.shardCount ?? 0,
     isForgeAvailable: saved.isForgeAvailable ?? false,
     currentBoonId: saved.currentBoonId ?? null,

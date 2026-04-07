@@ -85,6 +85,7 @@ function isRunState(value: unknown): value is RunState {
     (value.currentRouteChoiceNodeIds === undefined || isStringArray(value.currentRouteChoiceNodeIds)) &&
     (value.currentRouteNodeId === undefined || value.currentRouteNodeId === null || typeof value.currentRouteNodeId === 'string') &&
     (value.pendingRouteChoiceNodeIds === undefined || isStringArray(value.pendingRouteChoiceNodeIds)) &&
+    (value.completedRouteNodeIds === undefined || isStringArray(value.completedRouteNodeIds)) &&
     (value.shardCount === undefined || isNumber(value.shardCount)) &&
     (value.isForgeAvailable === undefined || typeof value.isForgeAvailable === 'boolean') &&
     (value.currentBoonId === undefined || value.currentBoonId === null || typeof value.currentBoonId === 'string') &&

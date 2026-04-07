@@ -15,9 +15,10 @@ import {
 import { saveRun } from '../battle/runSave'
 import {
   getRouteById,
+  getRouteLayoutById,
   getRouteNodeLabel,
-  getRoutePathById,
-  type RouteNodeType,
+  type RouteGraphLayout,
+  type RouteGraphNode,
   type RouteContent,
 } from '../content/routes'
 
@@ -102,6 +103,7 @@ export class MapScene extends Phaser.Scene {
     const { width, height } = this.scale
     const run = getRunState()
     const choices = getAvailableRouteChoices()
+    const routeLayout = getRouteLayoutById(selectedRoute.id, run.selectedRouteLayoutId)
 
     // Route identity section: route, flavor line, boss.
     this.add.text(width / 2, compactLayout ? 128 : 136, selectedRoute.name, {
@@ -123,12 +125,15 @@ export class MapScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     // Path progress section: compact route step visualization.
-    this.renderPathProgress(
-      compactLayout,
-      getRoutePathById(selectedRoute.id, run.selectedRouteLayoutId),
-      run.currentRouteStep,
-      compactLayout ? 280 : 300,
-    )
+    if (routeLayout) {
+      this.renderRouteGraph(
+        compactLayout,
+        routeLayout,
+        run.currentRouteChoiceNodeIds,
+        run.completedRouteNodeIds,
+        compactLayout ? 286 : 306,
+      )
+    }
 
     // Next choice section: branching node choices for the current route position.
     const buttonWidth = compactLayout ? 240 : 256
@@ -207,29 +212,167 @@ export class MapScene extends Phaser.Scene {
       .join(' ')
   }
 
-  private renderPathProgress(compactLayout: boolean, routePath: RouteNodeType[], routeStep: number, y: number) {
+  private renderRouteGraph(
+    compactLayout: boolean,
+    layout: RouteGraphLayout,
+    reachableNodeIds: string[],
+    completedNodeIds: string[],
+    centerY: number,
+  ) {
     const { width } = this.scale
-    const labels = routePath.map((node) => getRouteNodeLabel(node))
-    const stepIndex = Math.max(0, Math.min(labels.length - 1, routeStep))
-    const stepSpacing = compactLayout ? 154 : 176
-    const startX = width / 2 - ((labels.length - 1) * stepSpacing) / 2
+    const depthById = this.getDepthByNodeId(layout)
+    const nodesByDepth = this.getNodesByDepth(layout, depthById)
+    const depths = Object.keys(nodesByDepth)
+      .map((value) => Number(value))
+      .sort((a, b) => a - b)
 
-    labels.forEach((label, index) => {
-      const x = startX + index * stepSpacing
-      const isCompleted = index < stepIndex
-      const isCurrent = index === stepIndex
-      const nodeColor = isCompleted ? 0x16a34a : isCurrent ? 0xf59e0b : 0x334155
+    if (depths.length === 0) {
+      return
+    }
 
-      this.add.circle(x, y, compactLayout ? 16 : 18, nodeColor)
-      this.add.text(x, y + 34, label, {
-        fontSize: compactLayout ? '13px' : '14px',
-        color: isCurrent ? '#fef3c7' : '#cbd5e1',
-      }).setOrigin(0.5)
+    const columnGap = compactLayout ? 104 : 122
+    const startX = width / 2 - ((depths.length - 1) * columnGap) / 2
+    const laneGap = compactLayout ? 58 : 66
+    const nodeRadius = compactLayout ? 13 : 15
 
-      if (index < labels.length - 1) {
-        this.add.rectangle(x + stepSpacing / 2, y, stepSpacing - 36, 4, 0x475569)
-      }
+    const positionByNodeId: Record<string, { x: number; y: number }> = {}
+
+    depths.forEach((depth) => {
+      const columnNodes = [...nodesByDepth[depth]].sort((a, b) => a.id.localeCompare(b.id))
+      const columnX = startX + depth * columnGap
+      const startY = centerY - ((columnNodes.length - 1) * laneGap) / 2
+
+      columnNodes.forEach((node, index) => {
+        positionByNodeId[node.id] = {
+          x: columnX,
+          y: startY + index * laneGap,
+        }
+      })
     })
+
+    // Graph connections are rendered first so split/merge structure stays visible behind node circles.
+    layout.nodes.forEach((node) => {
+      const from = positionByNodeId[node.id]
+      if (!from) {
+        return
+      }
+
+      node.nextNodeIds.forEach((nextNodeId) => {
+        const to = positionByNodeId[nextNodeId]
+        if (!to) {
+          return
+        }
+
+        this.add.line(
+          0,
+          0,
+          from.x + nodeRadius,
+          from.y,
+          to.x - nodeRadius,
+          to.y,
+          0x64748b,
+          0.62,
+        )
+          .setOrigin(0, 0)
+          .setLineWidth(compactLayout ? 2 : 3)
+      })
+    })
+
+    const completedNodeSet = new Set(completedNodeIds)
+    const reachableNodeSet = new Set(reachableNodeIds)
+
+    // Current reachable next nodes are determined by runState.currentRouteChoiceNodeIds,
+    // which represent node ids connected from the previously completed node.
+    layout.nodes.forEach((node) => {
+      const position = positionByNodeId[node.id]
+      if (!position) {
+        return
+      }
+
+      const isCompleted = completedNodeSet.has(node.id)
+      const isReachable = reachableNodeSet.has(node.id)
+      const isBoss = node.encounterType === 'boss'
+
+      const fillColor = isCompleted
+        ? 0x16a34a
+        : isReachable
+          ? 0xf59e0b
+          : isBoss
+            ? 0x7f1d1d
+            : 0x334155
+      const strokeColor = isReachable ? 0xfef3c7 : 0x94a3b8
+
+      this.add.circle(position.x, position.y, nodeRadius, fillColor)
+        .setStrokeStyle(2, strokeColor)
+
+      this.add.text(position.x, position.y + nodeRadius + 16, this.getEncounterTypeTag(node.encounterType), {
+        fontSize: compactLayout ? '10px' : '11px',
+        color: isReachable ? '#fef3c7' : '#cbd5e1',
+        fontStyle: isReachable ? 'bold' : 'normal',
+      }).setOrigin(0.5)
+    })
+
+    this.add.text(width / 2, centerY + (compactLayout ? 108 : 116), 'Choose one highlighted node to advance this run.', {
+      fontSize: compactLayout ? '12px' : '13px',
+      color: '#94a3b8',
+    }).setOrigin(0.5)
+  }
+
+  private getDepthByNodeId(layout: RouteGraphLayout): Record<string, number> {
+    const depthById: Record<string, number> = {}
+    const queue: string[] = [layout.startNodeId]
+    depthById[layout.startNodeId] = 0
+
+    while (queue.length > 0) {
+      const nodeId = queue.shift() as string
+      const node = layout.nodes.find((entry) => entry.id === nodeId)
+      if (!node) {
+        continue
+      }
+
+      const nodeDepth = depthById[nodeId]
+      node.nextNodeIds.forEach((nextNodeId) => {
+        const nextDepth = nodeDepth + 1
+        const previousDepth = depthById[nextNodeId]
+
+        if (previousDepth === undefined || nextDepth < previousDepth) {
+          depthById[nextNodeId] = nextDepth
+          queue.push(nextNodeId)
+        }
+      })
+    }
+
+    return depthById
+  }
+
+  private getNodesByDepth(
+    layout: RouteGraphLayout,
+    depthById: Record<string, number>,
+  ): Record<number, RouteGraphNode[]> {
+    const nodesByDepth: Record<number, RouteGraphNode[]> = {}
+
+    layout.nodes.forEach((node) => {
+      const depth = depthById[node.id] ?? 0
+      nodesByDepth[depth] = [...(nodesByDepth[depth] ?? []), node]
+    })
+
+    return nodesByDepth
+  }
+
+  private getEncounterTypeTag(encounterType: RouteGraphNode['encounterType']): string {
+    if (encounterType === 'battle') {
+      return getRouteNodeLabel('battle')
+    }
+
+    if (encounterType === 'rest') {
+      return getRouteNodeLabel('utility_or_special')
+    }
+
+    if (encounterType === 'elite') {
+      return getRouteNodeLabel('elite')
+    }
+
+    return getRouteNodeLabel('boss')
   }
 
   private handleEncounterSelection(routeId: string, nodeId: string, encounterType: EncounterType) {
