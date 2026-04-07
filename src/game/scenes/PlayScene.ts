@@ -106,16 +106,16 @@ export class PlayScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#111827')
 
     const C = this.compactLayout
-    const hudH = C ? 82 : 94
+    const hudH = C ? 94 : 106
     const heroX = C ? Math.floor(width * 0.28) : Math.floor(width * 0.26)
     const enemyX = width - heroX
-    const spriteY = C ? Math.floor(height * 0.46) : Math.floor(height * 0.45)
+    const spriteY = C ? Math.floor(height * 0.49) : Math.floor(height * 0.48)
 
     // Top HUD band background.
     this.add.rectangle(width / 2, hudH / 2, width, hudH, 0x060a13, 0.84).setDepth(0)
     this.add.rectangle(width / 2, hudH - 2, width, 2, 0x2d4666).setDepth(1)
 
-    const panelY = C ? 40 : 44
+    const panelY = Math.floor(hudH / 2)
     const sidePanelW = C ? 258 : 304
     const sidePanelH = C ? 56 : 62
     const centerPanelW = C ? 270 : 318
@@ -159,17 +159,20 @@ export class PlayScene extends Phaser.Scene {
     ).setDepth(2)
 
     // Battlefield band to anchor both combatants and avoid a floating look.
-    const battleBandY = C ? Math.floor(height * 0.48) : Math.floor(height * 0.47)
-    this.add.rectangle(width / 2, battleBandY, width * 0.9, C ? 170 : 184, 0x0f172a, 0.26)
+    const battleBandY = C ? Math.floor(height * 0.5) : Math.floor(height * 0.49)
+    const battleBandH = C ? 182 : 198
+    this.add.rectangle(width / 2, battleBandY, width * 0.9, battleBandH, 0x0f172a, 0.26)
       .setStrokeStyle(1, 0x334155, 0.35)
       .setDepth(0)
+    this.add.rectangle(width / 2, battleBandY - battleBandH / 2, width * 0.9, 2, 0x334155, 0.38).setDepth(1)
+    this.add.rectangle(width / 2, battleBandY + battleBandH / 2, width * 0.9, 2, 0x334155, 0.38).setDepth(1)
     const battleLineY = spriteY + (C ? 64 : 72)
     this.add.rectangle(width / 2, battleLineY, width * 0.78, 2, 0x334155, 0.7).setDepth(1)
     this.add.ellipse(heroX, battleLineY + 10, C ? 120 : 132, C ? 24 : 28, 0x000000, 0.24).setDepth(1)
     this.add.ellipse(enemyX, battleLineY + 10, C ? 126 : 142, C ? 24 : 28, 0x000000, 0.24).setDepth(1)
 
     // Battlefield overlays: result text + turn banner.
-    this.resultText = this.add.text(width / 2, spriteY - (C ? 76 : 92), '', {
+    this.resultText = this.add.text(width / 2, battleBandY - (C ? 94 : 110), '', {
       fontSize: C ? '20px' : '22px',
       color: '#ffffff',
       fontStyle: 'bold',
@@ -179,7 +182,7 @@ export class PlayScene extends Phaser.Scene {
       wordWrap: { width: Math.floor(width * 0.52) },
     }).setOrigin(0.5, 0.5).setDepth(11)
 
-    this.turnBannerText = this.add.text(width / 2, spriteY - (C ? 46 : 56), '', {
+    this.turnBannerText = this.add.text(width / 2, battleBandY - (C ? 62 : 72), '', {
       fontSize: C ? '28px' : '32px',
       color: '#fde68a',
       fontStyle: 'bold',
@@ -266,7 +269,7 @@ export class PlayScene extends Phaser.Scene {
 
     // Hero stats HUD: icon-based HP/Armor attached near the hero.
     const heroHudX = heroX - (C ? 54 : 66)
-    const heroHudY = spriteY - (C ? 96 : 114)
+    const heroHudY = spriteY - (C ? 88 : 102)
     this.add.rectangle(heroHudX, heroHudY, C ? 176 : 208, C ? 62 : 70, 0x0f172a, 0.88)
       .setStrokeStyle(1, 0x4b617f, 0.78)
       .setDepth(6)
@@ -283,7 +286,7 @@ export class PlayScene extends Phaser.Scene {
 
     // Enemy stats + intent HUD: icon-based and anchored near the enemy.
     const enemyHudX = enemyX + (C ? 56 : 66)
-    const enemyHudY = spriteY - (C ? 102 : 118)
+    const enemyHudY = spriteY - (C ? 94 : 108)
     this.add.rectangle(enemyHudX, enemyHudY, C ? 190 : 224, C ? 96 : 106, 0x1f1722, 0.9)
       .setStrokeStyle(1, this.encounterType === 'boss' ? 0xf59e0b : 0xa17676, 0.85)
       .setDepth(6)
@@ -316,12 +319,13 @@ export class PlayScene extends Phaser.Scene {
     })
 
     // Bottom command band with matching HUD framing.
-    const bottomBarTopY = height - (C ? 218 : 236)
+    const bottomBarTopY = height - (C ? 226 : 244)
+    this.add.rectangle(width / 2, bottomBarTopY - (C ? 16 : 20), width * 0.86, 2, 0x334155, 0.62).setDepth(1)
     this.add.rectangle(width / 2, bottomBarTopY + (C ? 110 : 116), width, C ? 220 : 232, 0x0b1020, 0.84).setDepth(0)
     this.add.rectangle(width / 2, bottomBarTopY, width, 2, 0x2d4666).setDepth(1)
 
     const handPanelCenterX = width / 2
-    const handPanelCenterY = height - (C ? 150 : 166)
+    const handPanelCenterY = height - (C ? 144 : 158)
     const handPanelW = C ? 410 : 560
     const handPanelH = C ? 144 : 156
     this.add.rectangle(handPanelCenterX, handPanelCenterY, handPanelW, handPanelH, 0x131d2e, 0.9)
@@ -329,7 +333,7 @@ export class PlayScene extends Phaser.Scene {
       .setDepth(0)
     this.add.rectangle(handPanelCenterX, handPanelCenterY - handPanelH / 2 + 10, handPanelW - 18, 2, 0x6d87a8, 0.6).setDepth(1)
 
-    const pilesY = handPanelCenterY - handPanelH / 2 + (C ? 22 : 24)
+    const pilesY = handPanelCenterY - handPanelH / 2 + (C ? 24 : 26)
     const pileW = C ? 96 : 110
     const pileH = C ? 54 : 60
     const deckPileX = width / 2 - (C ? 126 : 168)
@@ -337,8 +341,10 @@ export class PlayScene extends Phaser.Scene {
     this.centerActionX = width / 2
     this.centerActionY = spriteY + (C ? 4 : 6)
 
-    this.add.rectangle(deckPileX, pilesY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(1)
-    this.add.rectangle(discardPileX, pilesY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(1)
+    this.add.rectangle(deckPileX, pilesY, pileW + 12, pileH + 12, 0x0f172a, 0.95).setStrokeStyle(1, 0x4b617f).setDepth(1)
+    this.add.rectangle(discardPileX, pilesY, pileW + 12, pileH + 12, 0x0f172a, 0.95).setStrokeStyle(1, 0x4b617f).setDepth(1)
+    this.add.rectangle(deckPileX, pilesY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(2)
+    this.add.rectangle(discardPileX, pilesY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(2)
 
     const stackW = C ? 28 : 32
     const stackH = C ? 36 : 40
@@ -389,6 +395,11 @@ export class PlayScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(2)
 
+    this.add.text(width / 2, pilesY + (C ? 20 : 24), 'Play cards from hand • Tap piles to inspect', {
+      fontSize: C ? '10px' : '11px',
+      color: '#7f8ea7',
+    }).setOrigin(0.5).setDepth(2)
+
     this.drawPileCountText = this.add.text(this.deckAnchorX, this.deckAnchorY + (C ? 29 : 34), 'Deck 0', {
       fontSize: C ? '12px' : '13px',
       color: '#b0c8e3',
@@ -427,9 +438,25 @@ export class PlayScene extends Phaser.Scene {
     })
 
     // End-turn button: framed, prominent, and consistent with HUD palette.
+    const actionPanelY = bottomBarTopY + (C ? 56 : 62)
+    this.add.rectangle(
+      width - (C ? 118 : 138),
+      actionPanelY,
+      C ? 228 : 240,
+      C ? 106 : 116,
+      0x1f2937,
+      0.88,
+    ).setStrokeStyle(1, 0x6b7280, 0.7).setDepth(1)
+
+    this.add.text(width - (C ? 118 : 138), actionPanelY - (C ? 44 : 48), 'Action', {
+      fontSize: C ? '11px' : '12px',
+      color: '#e5e7eb',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(3)
+
     const endTurnButton = this.add.rectangle(
       width - (C ? 118 : 138),
-      height - (C ? 90 : 100),
+      actionPanelY + (C ? 8 : 10),
       C ? 208 : 220,
       C ? 72 : 78,
       0xb9781f,
@@ -457,12 +484,12 @@ export class PlayScene extends Phaser.Scene {
     })
 
     // Compact passives strip on bottom-left.
-    const ablCenterX = C ? 94 : 136
-    const ablY = height - (C ? 156 : 172)
+    const ablCenterX = C ? 98 : 144
+    const ablY = height - (C ? 160 : 176)
     this.renderAbilities(ablCenterX, ablY)
     this.renderRelics(ablCenterX, ablY + (C ? 36 : 42))
 
-    this.handCardY = height - (C ? 92 : 102)
+    this.handCardY = height - (C ? 86 : 96)
 
     this.renderHand()
 
