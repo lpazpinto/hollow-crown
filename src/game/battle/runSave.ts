@@ -80,7 +80,11 @@ function isRunState(value: unknown): value is RunState {
     isNumber(value.currentFloor) &&
     isNumber(value.maxFloors) &&
     (value.selectedRouteId === undefined || value.selectedRouteId === null || typeof value.selectedRouteId === 'string') &&
+    (value.selectedRouteLayoutId === undefined || value.selectedRouteLayoutId === null || typeof value.selectedRouteLayoutId === 'string') &&
     (value.currentRouteStep === undefined || isNumber(value.currentRouteStep)) &&
+    (value.currentRouteChoiceNodeIds === undefined || isStringArray(value.currentRouteChoiceNodeIds)) &&
+    (value.currentRouteNodeId === undefined || value.currentRouteNodeId === null || typeof value.currentRouteNodeId === 'string') &&
+    (value.pendingRouteChoiceNodeIds === undefined || isStringArray(value.pendingRouteChoiceNodeIds)) &&
     (value.shardCount === undefined || isNumber(value.shardCount)) &&
     (value.isForgeAvailable === undefined || typeof value.isForgeAvailable === 'boolean') &&
     (value.currentBoonId === undefined || value.currentBoonId === null || typeof value.currentBoonId === 'string') &&
@@ -160,4 +164,8 @@ function isNumber(value: unknown): value is number {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 }

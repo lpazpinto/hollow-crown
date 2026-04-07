@@ -1,7 +1,15 @@
 import { type HeroAbilityContent, getAbilityBaseId } from '../content/abilities'
 import { getBoonById, getRandomBoon, type BoonContent } from '../content/boons'
 import { STARTER_DECK, createUpgradedCard, type CardContent } from '../content/cards'
-import { getDefaultRoutePath, getRoutePathById } from '../content/routes'
+import {
+  getDefaultRouteLayoutId,
+  getDefaultRoutePath,
+  getRouteChoiceNodes,
+  getRouteNodeById,
+  getRouteNodeIdsForStep,
+  getRoutePathById,
+  pickRandomRouteLayoutId,
+} from '../content/routes'
 import type { RelicContent } from '../content/relics'
 import { getAbilityPostEliteBossHeal } from './abilityEffects'
 import { getPostBattleHealAmount } from './relicEffects'
@@ -12,7 +20,11 @@ export type RunState = {
   currentFloor: number
   maxFloors: number
   selectedRouteId: string | null
+  selectedRouteLayoutId: string | null
   currentRouteStep: number
+  currentRouteChoiceNodeIds: string[]
+  currentRouteNodeId: string | null
+  pendingRouteChoiceNodeIds: string[]
   shardCount: number
   isForgeAvailable: boolean
   currentBoonId: string | null
@@ -27,6 +39,12 @@ export type RunState = {
   normalBattleVictories: number
   currentEncounterType: EncounterType | null
   isRunComplete: boolean
+}
+
+export type RouteChoice = {
+  nodeId: string
+  encounterType: EncounterType
+  label: string
 }
 
 const LEVEL_XP_STEP_COSTS = [8, 12, 16, 20]
@@ -59,7 +77,11 @@ export function startNewRun() {
     currentFloor: 1,
     maxFloors: defaultPath.length,
     selectedRouteId: null,
+    selectedRouteLayoutId: null,
     currentRouteStep: 0,
+    currentRouteChoiceNodeIds: [],
+    currentRouteNodeId: null,
+    pendingRouteChoiceNodeIds: [],
     shardCount: 0,
     isForgeAvailable: false,
     currentBoonId: null,
@@ -191,53 +213,82 @@ export function setSelectedRouteId(routeId: string | null) {
   ensureRunState()
   const state = runState as RunState
 
-  if (state.selectedRouteId === routeId) {
+  if (state.selectedRouteId === routeId && state.selectedRouteLayoutId) {
     return
   }
 
   state.selectedRouteId = routeId
 
-  if (routeId) {
-    const routePath = getRoutePathById(routeId)
-    state.currentRouteStep = 0
-    state.currentFloor = 1
-    state.maxFloors = routePath.length
+  if (!routeId) {
+    state.selectedRouteLayoutId = null
+    state.currentRouteChoiceNodeIds = []
+    state.currentRouteNodeId = null
+    state.pendingRouteChoiceNodeIds = []
+    return
   }
+
+  const layoutId = pickRandomRouteLayoutId(routeId) ?? getDefaultRouteLayoutId(routeId)
+  const routePath = getRoutePathById(routeId, layoutId)
+  const firstChoices = getRouteNodeIdsForStep(routeId, layoutId, 0)
+
+  state.selectedRouteLayoutId = layoutId
+  state.currentRouteChoiceNodeIds = firstChoices
+  state.currentRouteNodeId = null
+  state.pendingRouteChoiceNodeIds = []
+  state.currentEncounterType = null
+  state.isRunComplete = false
+  state.currentRouteStep = 0
+  state.currentFloor = 1
+  state.maxFloors = routePath.length
+}
+
+export function getAvailableRouteChoices(): RouteChoice[] {
+  ensureRunState()
+  const state = runState as RunState
+
+  if (!state.selectedRouteId) {
+    return []
+  }
+
+  const nodes = getRouteChoiceNodes(
+    state.selectedRouteId,
+    state.selectedRouteLayoutId,
+    state.currentRouteChoiceNodeIds,
+  )
+
+  return nodes.map((node) => ({
+    nodeId: node.id,
+    encounterType: node.encounterType,
+    label: node.label,
+  }))
+}
+
+export function setCurrentRouteChoiceNode(nodeId: string): EncounterType | null {
+  ensureRunState()
+  const state = runState as RunState
+
+  if (!state.selectedRouteId) {
+    return null
+  }
+
+  const node = getRouteNodeById(state.selectedRouteId, state.selectedRouteLayoutId, nodeId)
+  if (!node) {
+    return null
+  }
+
+  state.currentRouteNodeId = node.id
+  state.pendingRouteChoiceNodeIds = [...node.nextNodeIds]
+  state.currentEncounterType = node.encounterType
+  return node.encounterType
 }
 
 export function getAvailableEncountersForCurrentFloor(): EncounterType[] {
   ensureRunState()
   const state = runState as RunState
-  const routePath = getRoutePathById(state.selectedRouteId)
 
   if (state.selectedRouteId) {
-    const stepType = routePath[state.currentRouteStep]
-
-    if (stepType === 'battle_or_utility') {
-      return ['battle', 'rest']
-    }
-
-    if (stepType === 'utility_or_special') {
-      return ['rest']
-    }
-
-    if (stepType === 'recovery') {
-      return ['rest']
-    }
-
-    if (stepType === 'battle') {
-      return ['battle']
-    }
-
-    if (stepType === 'elite') {
-      return ['elite']
-    }
-
-    if (stepType === 'boss') {
-      return ['boss']
-    }
-
-    return []
+    const uniqueEncounters = new Set(getAvailableRouteChoices().map((choice) => choice.encounterType))
+    return [...uniqueEncounters]
   }
 
   const floor = state.currentFloor
@@ -366,16 +417,22 @@ export function getXpForNextLevel(): number | null {
 export function advanceFloorAfterEncounter() {
   ensureRunState()
   const state = runState as RunState
-  const routePath = getRoutePathById(state.selectedRouteId)
+  const routePath = getRoutePathById(state.selectedRouteId, state.selectedRouteLayoutId)
 
   if (state.selectedRouteId) {
-    if (state.currentRouteStep >= routePath.length - 1) {
+    state.currentRouteStep += 1
+    state.currentFloor = Math.min(routePath.length, state.currentRouteStep + 1)
+
+    const noNextChoices = state.pendingRouteChoiceNodeIds.length === 0
+    if (state.currentEncounterType === 'boss' || noNextChoices || state.currentRouteStep >= routePath.length) {
       state.isRunComplete = true
+      state.currentRouteChoiceNodeIds = []
     } else {
-      state.currentRouteStep += 1
-      state.currentFloor = state.currentRouteStep + 1
+      state.currentRouteChoiceNodeIds = [...state.pendingRouteChoiceNodeIds]
     }
 
+    state.currentRouteNodeId = null
+    state.pendingRouteChoiceNodeIds = []
     state.currentEncounterType = null
     return
   }
@@ -504,6 +561,8 @@ function cloneDeck(deck: CardContent[]): CardContent[] {
 function cloneRunState(state: RunState): RunState {
   return {
     ...state,
+    currentRouteChoiceNodeIds: [...state.currentRouteChoiceNodeIds],
+    pendingRouteChoiceNodeIds: [...state.pendingRouteChoiceNodeIds],
     currentDeck: cloneDeck(state.currentDeck),
     currentRelics: cloneRelics(state.currentRelics),
     currentAbilities: cloneAbilities(state.currentAbilities),
@@ -540,12 +599,19 @@ function buildLevelXpThresholds(stepCosts: number[]): number[] {
 }
 
 function normalizeRunState(saved: RunState): RunState {
-  const routePath = getRoutePathById(saved.selectedRouteId)
+  const layoutId = saved.selectedRouteLayoutId ?? getDefaultRouteLayoutId(saved.selectedRouteId)
+  const routePath = getRoutePathById(saved.selectedRouteId, layoutId)
+  const normalizedStep = saved.currentRouteStep ?? Math.max(0, (saved.currentFloor ?? 1) - 1)
+  const fallbackChoices = getRouteNodeIdsForStep(saved.selectedRouteId, layoutId, normalizedStep)
 
   const normalized = cloneRunState({
     ...saved,
     selectedRouteId: saved.selectedRouteId ?? null,
-    currentRouteStep: saved.currentRouteStep ?? Math.max(0, (saved.currentFloor ?? 1) - 1),
+    selectedRouteLayoutId: layoutId,
+    currentRouteStep: normalizedStep,
+    currentRouteChoiceNodeIds: saved.currentRouteChoiceNodeIds ?? fallbackChoices,
+    currentRouteNodeId: saved.currentRouteNodeId ?? null,
+    pendingRouteChoiceNodeIds: saved.pendingRouteChoiceNodeIds ?? [],
     shardCount: saved.shardCount ?? 0,
     isForgeAvailable: saved.isForgeAvailable ?? false,
     currentBoonId: saved.currentBoonId ?? null,
@@ -604,6 +670,18 @@ function normalizeRunState(saved: RunState): RunState {
 
   if (normalized.selectedRouteId) {
     normalized.currentFloor = normalized.currentRouteStep + 1
+
+    if (
+      !normalized.isRunComplete
+      && normalized.currentEncounterType === null
+      && normalized.currentRouteChoiceNodeIds.length === 0
+    ) {
+      normalized.currentRouteChoiceNodeIds = getRouteNodeIdsForStep(
+        normalized.selectedRouteId,
+        normalized.selectedRouteLayoutId,
+        normalized.currentRouteStep,
+      )
+    }
   }
 
   return normalized

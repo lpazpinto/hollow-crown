@@ -1,13 +1,13 @@
 import Phaser from 'phaser'
 import {
   advanceFloorAfterEncounter,
-  getAvailableEncountersForCurrentFloor,
+  getAvailableRouteChoices,
   getRunState,
   grantRandomBoon,
   getXpForNextLevel,
   resolveRestEncounter,
+  setCurrentRouteChoiceNode,
   setSelectedRouteId,
-  setCurrentEncounterType,
   type EncounterType,
 } from '../battle/runState'
 import { saveRun } from '../battle/runSave'
@@ -90,8 +90,6 @@ export class MapScene extends Phaser.Scene {
 
   private renderRouteSelect(compactLayout: boolean) {
     const { width, height } = this.scale
-    const options = getAvailableEncountersForCurrentFloor()
-    const playableEncounterType = this.getPrimaryEncounterType(options)
     const routes = ROUTE_SELECT_ROUTES
 
     // Path progress section: pre-route view starts at first node.
@@ -111,7 +109,6 @@ export class MapScene extends Phaser.Scene {
         panelHeight,
         compactLayout,
         route,
-        playableEncounterType,
       )
     })
   }
@@ -119,7 +116,7 @@ export class MapScene extends Phaser.Scene {
   private renderRouteProgress(compactLayout: boolean, selectedRoute: RouteContent) {
     const { width, height } = this.scale
     const run = getRunState()
-    const options = getAvailableEncountersForCurrentFloor()
+    const choices = getAvailableRouteChoices()
 
     // Route identity section: route, flavor line, boss.
     this.add.text(width / 2, compactLayout ? 128 : 136, selectedRoute.name, {
@@ -143,22 +140,38 @@ export class MapScene extends Phaser.Scene {
     // Path progress section: compact route step visualization.
     this.renderPathProgress(
       compactLayout,
-      getRoutePathById(selectedRoute.id),
+      getRoutePathById(selectedRoute.id, run.selectedRouteLayoutId),
       run.currentRouteStep,
       compactLayout ? 280 : 300,
     )
 
-    // Next choice section: currently available node actions.
+    // Next choice section: branching node choices for the current route position.
     const buttonWidth = compactLayout ? 240 : 256
-    const spacing = options.length > 1 ? buttonWidth + 20 : 0
-    const buttonStartX = width / 2 - ((options.length - 1) * spacing) / 2
+    const spacing = choices.length > 1 ? buttonWidth + 20 : 0
+    const buttonStartX = width / 2 - ((choices.length - 1) * spacing) / 2
 
-    options.forEach((encounterType, index) => {
+    choices.forEach((choice, index) => {
       const x = buttonStartX + index * spacing
-      this.createEncounterButton(x, compactLayout ? height - 114 : height - 120, buttonWidth, compactLayout, encounterType, () => {
-        this.handleEncounterSelection(selectedRoute.id, encounterType)
-      })
+      this.createEncounterButton(
+        x,
+        compactLayout ? height - 114 : height - 120,
+        buttonWidth,
+        compactLayout,
+        choice.encounterType,
+        choice.label,
+        () => {
+          this.handleEncounterSelection(selectedRoute.id, choice.nodeId, choice.encounterType)
+        },
+      )
     })
+
+    if (choices.length === 0) {
+      this.add.text(width / 2, compactLayout ? height - 118 : height - 126, 'No route choices available', {
+        fontSize: compactLayout ? '14px' : '15px',
+        color: '#94a3b8',
+      })
+        .setOrigin(0.5)
+    }
   }
 
   private createRoutePanel(
@@ -168,7 +181,6 @@ export class MapScene extends Phaser.Scene {
     panelHeight: number,
     compactLayout: boolean,
     route: RouteContent,
-    playableEncounterType: EncounterType,
   ) {
     const isPlayable = route.status === 'playable'
     const fillColor = isPlayable ? 0x19243a : 0x0a111d
@@ -242,7 +254,7 @@ export class MapScene extends Phaser.Scene {
         duration: 120,
         ease: 'Quad.Out',
       })
-      this.handleEncounterSelection(route.id, playableEncounterType)
+      this.handleRouteSelection(route.id)
     })
   }
 
@@ -252,6 +264,7 @@ export class MapScene extends Phaser.Scene {
     buttonWidth: number,
     compactLayout: boolean,
     encounterType: EncounterType,
+    nodeLabel: string,
     onClick: () => void,
   ) {
     const button = this.add.rectangle(x, y, buttonWidth, compactLayout ? 86 : 92, 0x1e293b)
@@ -265,7 +278,7 @@ export class MapScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    const hint = encounterType === 'rest' ? 'Recover HP and advance route' : 'Continue route path'
+    const hint = encounterType === 'rest' ? nodeLabel : nodeLabel
     this.add.text(x, y + 18, hint, {
       fontSize: compactLayout ? '13px' : '14px',
       color: '#cbd5e1',
@@ -283,22 +296,6 @@ export class MapScene extends Phaser.Scene {
       })
       onClick()
     })
-  }
-
-  private getPrimaryEncounterType(options: EncounterType[]): EncounterType {
-    if (options.includes('boss')) {
-      return 'boss'
-    }
-
-    if (options.includes('elite')) {
-      return 'elite'
-    }
-
-    if (options.includes('battle')) {
-      return 'battle'
-    }
-
-    return options[0] ?? 'battle'
   }
 
   private formatBossName(bossId: string): string {
@@ -334,13 +331,25 @@ export class MapScene extends Phaser.Scene {
     })
   }
 
-  private handleEncounterSelection(routeId: string, encounterType: EncounterType) {
+  private handleRouteSelection(routeId: string) {
     setSelectedRouteId(routeId)
+    const choices = getAvailableRouteChoices()
 
-    if (encounterType === 'rest') {
+    if (choices.length === 1) {
+      this.handleEncounterSelection(routeId, choices[0].nodeId, choices[0].encounterType)
+      return
+    }
+
+    this.scene.restart()
+  }
+
+  private handleEncounterSelection(routeId: string, nodeId: string, encounterType: EncounterType) {
+    setSelectedRouteId(routeId)
+    const selectedEncounterType = setCurrentRouteChoiceNode(nodeId) ?? encounterType
+
+    if (selectedEncounterType === 'rest') {
       // Utility nodes award a temporary Boon for the next battle.
       grantRandomBoon()
-      setCurrentEncounterType('rest')
       resolveRestEncounter()
       advanceFloorAfterEncounter()
       saveRun()
@@ -348,7 +357,6 @@ export class MapScene extends Phaser.Scene {
       return
     }
 
-    setCurrentEncounterType(encounterType)
     this.scene.start('PlayScene')
   }
 }
