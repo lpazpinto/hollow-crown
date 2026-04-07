@@ -2,7 +2,6 @@ import Phaser from 'phaser'
 import {
   advanceFloorAfterEncounter,
   getAvailableEncountersForCurrentFloor,
-  getNormalBattleRewardPreview,
   getRunState,
   getXpForNextLevel,
   resolveRestEncounter,
@@ -36,85 +35,48 @@ export class MapScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#0f172a')
 
     const selectedRoute = getRouteById(run.selectedRouteId)
+    const statusXp = nextLevelXp === null ? `${run.heroXp}` : `${run.heroXp}/${nextLevelXp}`
 
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
     })
 
-    if (!selectedRoute) {
-      this.add.rectangle(width / 2, height / 2, width, height, 0x060a13, 0.35)
-      this.add.rectangle(width / 2, 58, compactLayout ? width * 0.9 : 900, compactLayout ? 84 : 94, 0x111a2d, 0.86)
-        .setStrokeStyle(2, 0x4c5f7c, 0.92)
+    // Header section: title + compact run status.
+    this.add.text(width / 2, compactLayout ? 42 : 46, 'Route Select', {
+      fontSize: compactLayout ? '34px' : '38px',
+      color: '#f8fafc',
+      fontStyle: 'bold',
+    }).setOrigin(0.5)
 
-      this.add.text(width / 2, compactLayout ? 44 : 46, 'Choose A Domain', {
-        fontSize: compactLayout ? '34px' : '40px',
+    this.add.rectangle(width / 2, compactLayout ? 82 : 88, compactLayout ? width * 0.88 : 760, 34, 0x111a2d, 0.86)
+      .setStrokeStyle(1, 0x3b4e6d, 0.9)
+    this.add.text(width / 2, compactLayout ? 82 : 88, `HP ${run.heroHp}/${run.maxHeroHp}   |   Level ${run.heroLevel}   |   XP ${statusXp}`, {
+      fontSize: compactLayout ? '14px' : '15px',
+      color: '#bfdbfe',
+    }).setOrigin(0.5)
+
+    if (!selectedRoute) {
+      // Route identity section before first route pick.
+      this.add.text(width / 2, compactLayout ? 124 : 134, 'Active Route: None', {
+        fontSize: compactLayout ? '20px' : '22px',
         color: '#f8fafc',
         fontStyle: 'bold',
       }).setOrigin(0.5)
 
-      this.add.text(width / 2, compactLayout ? 72 : 76, 'Select the next hunt and face its ruling boss', {
-        fontSize: compactLayout ? '14px' : '16px',
+      this.add.text(width / 2, compactLayout ? 148 : 160, 'Choose a domain to begin the hunt path.', {
+        fontSize: compactLayout ? '14px' : '15px',
         color: '#cbd5e1',
       }).setOrigin(0.5)
 
-      this.add.text(width / 2, compactLayout ? 104 : 112, 'Playable domains glow. Sealed domains are visible but inaccessible.', {
+      this.add.text(width / 2, compactLayout ? 170 : 184, 'Boss: Unknown', {
         fontSize: compactLayout ? '13px' : '14px',
         color: '#94a3b8',
       }).setOrigin(0.5)
 
       this.renderRouteSelect(compactLayout)
 
-      const runInfoText = `HP ${run.heroHp}/${run.maxHeroHp}  |  L${run.heroLevel} ${nextLevelXp === null ? `(XP ${run.heroXp})` : `(XP ${run.heroXp}/${nextLevelXp})`}  |  Deck ${run.currentDeck.length}  |  Relics ${run.currentRelics.length}  |  Blessings ${run.currentAbilities.length}`
-      this.add.rectangle(width / 2, height - 58, compactLayout ? width * 0.94 : 960, 52, 0x0b1220, 0.78)
-        .setStrokeStyle(1, 0x334155, 0.8)
-      this.add.text(width / 2, height - 62, runInfoText, {
-        fontSize: compactLayout ? '13px' : '14px',
-        color: '#93c5fd',
-      }).setOrigin(0.5)
-      this.add.text(width / 2, height - 40, getNormalBattleRewardPreview(), {
-        fontSize: compactLayout ? '12px' : '13px',
-        color: '#fde68a',
-      }).setOrigin(0.5)
-
       return
     }
-
-    this.add.text(width / 2, 44, 'Route Select', {
-      fontSize: '34px',
-      color: '#ffffff',
-    }).setOrigin(0.5)
-
-    this.add.text(width / 2, 82, `Choose your next domain hunt  |  Floor ${run.currentFloor} / ${run.maxFloors}`, {
-      fontSize: '20px',
-      color: '#cbd5e1',
-    }).setOrigin(0.5)
-
-    this.add.text(width / 2, 110, `Hero HP: ${run.heroHp} / ${run.maxHeroHp}   Deck: ${run.currentDeck.length}   Relics: ${run.currentRelics.length}   Blessings: ${run.currentAbilities.length}`, {
-      fontSize: compactLayout ? '17px' : '18px',
-      color: '#bfdbfe',
-    }).setOrigin(0.5)
-
-    this.add.text(
-      width / 2,
-      132,
-      nextLevelXp === null
-        ? `Level: ${run.heroLevel}   XP: ${run.heroXp}   Max level this run`
-        : `Level: ${run.heroLevel}   XP: ${run.heroXp} / ${nextLevelXp}`,
-      {
-      fontSize: compactLayout ? '16px' : '17px',
-      color: '#93c5fd',
-      },
-    ).setOrigin(0.5)
-
-    this.add.text(width / 2, 154, getNormalBattleRewardPreview(), {
-      fontSize: compactLayout ? '14px' : '15px',
-      color: '#fde68a',
-    }).setOrigin(0.5)
-
-    this.add.text(width / 2, 178, 'Pick one route to continue this run. Press ESC to return to menu', {
-      fontSize: '16px',
-      color: '#cbd5e1',
-    }).setOrigin(0.5)
 
     this.renderRouteProgress(compactLayout, selectedRoute)
   }
@@ -125,6 +87,9 @@ export class MapScene extends Phaser.Scene {
     const playableEncounterType = this.getPrimaryEncounterType(options)
     const routes = ROUTE_SELECT_ROUTES
 
+    // Path progress section: pre-route view starts at first node.
+    this.renderPathProgress(compactLayout, 0, compactLayout ? 240 : 258)
+
     const panelWidth = compactLayout ? 268 : 324
     const panelHeight = compactLayout ? 236 : 252
     const spacing = compactLayout ? panelWidth + 16 : panelWidth + 24
@@ -134,7 +99,7 @@ export class MapScene extends Phaser.Scene {
       const x = startX + index * spacing
       this.createRoutePanel(
         x,
-        height / 2 + 22,
+        height / 2 + (compactLayout ? 86 : 76),
         panelWidth,
         panelHeight,
         compactLayout,
@@ -149,60 +114,36 @@ export class MapScene extends Phaser.Scene {
     const run = getRunState()
     const options = getAvailableEncountersForCurrentFloor()
 
-    this.add.text(width / 2, 204, `Route active: ${selectedRoute.name}`, {
-      fontSize: compactLayout ? '16px' : '18px',
-      color: '#86efac',
+    // Route identity section: route, flavor line, boss.
+    this.add.text(width / 2, compactLayout ? 128 : 136, selectedRoute.name, {
+      fontSize: compactLayout ? '25px' : '28px',
+      color: '#f8fafc',
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 228, selectedRoute.theme, {
+    this.add.text(width / 2, compactLayout ? 154 : 164, selectedRoute.theme, {
       fontSize: compactLayout ? '14px' : '15px',
       color: '#cbd5e1',
       align: 'center',
-      wordWrap: { width: compactLayout ? 560 : 760 },
+      wordWrap: { width: compactLayout ? 520 : 700 },
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 250, `Reward focus: ${selectedRoute.rewardHint}`, {
-      fontSize: compactLayout ? '13px' : '14px',
-      color: '#a5f3fc',
-      align: 'center',
-      wordWrap: { width: compactLayout ? 560 : 760 },
-    }).setOrigin(0.5)
-
-    this.add.text(width / 2, 272, `Boss: ${selectedRoute.bossId}`, {
+    this.add.text(width / 2, compactLayout ? 178 : 190, `Boss: ${this.formatBossName(selectedRoute.bossId)}`, {
       fontSize: compactLayout ? '13px' : '14px',
       color: '#fca5a5',
     }).setOrigin(0.5)
 
-    const stepIndex = Math.max(0, Math.min(ROUTE_PATH_LABELS.length - 1, run.currentRouteStep))
-    const stepY = compactLayout ? 342 : 360
-    const stepSpacing = compactLayout ? 154 : 176
-    const startX = width / 2 - ((ROUTE_PATH_LABELS.length - 1) * stepSpacing) / 2
+    // Path progress section: compact route step visualization.
+    this.renderPathProgress(compactLayout, run.currentRouteStep, compactLayout ? 280 : 300)
 
-    ROUTE_PATH_LABELS.forEach((label, index) => {
-      const x = startX + index * stepSpacing
-      const isCompleted = index < stepIndex
-      const isCurrent = index === stepIndex
-      const nodeColor = isCompleted ? 0x16a34a : isCurrent ? 0xf59e0b : 0x334155
-
-      this.add.circle(x, stepY, compactLayout ? 16 : 18, nodeColor)
-      this.add.text(x, stepY + 34, label, {
-        fontSize: compactLayout ? '13px' : '14px',
-        color: isCurrent ? '#fef3c7' : '#cbd5e1',
-      }).setOrigin(0.5)
-
-      if (index < ROUTE_PATH_LABELS.length - 1) {
-        this.add.rectangle(x + stepSpacing / 2, stepY, stepSpacing - 36, 4, 0x475569)
-      }
-    })
-
+    // Next choice section: currently available node actions.
     const buttonWidth = compactLayout ? 240 : 256
     const spacing = options.length > 1 ? buttonWidth + 20 : 0
     const buttonStartX = width / 2 - ((options.length - 1) * spacing) / 2
 
     options.forEach((encounterType, index) => {
       const x = buttonStartX + index * spacing
-      this.createEncounterButton(x, height - 122, buttonWidth, compactLayout, encounterType, () => {
+      this.createEncounterButton(x, compactLayout ? height - 114 : height - 120, buttonWidth, compactLayout, encounterType, () => {
         this.handleEncounterSelection(selectedRoute.id, encounterType)
       })
     })
@@ -263,7 +204,7 @@ export class MapScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     const panelHint = isPlayable
-      ? `${route.rewardHint} ${this.getRouteHint(playableEncounterType)}`
+      ? this.getRouteHint(playableEncounterType)
       : route.rewardHint
 
     this.add.text(x, y + 52, panelHint, {
@@ -380,6 +321,30 @@ export class MapScene extends Phaser.Scene {
       .filter((part) => part.length > 0)
       .map((part) => part[0].toUpperCase() + part.slice(1))
       .join(' ')
+  }
+
+  private renderPathProgress(compactLayout: boolean, routeStep: number, y: number) {
+    const { width } = this.scale
+    const stepIndex = Math.max(0, Math.min(ROUTE_PATH_LABELS.length - 1, routeStep))
+    const stepSpacing = compactLayout ? 154 : 176
+    const startX = width / 2 - ((ROUTE_PATH_LABELS.length - 1) * stepSpacing) / 2
+
+    ROUTE_PATH_LABELS.forEach((label, index) => {
+      const x = startX + index * stepSpacing
+      const isCompleted = index < stepIndex
+      const isCurrent = index === stepIndex
+      const nodeColor = isCompleted ? 0x16a34a : isCurrent ? 0xf59e0b : 0x334155
+
+      this.add.circle(x, y, compactLayout ? 16 : 18, nodeColor)
+      this.add.text(x, y + 34, label, {
+        fontSize: compactLayout ? '13px' : '14px',
+        color: isCurrent ? '#fef3c7' : '#cbd5e1',
+      }).setOrigin(0.5)
+
+      if (index < ROUTE_PATH_LABELS.length - 1) {
+        this.add.rectangle(x + stepSpacing / 2, y, stepSpacing - 36, 4, 0x475569)
+      }
+    })
   }
 
   private handleEncounterSelection(routeId: string, encounterType: EncounterType) {
