@@ -12,6 +12,7 @@ import type { HeroAbilityContent } from '../content/abilities'
 import type { RelicContent } from '../content/relics'
 import {
   getRandomBossEnemy,
+  getEnemyIntentActions,
   getRandomEliteEnemy,
   getRandomEnemy,
   type EnemyContent,
@@ -212,10 +213,11 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
 
 export function startNewPlayerTurn(session: BattleSession): BattleSession {
   const nextTurnNumber = session.turnNumber + 1
+  // Temporary armor reset timing: player armor clears at player turn start.
+  // Enemy armor is cleared at enemy turn start so defend intents remain visible/meaningful during player turn.
   const stateAfterBurn = applyBurnAtTurnStart({
     ...session.state,
     heroArmor: 0,
-    enemyArmor: 0,
   }, session.heroBurn)
   const stateAfterAbilityBonus = {
     ...stateAfterBurn,
@@ -252,7 +254,12 @@ export function startNewPlayerTurn(session: BattleSession): BattleSession {
 export function resolveEnemyIntentAction(session: BattleSession): BattleSession {
   const withPhaseTransition = maybeEnterBossPhaseTwo(session)
   const intent = getCurrentIntent(withPhaseTransition)
-  const stateAfterEnemyBurn = applyEnemyBurnAtEnemyTurnStart(withPhaseTransition.state, withPhaseTransition.enemyBurn)
+  // Temporary armor reset timing: enemy armor clears at the start of the enemy turn.
+  const stateAtEnemyTurnStart = {
+    ...withPhaseTransition.state,
+    enemyArmor: 0,
+  }
+  const stateAfterEnemyBurn = applyEnemyBurnAtEnemyTurnStart(stateAtEnemyTurnStart, withPhaseTransition.enemyBurn)
   const nextEnemyBurn = Math.max(0, withPhaseTransition.enemyBurn - 1)
   const outcomeAfterEnemyBurn = checkBattleOutcome(stateAfterEnemyBurn)
 
@@ -265,21 +272,41 @@ export function resolveEnemyIntentAction(session: BattleSession): BattleSession 
     }
   }
 
-  let nextState = resolveEnemyAttack(stateAfterEnemyBurn, intent.damage)
+  let nextState = stateAfterEnemyBurn
+  let nextHeroBurn = withPhaseTransition.heroBurn
+  let nextEnemyReflect = 0
 
-  if (intent.armorValue && intent.armorValue > 0) {
-    nextState = {
-      ...nextState,
-      enemyArmor: nextState.enemyArmor + intent.armorValue,
+  // Enemy defend/block is resolved from the same structured action source used by UI preview.
+  getEnemyIntentActions(intent).forEach((action) => {
+    if (action.type === 'attack') {
+      nextState = resolveEnemyAttack(nextState, action.value)
+      return
     }
-  }
+
+    if (action.type === 'armor') {
+      nextState = {
+        ...nextState,
+        enemyArmor: nextState.enemyArmor + action.value,
+      }
+      return
+    }
+
+    if (action.type === 'burn') {
+      nextHeroBurn += action.value
+      return
+    }
+
+    if (action.type === 'reflect') {
+      nextEnemyReflect = action.value
+    }
+  })
 
   return {
     ...withPhaseTransition,
     state: nextState,
-    heroBurn: withPhaseTransition.heroBurn + (intent.burnValue ?? 0),
+    heroBurn: nextHeroBurn,
     enemyBurn: nextEnemyBurn,
-    enemyReflect: intent.reflectValue ?? 0,
+    enemyReflect: nextEnemyReflect,
   }
 }
 

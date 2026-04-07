@@ -7,6 +7,36 @@ export type EnemyIntent = {
   reflectValue?: number
 }
 
+export type EnemyIntentActionType = 'attack' | 'armor' | 'burn' | 'reflect'
+
+export type EnemyIntentAction = {
+  type: EnemyIntentActionType
+  value: number
+}
+
+// Enemy intent action structure: every preview/resolution path reads the same action list.
+export function getEnemyIntentActions(intent: EnemyIntent): EnemyIntentAction[] {
+  const actions: EnemyIntentAction[] = []
+
+  if (intent.damage > 0) {
+    actions.push({ type: 'attack', value: intent.damage })
+  }
+
+  if ((intent.armorValue ?? 0) > 0) {
+    actions.push({ type: 'armor', value: intent.armorValue ?? 0 })
+  }
+
+  if ((intent.burnValue ?? 0) > 0) {
+    actions.push({ type: 'burn', value: intent.burnValue ?? 0 })
+  }
+
+  if ((intent.reflectValue ?? 0) > 0) {
+    actions.push({ type: 'reflect', value: intent.reflectValue ?? 0 })
+  }
+
+  return actions
+}
+
 export type EnemyTier = 'common' | 'elite' | 'boss'
 
 export type EnemyContent = {

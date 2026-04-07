@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { checkBattleOutcome, type BattleState } from '../battle/battleLogic'
 import { getCardBaseId, type CardContent } from '../content/cards'
 import { getRouteById } from '../content/routes'
+import { getEnemyIntentActions } from '../content/enemies'
 import {
   createInitialBattleSession,
   discardHand,
@@ -967,23 +968,22 @@ export class PlayScene extends Phaser.Scene {
   // Enemy intent rendering: icon-first summary to improve glance readability.
   private getIntentIconSummary(): string {
     const intent = getCurrentIntent(this.session)
-    const parts: string[] = []
+    // Enemy intent UI is rendered from structured actions shared with battle resolution.
+    const parts = getEnemyIntentActions(intent).map((action) => {
+      if (action.type === 'attack') {
+        return `⚔ ${action.value}`
+      }
 
-    if (intent.damage > 0) {
-      parts.push(`⚔ ${intent.damage}`)
-    }
+      if (action.type === 'armor') {
+        return `🛡 ${action.value}`
+      }
 
-    if ((intent.burnValue ?? 0) > 0) {
-      parts.push(`🔥 ${intent.burnValue}`)
-    }
+      if (action.type === 'burn') {
+        return `🔥 ${action.value}`
+      }
 
-    if ((intent.armorValue ?? 0) > 0) {
-      parts.push(`🛡 ${intent.armorValue}`)
-    }
-
-    if ((intent.reflectValue ?? 0) > 0) {
-      parts.push(`🛡↺ ${intent.reflectValue}`)
-    }
+      return `🛡↺ ${action.value}`
+    })
 
     return parts.length > 0 ? parts.join('   ') : `⚔ 0`
   }
