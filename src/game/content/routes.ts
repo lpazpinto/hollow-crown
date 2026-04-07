@@ -65,6 +65,37 @@ const ASHEN_ROUTE_LAYOUT_B: RouteGraphLayout = {
   ],
 }
 
+const THORN_ROUTE_LAYOUT_A: RouteGraphLayout = {
+  id: 'thorn-a',
+  startNodeId: 'start',
+  nodes: [
+    { id: 'start', label: 'Briar Fringe', encounterType: 'battle', nextNodeIds: ['fork-battle', 'fork-rest'] },
+    { id: 'fork-battle', label: 'Thornbound Watch', encounterType: 'battle', nextNodeIds: ['mid-rest'] },
+    { id: 'fork-rest', label: 'Vine Shrine', encounterType: 'rest', nextNodeIds: ['mid-rest'] },
+    { id: 'mid-rest', label: 'Rootspring', encounterType: 'rest', nextNodeIds: ['lane-battle', 'lane-rest'] },
+    { id: 'lane-battle', label: 'Bramble Hunt', encounterType: 'battle', nextNodeIds: ['elite-gate'] },
+    { id: 'lane-rest', label: 'Petal Ward', encounterType: 'rest', nextNodeIds: ['elite-gate'] },
+    { id: 'elite-gate', label: 'Acolyte Vanguard', encounterType: 'elite', nextNodeIds: ['recovery'] },
+    { id: 'recovery', label: 'Verdant Refuge', encounterType: 'rest', nextNodeIds: ['boss'] },
+    { id: 'boss', label: 'Thorn Queen', encounterType: 'boss', nextNodeIds: [] },
+  ],
+}
+
+const THORN_ROUTE_LAYOUT_B: RouteGraphLayout = {
+  id: 'thorn-b',
+  startNodeId: 'start',
+  nodes: [
+    { id: 'start', label: 'Needlewood Gate', encounterType: 'battle', nextNodeIds: ['upper-rest', 'lower-battle'] },
+    { id: 'upper-rest', label: 'Blooming Reliquary', encounterType: 'rest', nextNodeIds: ['upper-battle'] },
+    { id: 'lower-battle', label: 'Briar Corridor', encounterType: 'battle', nextNodeIds: ['merge-battle'] },
+    { id: 'upper-battle', label: 'Razorvine Sentinels', encounterType: 'battle', nextNodeIds: ['merge-battle'] },
+    { id: 'merge-battle', label: 'Hedge Gauntlet', encounterType: 'battle', nextNodeIds: ['elite-grove'] },
+    { id: 'elite-grove', label: 'Roseguard Champion', encounterType: 'elite', nextNodeIds: ['prep'] },
+    { id: 'prep', label: 'Sanctified Arbor', encounterType: 'rest', nextNodeIds: ['boss'] },
+    { id: 'boss', label: 'Thorn Queen', encounterType: 'boss', nextNodeIds: [] },
+  ],
+}
+
 const LOCKED_ROUTE_LAYOUT: RouteGraphLayout = {
   id: 'locked-a',
   startNodeId: 'start',
@@ -84,9 +115,9 @@ export const ROUTE_SELECT_ROUTES: RouteContent[] = [
   {
     id: 'ashen-march',
     name: 'Ashen Mire',
-    theme: 'Sooted wetlands where crown-slime gathers.',
+    theme: 'Soot-choked wetlands ruled by a mire-crowned slime tyrant.',
     status: 'playable',
-    bossId: 'corrupted-slime',
+    bossId: 'mire-crowned-slime',
     rewardHint: 'Endure the mire and claim ember-forged power.',
     signatureCardId: 'ashen-crown-verdict',
     graphLayouts: [ASHEN_ROUTE_LAYOUT_A, ASHEN_ROUTE_LAYOUT_B],
@@ -95,11 +126,11 @@ export const ROUTE_SELECT_ROUTES: RouteContent[] = [
     id: 'veil-of-thorns',
     name: 'Veil of Thorns',
     theme: 'Briar sanctum watched by thornbound zealots.',
-    status: 'locked',
+    status: 'playable',
     bossId: 'thorn-queen',
-    rewardHint: 'Sealed domain. Verdant relics await beyond.',
+    rewardHint: 'Pierce the briar veil for relentless growth rewards.',
     signatureCardId: null,
-    graphLayouts: [LOCKED_ROUTE_LAYOUT],
+    graphLayouts: [THORN_ROUTE_LAYOUT_A, THORN_ROUTE_LAYOUT_B],
   },
   {
     id: 'starforged-deep',
