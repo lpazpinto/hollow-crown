@@ -29,34 +29,35 @@ const DEFAULT_ROUTE_PATH: RouteNodeType[] = [
   'boss',
 ]
 
+// Route Select flavor source of truth: name, short theme line, boss pairing, and reward hint.
 export const ROUTE_SELECT_ROUTES: RouteContent[] = [
   {
     id: 'ashen-march',
-    name: 'Ashen March',
-    theme: 'Burning ruins and ember beasts.',
+    name: 'Ashen Mire',
+    theme: 'Sooted wetlands where crown-slime gathers.',
     status: 'playable',
     bossId: 'corrupted-slime',
-    rewardHint: 'Balanced rewards with card growth.',
+    rewardHint: 'Endure the mire and claim ember-forged power.',
     signatureCardId: 'ashen-crown-verdict',
     path: DEFAULT_ROUTE_PATH,
   },
   {
     id: 'veil-of-thorns',
     name: 'Veil of Thorns',
-    theme: 'Overgrown sanctum and thorn cultists.',
+    theme: 'Briar sanctum watched by thornbound zealots.',
     status: 'locked',
     bossId: 'thorn-queen',
-    rewardHint: 'Nature relic path. Locked for now.',
+    rewardHint: 'Sealed domain. Verdant relics await beyond.',
     signatureCardId: null,
     path: DEFAULT_ROUTE_PATH,
   },
   {
     id: 'starforged-deep',
     name: 'Starforged Deep',
-    theme: 'Fallen observatory and void echoes.',
+    theme: 'Collapsed observatory lit by cold starglass.',
     status: 'locked',
     bossId: 'star-sentinel',
-    rewardHint: 'Arcane relic path. Coming soon.',
+    rewardHint: 'Unknown route. Arcane vaults remain sealed.',
     signatureCardId: null,
     path: DEFAULT_ROUTE_PATH,
   },

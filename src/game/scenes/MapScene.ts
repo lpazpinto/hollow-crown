@@ -1,10 +1,8 @@
 import Phaser from 'phaser'
 import {
   advanceFloorAfterEncounter,
-  getCurrentBoon,
   getAvailableEncountersForCurrentFloor,
   getRunState,
-  getShardTarget,
   grantRandomBoon,
   getXpForNextLevel,
   resolveRestEncounter,
@@ -45,11 +43,6 @@ export class MapScene extends Phaser.Scene {
 
     const selectedRoute = getRouteById(run.selectedRouteId)
     const statusXp = nextLevelXp === null ? `${run.heroXp}` : `${run.heroXp}/${nextLevelXp}`
-    const activeBoon = getCurrentBoon()
-    const shardStatus = run.isForgeAvailable
-      ? `Shards ${run.shardCount}/${getShardTarget()} • Forge Ready`
-      : `Shards ${run.shardCount}/${getShardTarget()}`
-    const boonStatus = activeBoon ? `Boon: ${activeBoon.name}` : 'Boon: None'
 
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
@@ -62,9 +55,9 @@ export class MapScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    this.add.rectangle(width / 2, compactLayout ? 82 : 88, compactLayout ? width * 0.9 : 860, 34, 0x111a2d, 0.86)
+    this.add.rectangle(width / 2, compactLayout ? 82 : 88, compactLayout ? width * 0.72 : 660, 34, 0x111a2d, 0.86)
       .setStrokeStyle(1, 0x3b4e6d, 0.9)
-    this.add.text(width / 2, compactLayout ? 82 : 88, `HP ${run.heroHp}/${run.maxHeroHp}   |   Level ${run.heroLevel}   |   XP ${statusXp}   |   ${shardStatus}   |   ${boonStatus}`, {
+    this.add.text(width / 2, compactLayout ? 82 : 88, `HP ${run.heroHp}/${run.maxHeroHp}   |   Level ${run.heroLevel}   |   XP ${statusXp}`, {
       fontSize: compactLayout ? '13px' : '14px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
@@ -72,12 +65,12 @@ export class MapScene extends Phaser.Scene {
     if (!selectedRoute) {
       // Route identity section before first route pick.
       this.add.text(width / 2, compactLayout ? 124 : 134, 'Active Route: None', {
-        fontSize: compactLayout ? '20px' : '22px',
+        fontSize: compactLayout ? '20px' : '21px',
         color: '#f8fafc',
         fontStyle: 'bold',
       }).setOrigin(0.5)
 
-      this.add.text(width / 2, compactLayout ? 148 : 160, 'Choose a domain to begin the hunt path.', {
+      this.add.text(width / 2, compactLayout ? 148 : 160, 'Choose a domain path to begin the hunt.', {
         fontSize: compactLayout ? '14px' : '15px',
         color: '#cbd5e1',
       }).setOrigin(0.5)
@@ -104,8 +97,8 @@ export class MapScene extends Phaser.Scene {
     // Path progress section: pre-route view starts at first node.
     this.renderPathProgress(compactLayout, getDefaultRoutePath(), 0, compactLayout ? 240 : 258)
 
-    const panelWidth = compactLayout ? 268 : 324
-    const panelHeight = compactLayout ? 236 : 252
+    const panelWidth = compactLayout ? 258 : 300
+    const panelHeight = compactLayout ? 204 : 220
     const spacing = compactLayout ? panelWidth + 16 : panelWidth + 24
     const startX = width / 2 - ((routes.length - 1) * spacing) / 2
 
@@ -113,7 +106,7 @@ export class MapScene extends Phaser.Scene {
       const x = startX + index * spacing
       this.createRoutePanel(
         x,
-        height / 2 + (compactLayout ? 86 : 76),
+        height / 2 + (compactLayout ? 80 : 72),
         panelWidth,
         panelHeight,
         compactLayout,
@@ -184,10 +177,10 @@ export class MapScene extends Phaser.Scene {
     const panel = this.add.rectangle(x, y, panelWidth, panelHeight, fillColor)
       .setStrokeStyle(2, strokeColor)
 
-    this.add.rectangle(x, y - panelHeight / 2 + 28, panelWidth - 12, 40, isPlayable ? 0x223457 : 0x162235, 0.92)
+    this.add.rectangle(x, y - panelHeight / 2 + 24, panelWidth - 12, 34, isPlayable ? 0x223457 : 0x162235, 0.92)
       .setStrokeStyle(1, isPlayable ? 0x9fb6da : 0x64748b, 0.9)
 
-    this.add.rectangle(x, y + panelHeight / 2 - 20, panelWidth - 14, 30, 0x0f172a, 0.66)
+    this.add.rectangle(x, y + panelHeight / 2 - 18, panelWidth - 14, 26, 0x0f172a, 0.66)
       .setStrokeStyle(1, isPlayable ? 0x7c93b5 : 0x475569, 0.82)
 
     if (isPlayable) {
@@ -201,45 +194,35 @@ export class MapScene extends Phaser.Scene {
       })
     }
 
-    this.add.text(x, y - panelHeight / 2 + 28, isPlayable ? 'Open Domain' : 'Sealed Domain', {
-      fontSize: compactLayout ? '13px' : '14px',
+    // Route display content: concise status, route name, short flavor, and boss.
+    this.add.text(x, y - panelHeight / 2 + 24, isPlayable ? 'OPEN DOMAIN' : 'SEALED DOMAIN', {
+      fontSize: compactLayout ? '11px' : '12px',
       color: isPlayable ? '#fef3c7' : '#94a3b8',
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    this.add.text(x, y - 46, route.name, {
-      fontSize: compactLayout ? '26px' : '30px',
+    this.add.text(x, y - 36, route.name, {
+      fontSize: compactLayout ? '24px' : '27px',
       color: isPlayable ? '#f8fafc' : '#94a3b8',
       fontStyle: 'bold',
       align: 'center',
       wordWrap: { width: panelWidth - 28 },
     }).setOrigin(0.5)
 
-    this.add.text(x, y - 4, route.theme, {
-      fontSize: compactLayout ? '14px' : '15px',
+    this.add.text(x, y - 2, route.theme, {
+      fontSize: compactLayout ? '13px' : '14px',
       color: isPlayable ? '#cbd5e1' : '#64748b',
       align: 'center',
       wordWrap: { width: panelWidth - 34 },
     }).setOrigin(0.5)
 
-    const panelHint = isPlayable
-      ? this.getRouteHint(playableEncounterType)
-      : route.rewardHint
-
-    this.add.text(x, y + 52, panelHint, {
-      fontSize: compactLayout ? '13px' : '14px',
-      color: isPlayable ? '#bfdbfe' : '#64748b',
-      align: 'center',
-      wordWrap: { width: panelWidth - 34 },
-    }).setOrigin(0.5)
-
-    this.add.text(x, y + 88, `Boss: ${this.formatBossName(route.bossId)}`, {
+    this.add.text(x, y + 42, `Boss: ${this.formatBossName(route.bossId)}`, {
       fontSize: compactLayout ? '12px' : '13px',
       color: isPlayable ? '#a5f3fc' : '#64748b',
     }).setOrigin(0.5)
 
-    this.add.text(x, y + panelHeight / 2 - 20, isPlayable ? 'Playable - Enter Domain' : 'Locked - Not Yet Unsealed', {
-      fontSize: compactLayout ? '15px' : '16px',
+    this.add.text(x, y + panelHeight / 2 - 18, isPlayable ? 'Enter Route' : 'Locked', {
+      fontSize: compactLayout ? '13px' : '14px',
       color: isPlayable ? '#86efac' : '#94a3b8',
       fontStyle: isPlayable ? 'bold' : 'normal',
     }).setOrigin(0.5)
@@ -316,22 +299,6 @@ export class MapScene extends Phaser.Scene {
     }
 
     return options[0] ?? 'battle'
-  }
-
-  private getRouteHint(encounterType: EncounterType): string {
-    if (encounterType === 'boss') {
-      return 'Final trial awaits this hunt.'
-    }
-
-    if (encounterType === 'elite') {
-      return 'Elite vanguard patrols this domain.'
-    }
-
-    if (encounterType === 'rest') {
-      return 'A sanctuary stop may appear on this path.'
-    }
-
-    return 'Begin with skirmishes and gather strength.'
   }
 
   private formatBossName(bossId: string): string {
