@@ -179,26 +179,6 @@ export class PlayScene extends Phaser.Scene {
       strokeThickness: 7,
     }).setOrigin(0.5).setAlpha(0).setDepth(12)
 
-    // Hero HUD panel.
-    const heroLabelX = leftPanel.x - sidePanelW / 2 + 10
-    this.add.text(heroLabelX, C ? 14 : 16, 'UN1', {
-      fontSize: C ? '11px' : '12px',
-      color: '#9cb0ca',
-      fontStyle: 'bold',
-    }).setOrigin(0, 0).setDepth(3)
-
-    this.heroHpText = this.add.text(heroLabelX, C ? 30 : 32, 'HP 40/40', {
-      fontSize: C ? '16px' : '18px',
-      color: '#7dd3fc',
-      fontStyle: 'bold',
-    }).setOrigin(0, 0).setDepth(3)
-
-    this.heroArmorText = this.add.text(heroLabelX + (C ? 120 : 138), C ? 32 : 34, 'Armor 0', {
-      fontSize: C ? '13px' : '14px',
-      color: '#bfdbfe',
-      fontStyle: 'bold',
-    }).setOrigin(0, 0).setDepth(3)
-
     // Resource HUD panel with pips.
     const centerX = width / 2
     const pipBaseY = C ? 34 : 38
@@ -257,46 +237,6 @@ export class PlayScene extends Phaser.Scene {
       color: '#7f8ea7',
     }).setOrigin(0.5, 0).setDepth(3)
 
-    // Enemy HUD panel + framed intent block.
-    const ex = rightPanel.x + sidePanelW / 2 - 10
-
-    this.enemyNameText = this.add.text(ex, C ? 14 : 16, this.session.enemy.name, {
-      fontSize: C ? '14px' : '16px',
-      color: this.encounterType === 'boss' ? '#fde68a' : '#f8d2d2',
-      fontStyle: 'bold',
-      align: 'right',
-    }).setOrigin(1, 0).setDepth(3)
-
-    if (this.encounterType === 'boss') {
-      this.add.text(ex - this.enemyNameText.width - 8, C ? 16 : 18, 'BOSS', {
-        fontSize: C ? '10px' : '11px',
-        color: '#fca5a5',
-        fontStyle: 'bold',
-      }).setOrigin(1, 0).setDepth(3)
-    }
-
-    this.enemyHpText = this.add.text(ex, C ? 32 : 36, `HP ${this.session.enemy.maxHp}/${this.session.enemy.maxHp}`, {
-      fontSize: C ? '13px' : '14px',
-      color: '#fecaca',
-      align: 'right',
-      fontStyle: 'bold',
-    }).setOrigin(1, 0).setDepth(3)
-
-    const intentWidth = C ? 154 : 196
-    const intentHeight = C ? 22 : 24
-    const intentX = ex - intentWidth / 2
-    const intentY = C ? 56 : 64
-    this.add.rectangle(intentX, intentY, intentWidth, intentHeight, 0x3f1f1f, 0.95)
-      .setStrokeStyle(1, this.encounterType === 'boss' ? 0xf59e0b : 0xe5b8b8)
-      .setDepth(2)
-    this.intentText = this.add.text(ex - 6, intentY, `Intent: ${getCurrentIntent(this.session).label}`, {
-      fontSize: C ? '11px' : '12px',
-      color: this.encounterType === 'boss' ? '#fde68a' : '#fef3c7',
-      wordWrap: { width: intentWidth - 16 },
-      align: 'right',
-      fontStyle: 'bold',
-    }).setOrigin(1, 0.5).setDepth(3)
-
     // Sprite slots: hidden references for hit feedback + fallback cards.
     const slotW = C ? 118 : 138
     const slotH = C ? 148 : 174
@@ -315,6 +255,48 @@ export class PlayScene extends Phaser.Scene {
         .setFillStyle(this.encounterType === 'boss' ? 0x3f1414 : 0x4a1f1f, 0.92)
         .setStrokeStyle(1, this.encounterType === 'boss' ? 0xf59e0b : 0xef4444, 0.72)
     }
+
+    // Hero stats HUD: icon-based HP/Armor attached near the hero.
+    const heroHudX = heroX - (C ? 54 : 66)
+    const heroHudY = spriteY - (C ? 96 : 114)
+    this.add.rectangle(heroHudX, heroHudY, C ? 176 : 208, C ? 62 : 70, 0x0f172a, 0.88)
+      .setStrokeStyle(1, 0x4b617f, 0.78)
+      .setDepth(6)
+    this.heroHpText = this.add.text(heroHudX - (C ? 76 : 92), heroHudY - 18, '♥ 40/40', {
+      fontSize: C ? '16px' : '18px',
+      color: '#7dd3fc',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0).setDepth(7)
+    this.heroArmorText = this.add.text(heroHudX - (C ? 76 : 92), heroHudY + 6, '🛡 0', {
+      fontSize: C ? '14px' : '15px',
+      color: '#bfdbfe',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0).setDepth(7)
+
+    // Enemy stats + intent HUD: icon-based and anchored near the enemy.
+    const enemyHudX = enemyX + (C ? 56 : 66)
+    const enemyHudY = spriteY - (C ? 102 : 118)
+    this.add.rectangle(enemyHudX, enemyHudY, C ? 190 : 224, C ? 96 : 106, 0x1f1722, 0.9)
+      .setStrokeStyle(1, this.encounterType === 'boss' ? 0xf59e0b : 0xa17676, 0.85)
+      .setDepth(6)
+    this.enemyNameText = this.add.text(enemyHudX + (C ? 84 : 100), enemyHudY - 38, this.session.enemy.name, {
+      fontSize: C ? '13px' : '15px',
+      color: this.encounterType === 'boss' ? '#fde68a' : '#f8d2d2',
+      fontStyle: 'bold',
+      align: 'right',
+    }).setOrigin(1, 0).setDepth(7)
+    this.enemyHpText = this.add.text(enemyHudX - (C ? 84 : 100), enemyHudY - 14, `♥ ${this.session.enemy.maxHp}/${this.session.enemy.maxHp}`, {
+      fontSize: C ? '14px' : '15px',
+      color: '#fecaca',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0).setDepth(7)
+    this.intentText = this.add.text(enemyHudX - (C ? 84 : 100), enemyHudY + 12, '', {
+      fontSize: C ? '12px' : '13px',
+      color: this.encounterType === 'boss' ? '#fde68a' : '#fef3c7',
+      fontStyle: 'bold',
+      wordWrap: { width: C ? 172 : 202 },
+      align: 'left',
+    }).setOrigin(0, 0).setDepth(7)
 
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
@@ -868,14 +850,14 @@ export class PlayScene extends Phaser.Scene {
       this.cameras.main.shake(180, 0.008)
     }
 
-    const burnText = this.session.enemyBurn > 0 ? ` · Burn ${this.session.enemyBurn}` : ''
-    const armorText = this.session.state.enemyArmor > 0 ? ` · Armor ${this.session.state.enemyArmor}` : ''
+    const enemyArmorText = this.session.state.enemyArmor > 0 ? `  🛡 ${this.session.state.enemyArmor}` : ''
+    const enemyBurnText = this.session.enemyBurn > 0 ? `  🔥 ${this.session.enemyBurn}` : ''
 
     this.enemyHpText.setText(
-      `HP ${this.session.state.enemyHp}/${this.session.enemy.maxHp}${armorText}${burnText}`,
+      `♥ ${this.session.state.enemyHp}/${this.session.enemy.maxHp}${enemyArmorText}${enemyBurnText}`,
     )
-    this.heroHpText.setText(`HP ${this.session.state.heroHp}/${this.heroMaxHp}`)
-    this.heroArmorText.setText(`Armor ${this.session.state.heroArmor}`)
+    this.heroHpText.setText(`♥ ${this.session.state.heroHp}/${this.heroMaxHp}`)
+    this.heroArmorText.setText(`🛡 ${this.session.state.heroArmor}`)
     this.energyText.setText(`${this.session.currentEnergy}/${this.session.maxEnergy}`)
     this.emberText.setText(`${this.session.state.ember}`)
     this.emberText.setAlpha(this.session.state.ember > 0 ? 1 : 0.64)
@@ -899,7 +881,7 @@ export class PlayScene extends Phaser.Scene {
     this.discardPileVisuals.forEach((pile, index) => {
       pile.setAlpha(hasDiscardCards ? (0.84 + index * 0.06) : 0.3)
     })
-    this.intentText.setText(`Intent · ${getCurrentIntent(this.session).label}`)
+    this.intentText.setText(this.getIntentIconSummary())
 
     this.enemyNameText.setText(
       this.encounterType === 'boss' && this.session.enemyPhase === 2
@@ -912,6 +894,30 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.renderHand()
+  }
+
+  // Enemy intent rendering: icon-first summary to improve glance readability.
+  private getIntentIconSummary(): string {
+    const intent = getCurrentIntent(this.session)
+    const parts: string[] = []
+
+    if (intent.damage > 0) {
+      parts.push(`⚔ ${intent.damage}`)
+    }
+
+    if ((intent.burnValue ?? 0) > 0) {
+      parts.push(`🔥 ${intent.burnValue}`)
+    }
+
+    if ((intent.armorValue ?? 0) > 0) {
+      parts.push(`🛡 ${intent.armorValue}`)
+    }
+
+    if ((intent.reflectValue ?? 0) > 0) {
+      parts.push(`🛡↺ ${intent.reflectValue}`)
+    }
+
+    return parts.length > 0 ? parts.join('   ') : `⚔ 0`
   }
 
   private renderHand() {
