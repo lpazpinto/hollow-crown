@@ -2,13 +2,14 @@ import Phaser from 'phaser'
 import { checkBattleOutcome, type BattleState } from '../battle/battleLogic'
 import { getCardBaseId, type CardContent } from '../content/cards'
 import { getRouteById } from '../content/routes'
-import { getEnemyIntentActions } from '../content/enemies'
+import { getEnemyIntentActions, type EnemyIntentAction } from '../content/enemies'
 import {
+  applyEnemyIntentActionStep,
+  beginEnemyTurn,
   createInitialBattleSession,
   discardHand,
   getCurrentIntent,
   playCardFromHand,
-  resolveEnemyIntentAction,
   startNewPlayerTurn,
   type BattleSession,
 } from '../battle/battleSession'
@@ -32,6 +33,11 @@ import { clearSave, saveRun } from '../battle/runSave'
 type VictoryRewardType = 'none' | 'elite-relic' | 'boss-signature'
 
 export class PlayScene extends Phaser.Scene {
+  private readonly ENEMY_TURN_START_DELAY_MS = 320
+  private readonly ENEMY_ACTION_PRE_DELAY_MS = 220
+  private readonly ENEMY_ACTION_POST_DELAY_MS = 420
+  private readonly ENEMY_TURN_END_DELAY_MS = 300
+
   private heroMaxHp = 40
   private session!: BattleSession
   private transitioningScene = false
@@ -805,50 +811,105 @@ export class PlayScene extends Phaser.Scene {
 
     this.animateHandToDiscard(() => {
       this.session = discardHand(this.session)
-      const intent = getCurrentIntent(this.session)
-      const previousState = this.cloneBattleState(this.session.state)
       const previousPhase = this.session.enemyPhase
 
-      this.playEnemyIntentAction(intent.damage, this.encounterType === 'boss', () => {
-        this.session = resolveEnemyIntentAction(this.session)
-        this.playDamageFeedback(previousState, this.session.state, {
+      // Enemy turn sequencing starts here: resolve enemy turn as a readable series of timed steps.
+      this.time.delayedCall(this.ENEMY_TURN_START_DELAY_MS, () => {
+        this.resolveEnemyTurnSequence(previousPhase)
+      })
+    })
+  }
+
+  private resolveEnemyTurnSequence(previousPhase: 1 | 2) {
+    const intent = getCurrentIntent(this.session)
+    const intentActions = getEnemyIntentActions(intent)
+
+    const beforeTurnStart = this.cloneBattleState(this.session.state)
+    this.session = beginEnemyTurn(this.session)
+    this.playDamageFeedback(beforeTurnStart, this.session.state, {
+      source: 'enemy',
+      intentDamage: intent.damage,
+    })
+    this.updateBattleText()
+
+    if (this.session.outcome !== 'ongoing') {
+      this.finishEnemyTurnToPlayer(previousPhase)
+      return
+    }
+
+    this.resolveEnemyActionStep(intentActions, 0, previousPhase)
+  }
+
+  private resolveEnemyActionStep(
+    intentActions: EnemyIntentAction[],
+    actionIndex: number,
+    previousPhase: 1 | 2,
+  ) {
+    if (actionIndex >= intentActions.length) {
+      this.finishEnemyTurnToPlayer(previousPhase)
+      return
+    }
+
+    // Delays between enemy actions are controlled here (pre-action anticipation).
+    this.time.delayedCall(this.ENEMY_ACTION_PRE_DELAY_MS, () => {
+      const action = intentActions[actionIndex]
+      this.playEnemyActionPresentation(action, () => {
+        const beforeActionSession = this.session
+        const beforeActionState = this.cloneBattleState(this.session.state)
+
+        // One enemy action is resolved here, then HUD/feedback is refreshed immediately.
+        this.session = applyEnemyIntentActionStep(this.session, action)
+        this.playDamageFeedback(beforeActionState, this.session.state, {
           source: 'enemy',
-          intentDamage: intent.damage,
+          intentDamage: action.type === 'attack' ? action.value : 0,
         })
-        this.session.outcome = checkBattleOutcome(this.session.state)
+        this.showEnemyActionStatusFeedback(beforeActionSession, this.session, action)
+        this.updateBattleText()
 
-        if (this.session.outcome === 'ongoing') {
-          const shouldAnimateReshuffle = this.session.drawPile.length === 0 && this.session.discardPile.length > 0
-          const startNextPlayerTurn = () => {
-            this.session = startNewPlayerTurn(this.session)
-            this.pendingDrawAnimation = true
-            this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
-            this.time.delayedCall(260, () => {
-              // Guard: status damage at turn start may have ended the battle.
-              // Do not show Player Turn banner or unlock input if the hero died.
-              if (this.session.outcome !== 'ongoing') {
-                return
-              }
-              this.showTurnBanner('Player Turn', '#fde68a')
-              this.startHeroIdleAnimation()
-              this.unlockBattleInput()
-            })
-            this.updateBattleText()
-          }
-
-          if (shouldAnimateReshuffle) {
-            this.animateReshuffleToDeck(startNextPlayerTurn)
-            return
-          }
-
-          startNextPlayerTurn()
+        if (this.session.outcome !== 'ongoing') {
+          this.finishEnemyTurnToPlayer(previousPhase)
           return
         }
 
-        this.unlockBattleInput()
-        this.updateBattleText()
+        this.time.delayedCall(this.ENEMY_ACTION_POST_DELAY_MS, () => {
+          this.resolveEnemyActionStep(intentActions, actionIndex + 1, previousPhase)
+        })
       })
     })
+  }
+
+  private finishEnemyTurnToPlayer(previousPhase: 1 | 2) {
+    if (this.session.outcome !== 'ongoing') {
+      this.unlockBattleInput()
+      this.updateBattleText()
+      return
+    }
+
+    const shouldAnimateReshuffle = this.session.drawPile.length === 0 && this.session.discardPile.length > 0
+    const startNextPlayerTurn = () => {
+      this.session = startNewPlayerTurn(this.session)
+      this.pendingDrawAnimation = true
+      this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
+      this.updateBattleText()
+
+      // Control is returned to the player after a short end-of-enemy-turn delay.
+      this.time.delayedCall(this.ENEMY_TURN_END_DELAY_MS, () => {
+        if (this.session.outcome !== 'ongoing') {
+          return
+        }
+
+        this.showTurnBanner('Your Turn', '#fde68a')
+        this.startHeroIdleAnimation()
+        this.unlockBattleInput()
+      })
+    }
+
+    if (shouldAnimateReshuffle) {
+      this.animateReshuffleToDeck(startNextPlayerTurn)
+      return
+    }
+
+    startNextPlayerTurn()
   }
 
   private updateBattleText() {
@@ -1782,6 +1843,63 @@ export class PlayScene extends Phaser.Scene {
         })
       },
     })
+  }
+
+  private playEnemyActionPresentation(action: EnemyIntentAction, onImpact: () => void) {
+    if (action.type === 'attack') {
+      this.playEnemyIntentAction(action.value, this.encounterType === 'boss', onImpact)
+      return
+    }
+
+    const target = this.enemySprite ?? this.enemyPanel
+    const startX = target.x
+    const startY = target.y
+    const nudgeY = action.type === 'armor' || action.type === 'reflect' ? -6 : -3
+
+    this.tweens.killTweensOf(target)
+    this.tweens.add({
+      targets: target,
+      x: startX - 8,
+      y: startY + nudgeY,
+      duration: 72,
+      ease: 'Quad.Out',
+      onComplete: () => {
+        onImpact()
+        this.tweens.add({
+          targets: target,
+          x: startX,
+          y: startY,
+          duration: 94,
+          ease: 'Quad.In',
+        })
+      },
+    })
+  }
+
+  private showEnemyActionStatusFeedback(
+    previousSession: BattleSession,
+    nextSession: BattleSession,
+    action: EnemyIntentAction,
+  ) {
+    if (action.type === 'burn') {
+      const burnDelta = nextSession.heroBurn - previousSession.heroBurn
+      if (burnDelta > 0) {
+        this.showFloatingDamageText(this.heroPanel.x, this.heroPanel.y - 64, `+${burnDelta} Burn`, '#fb7185')
+      }
+      return
+    }
+
+    if (action.type === 'poison') {
+      const poisonDelta = nextSession.heroPoison - previousSession.heroPoison
+      if (poisonDelta > 0) {
+        this.showFloatingDamageText(this.heroPanel.x, this.heroPanel.y - 48, `+${poisonDelta} Poison`, '#a78bfa')
+      }
+      return
+    }
+
+    if (action.type === 'reflect' && nextSession.enemyReflect > 0) {
+      this.showFloatingDamageText(this.enemyPanel.x, this.enemyPanel.y - 56, `Reflect ${nextSession.enemyReflect}`, '#c4b5fd')
+    }
   }
 
   private playBossIntroMoment() {

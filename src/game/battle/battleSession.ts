@@ -11,6 +11,7 @@ import type { BoonContent } from '../content/boons'
 import type { HeroAbilityContent } from '../content/abilities'
 import type { RelicContent } from '../content/relics'
 import {
+  type EnemyIntentAction,
   getRandomBossEnemy,
   getEnemyIntentActions,
   getRandomEliteEnemy,
@@ -282,71 +283,82 @@ export function startNewPlayerTurn(session: BattleSession): BattleSession {
 }
 
 export function resolveEnemyIntentAction(session: BattleSession): BattleSession {
+  let nextSession = beginEnemyTurn(session)
+
+  if (nextSession.outcome !== 'ongoing') {
+    return nextSession
+  }
+
+  const intent = getCurrentIntent(nextSession)
+
+  // Enemy intent actions are resolved from the same structured action source used by UI preview.
+  getEnemyIntentActions(intent).forEach((action) => {
+    nextSession = applyEnemyIntentActionStep(nextSession, action)
+  })
+
+  return nextSession
+}
+
+export function beginEnemyTurn(session: BattleSession): BattleSession {
   const withPhaseTransition = maybeEnterBossPhaseTwo(session)
-  const intent = getCurrentIntent(withPhaseTransition)
-  // Temporary armor reset timing: enemy armor clears at the start of the enemy turn.
+
+  // Enemy turn start timing rule: clear temporary enemy armor first.
   const stateAtEnemyTurnStart = {
     ...withPhaseTransition.state,
     enemyArmor: 0,
   }
+
+  // Then enemy burn ticks and decrements once.
   const stateAfterEnemyBurn = applyEnemyBurnAtEnemyTurnStart(stateAtEnemyTurnStart, withPhaseTransition.enemyBurn)
   const nextEnemyBurn = Math.max(0, withPhaseTransition.enemyBurn - 1)
-  const outcomeAfterEnemyBurn = checkBattleOutcome(stateAfterEnemyBurn)
 
-  if (outcomeAfterEnemyBurn !== 'ongoing') {
-    return {
-      ...withPhaseTransition,
-      state: stateAfterEnemyBurn,
-      enemyBurn: nextEnemyBurn,
-      outcome: outcomeAfterEnemyBurn,
+  return {
+    ...withPhaseTransition,
+    state: stateAfterEnemyBurn,
+    enemyBurn: nextEnemyBurn,
+    outcome: checkBattleOutcome(stateAfterEnemyBurn),
+  }
+}
+
+export function applyEnemyIntentActionStep(
+  session: BattleSession,
+  action: EnemyIntentAction,
+): BattleSession {
+  let nextState = session.state
+  let nextHeroBurn = session.heroBurn
+  let nextHeroPoison = session.heroPoison
+  let nextEnemyReflect = session.enemyReflect
+
+  if (action.type === 'attack') {
+    nextState = resolveEnemyAttack(nextState, action.value)
+  }
+
+  if (action.type === 'armor') {
+    nextState = {
+      ...nextState,
+      enemyArmor: nextState.enemyArmor + action.value,
     }
   }
 
-  let nextState = stateAfterEnemyBurn
-  let nextHeroBurn = withPhaseTransition.heroBurn
-  let nextHeroPoison = withPhaseTransition.heroPoison
-  let nextEnemyReflect = 0
+  // Hero status effects are applied when enemy intent actions resolve.
+  if (action.type === 'burn') {
+    nextHeroBurn += action.value
+  }
 
-  // Enemy defend/block is resolved from the same structured action source used by UI preview.
-  getEnemyIntentActions(intent).forEach((action) => {
-    if (action.type === 'attack') {
-      nextState = resolveEnemyAttack(nextState, action.value)
-      return
-    }
+  if (action.type === 'poison') {
+    nextHeroPoison += action.value
+  }
 
-    if (action.type === 'armor') {
-      nextState = {
-        ...nextState,
-        enemyArmor: nextState.enemyArmor + action.value,
-      }
-      return
-    }
+  if (action.type === 'reflect') {
+    nextEnemyReflect = action.value
+  }
 
-    // Hero status effects are applied when enemy intent actions resolve.
-    if (action.type === 'burn') {
-      nextHeroBurn += action.value
-      return
-    }
-
-    if (action.type === 'poison') {
-      nextHeroPoison += action.value
-      return
-    }
-
-    if (action.type === 'reflect') {
-      nextEnemyReflect = action.value
-    }
-  })
-
-  // Check outcome after all intent actions resolve.
-  // Enemy attack can reduce heroHp to 0; outcome must be set so PlayScene reacts correctly.
-  // Status stacks added here (burn/poison) will deal damage at the NEXT player turn start, not now.
+  // Status stacks added here (burn/poison) will deal damage at the NEXT player turn start.
   return {
-    ...withPhaseTransition,
+    ...session,
     state: nextState,
     heroBurn: nextHeroBurn,
     heroPoison: nextHeroPoison,
-    enemyBurn: nextEnemyBurn,
     enemyReflect: nextEnemyReflect,
     outcome: checkBattleOutcome(nextState),
   }
