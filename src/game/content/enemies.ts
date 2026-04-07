@@ -1,11 +1,15 @@
+// Enemy intent parts are defined here.
+// Each optional field represents one discrete action the enemy will perform on its turn.
+// The structured action list from getEnemyIntentActions() is the single source of truth
+// for both the preview UI and the actual combat resolution pass.
 export type EnemyIntent = {
   id: string
   label: string
   damage: number
-  armorValue?: number
-  burnValue?: number
-  poisonValue?: number
-  reflectValue?: number
+  armorValue?: number   // shield icon — enemy gains armor
+  burnValue?: number    // flame icon — hero receives burn stacks
+  poisonValue?: number  // skull icon — hero receives poison stacks
+  reflectValue?: number // reflect icon — enemy gains reflect stacks
 }
 
 export type EnemyIntentActionType = 'attack' | 'armor' | 'burn' | 'poison' | 'reflect'
@@ -16,25 +20,31 @@ export type EnemyIntentAction = {
 }
 
 // Enemy intent action structure: every preview/resolution path reads the same action list.
+// Order matters for display: attack first, then status-inflicting effects (burn, poison), then defensive.
 export function getEnemyIntentActions(intent: EnemyIntent): EnemyIntentAction[] {
   const actions: EnemyIntentAction[] = []
 
+  // Direct damage part — maps to sword icon in preview.
   if (intent.damage > 0) {
     actions.push({ type: 'attack', value: intent.damage })
   }
 
+  // Self-armor part — maps to shield icon in preview.
   if ((intent.armorValue ?? 0) > 0) {
     actions.push({ type: 'armor', value: intent.armorValue ?? 0 })
   }
 
+  // Status-inflicting part: burn — maps to flame icon in preview.
   if ((intent.burnValue ?? 0) > 0) {
     actions.push({ type: 'burn', value: intent.burnValue ?? 0 })
   }
 
+  // Status-inflicting part: poison — maps to skull icon in preview.
   if ((intent.poisonValue ?? 0) > 0) {
     actions.push({ type: 'poison', value: intent.poisonValue ?? 0 })
   }
 
+  // Reflect part — maps to reflect icon in preview.
   if ((intent.reflectValue ?? 0) > 0) {
     actions.push({ type: 'reflect', value: intent.reflectValue ?? 0 })
   }

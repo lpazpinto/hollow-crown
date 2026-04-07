@@ -46,6 +46,7 @@ export class PlayScene extends Phaser.Scene {
   private drawPileCountText!: Phaser.GameObjects.Text
   private discardPileText!: Phaser.GameObjects.Text
   private enemyHpText!: Phaser.GameObjects.Text
+  private intentLabel!: Phaser.GameObjects.Text
   private intentText!: Phaser.GameObjects.Text
   private enemyNameText!: Phaser.GameObjects.Text
   private resultText!: Phaser.GameObjects.Text
@@ -294,9 +295,10 @@ export class PlayScene extends Phaser.Scene {
     }).setOrigin(0, 0).setDepth(7)
 
     // Enemy stats + intent HUD: icon-based and anchored near the enemy.
+    // The box is split into two rows: current state (HP/armor) and upcoming intent preview.
     const enemyHudX = enemyX + (C ? 56 : 66)
     const enemyHudY = spriteY - (C ? 94 : 108)
-    this.add.rectangle(enemyHudX, enemyHudY, C ? 190 : 224, C ? 96 : 106, 0x1f1722, 0.9)
+    this.add.rectangle(enemyHudX, enemyHudY, C ? 190 : 224, C ? 116 : 128, 0x1f1722, 0.9)
       .setStrokeStyle(1, this.encounterType === 'boss' ? 0xf59e0b : 0xa17676, 0.85)
       .setDepth(6)
     this.enemyNameText = this.add.text(enemyHudX + (C ? 84 : 100), enemyHudY - 38, this.session.enemy.name, {
@@ -305,17 +307,23 @@ export class PlayScene extends Phaser.Scene {
       fontStyle: 'bold',
       align: 'right',
     }).setOrigin(1, 0).setDepth(7)
-    this.enemyHpText = this.add.text(enemyHudX - (C ? 84 : 100), enemyHudY - 14, `♥ ${this.session.enemy.maxHp}/${this.session.enemy.maxHp}`, {
+    this.enemyHpText = this.add.text(enemyHudX - (C ? 84 : 100), enemyHudY - 22, `♥ ${this.session.enemy.maxHp}/${this.session.enemy.maxHp}`, {
       fontSize: C ? '14px' : '15px',
       color: '#fecaca',
       fontStyle: 'bold',
     }).setOrigin(0, 0).setDepth(7)
-    this.intentText = this.add.text(enemyHudX - (C ? 84 : 100), enemyHudY + 12, '', {
-      fontSize: C ? '12px' : '13px',
+    // Horizontal divider separates the current-state row from the intent preview row.
+    this.add.rectangle(enemyHudX, enemyHudY + 4, C ? 170 : 200, 1, 0x4b3a4a, 0.6).setDepth(7)
+    // Multi-action intent rendering: NEXT label + intent parts displayed side by side in one row.
+    this.intentLabel = this.add.text(enemyHudX - (C ? 84 : 100), enemyHudY + 12, 'NEXT', {
+      fontSize: C ? '10px' : '11px',
+      color: '#94a3b8',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0).setDepth(7)
+    this.intentText = this.add.text(enemyHudX - (C ? 84 : 100), enemyHudY + 30, '', {
+      fontSize: C ? '13px' : '14px',
       color: this.encounterType === 'boss' ? '#fde68a' : '#fef3c7',
       fontStyle: 'bold',
-      wordWrap: { width: C ? 172 : 202 },
-      align: 'left',
     }).setOrigin(0, 0).setDepth(7)
 
     this.input.keyboard?.on('keydown-ESC', () => {
@@ -975,9 +983,16 @@ export class PlayScene extends Phaser.Scene {
   }
 
   // Enemy intent rendering: icon-first summary to improve glance readability.
+  // Multi-action intents (e.g. attack + burn) are rendered side by side in one row, separated by ·
   private getIntentIconSummary(): string {
     const intent = getCurrentIntent(this.session)
     // Enemy intent UI is rendered from structured actions shared with battle resolution.
+    // Status-inflicting intent parts are mapped to icons and values here:
+    //   attack  → ⚔  (sword)
+    //   armor   → 🛡  (shield)
+    //   burn    → 🔥  (flame)
+    //   poison  → ☠   (skull)
+    //   reflect → 🛡↺ (reflect)
     const parts = getEnemyIntentActions(intent).map((action) => {
       if (action.type === 'attack') {
         return `⚔ ${action.value}`
@@ -998,7 +1013,8 @@ export class PlayScene extends Phaser.Scene {
       return `🛡↺ ${action.value}`
     })
 
-    return parts.length > 0 ? parts.join('   ') : `⚔ 0`
+    // Multi-action parts are joined with · so the player reads them as one combined intent.
+    return parts.length > 0 ? parts.join('  ·  ') : '—'
   }
 
   private getHeroStatusSummary(): string {
