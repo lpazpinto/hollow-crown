@@ -7,6 +7,7 @@ export type RouteContent = {
   status: RouteStatus
   bossId: string
   rewardHint: string
+  signatureCardId: string | null
 }
 
 export const ROUTE_SELECT_ROUTES: RouteContent[] = [
@@ -17,6 +18,7 @@ export const ROUTE_SELECT_ROUTES: RouteContent[] = [
     status: 'playable',
     bossId: 'corrupted-slime',
     rewardHint: 'Balanced rewards with card growth.',
+    signatureCardId: 'ashen-crown-verdict',
   },
   {
     id: 'veil-of-thorns',
@@ -25,6 +27,7 @@ export const ROUTE_SELECT_ROUTES: RouteContent[] = [
     status: 'locked',
     bossId: 'thorn-queen',
     rewardHint: 'Nature relic path. Locked for now.',
+    signatureCardId: null,
   },
   {
     id: 'starforged-deep',
@@ -33,6 +36,7 @@ export const ROUTE_SELECT_ROUTES: RouteContent[] = [
     status: 'locked',
     bossId: 'star-sentinel',
     rewardHint: 'Arcane relic path. Coming soon.',
+    signatureCardId: null,
   },
 ]
 

@@ -3,17 +3,28 @@ import { addCardToRunDeck, advanceFloorAfterEncounter } from '../battle/runState
 import { saveRun } from '../battle/runSave'
 import {
   generateRewardChoices,
+  getCardById,
   type CardContent,
   type RewardEncounterType,
 } from '../content/cards'
 
 type RewardSceneData = {
   encounterType?: RewardEncounterType
+  mode?: 'standard' | 'boss-signature'
+  routeName?: string
+  bossId?: string
+  signatureCardId?: string | null
+  nextScene?: 'MapScene' | 'RunEndScene'
 }
 
 export class RewardScene extends Phaser.Scene {
   private rewardChosen = false
   private encounterType: RewardEncounterType = 'battle'
+  private mode: 'standard' | 'boss-signature' = 'standard'
+  private routeName = ''
+  private bossId = ''
+  private signatureCardId: string | null = null
+  private nextScene: 'MapScene' | 'RunEndScene' = 'MapScene'
 
   constructor() {
     super('RewardScene')
@@ -24,15 +35,20 @@ export class RewardScene extends Phaser.Scene {
     const compactLayout = width < 900 || height < 700
     this.rewardChosen = false
     this.encounterType = data.encounterType ?? 'battle'
+    this.mode = data.mode ?? 'standard'
+    this.routeName = data.routeName ?? ''
+    this.bossId = data.bossId ?? ''
+    this.signatureCardId = data.signatureCardId ?? null
+    this.nextScene = data.nextScene ?? 'MapScene'
 
     this.cameras.main.setBackgroundColor('#111827')
 
-    this.add.text(width / 2, 40, 'Card Draft', {
+    this.add.text(width / 2, 40, this.mode === 'boss-signature' ? 'Signature Reward' : 'Card Draft', {
       fontSize: '34px',
       color: '#ffffff',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 82, 'Choose 1 card to deepen your run build', {
+    this.add.text(width / 2, 82, this.mode === 'boss-signature' ? 'Boss defeated. Claim your signature card.' : 'Choose 1 card to deepen your run build', {
       fontSize: '18px',
       color: '#cbd5e1',
     }).setOrigin(0.5)
@@ -47,6 +63,13 @@ export class RewardScene extends Phaser.Scene {
       color: '#cbd5e1',
     }).setOrigin(0.5)
 
+    if (this.mode === 'boss-signature') {
+      this.add.text(width / 2, 146, `Route: ${this.routeName || 'Unknown Route'}  |  Boss: ${this.bossId || 'Unknown Boss'}`, {
+        fontSize: compactLayout ? '14px' : '15px',
+        color: '#fca5a5',
+      }).setOrigin(0.5)
+    }
+
     this.input.keyboard?.removeAllListeners('keydown-ESC')
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
@@ -54,7 +77,7 @@ export class RewardScene extends Phaser.Scene {
 
     try {
       const rewards = this.getRewardChoices()
-      const spacing = compactLayout ? 200 : 230
+      const spacing = this.mode === 'boss-signature' ? 0 : (compactLayout ? 200 : 230)
       const startX = width / 2 - ((rewards.length - 1) * spacing) / 2
 
       rewards.forEach((card, index) => {
@@ -137,13 +160,24 @@ export class RewardScene extends Phaser.Scene {
       addCardToRunDeck(card)
       advanceFloorAfterEncounter()
       saveRun()
-      this.scene.start('MapScene')
+      this.scene.start(this.nextScene)
     } catch {
       this.rewardChosen = false
     }
   }
 
   private getRewardChoices(): CardContent[] {
+    if (this.mode === 'boss-signature') {
+      if (this.signatureCardId) {
+        const signatureCard = getCardById(this.signatureCardId)
+        if (signatureCard) {
+          return [signatureCard]
+        }
+      }
+
+      return generateRewardChoices('boss').slice(0, 1)
+    }
+
     return generateRewardChoices(this.encounterType)
   }
 }

@@ -119,6 +119,20 @@ export const STARTER_DECK: CardContent[] = [
 
 export const REWARD_CARD_POOL: CardContent[] = UN1_CARD_POOL
 
+export const ASHEN_CROWN_VERDICT: CardContent = {
+  id: 'ashen-crown-verdict',
+  title: 'Ashen Crown Verdict',
+  description: 'Deal 16 damage. If you have Ember, deal +4 damage',
+  effectType: 'damage',
+  value: 16,
+  cost: 2,
+  rarity: 'rare',
+}
+
+const SIGNATURE_CARD_POOL: CardContent[] = [
+  ASHEN_CROWN_VERDICT,
+]
+
 const REWARD_RARITY_WEIGHTS: Record<RewardEncounterType, Record<CardRarity, number>> = {
   battle: {
     common: 70,
@@ -160,6 +174,12 @@ export function getCardBaseId(cardId: string): string {
   return cardId
     .replace(/-run-\d+$/, '')
     .replace(/-starter-\d+$/, '')
+}
+
+export function getCardById(cardId: string): CardContent | null {
+  const allCards = [...UN1_CARD_POOL, ...SIGNATURE_CARD_POOL]
+  const match = allCards.find((card) => card.id === cardId)
+  return match ? { ...match } : null
 }
 
 export function createUpgradedCard(card: CardContent): CardContent {

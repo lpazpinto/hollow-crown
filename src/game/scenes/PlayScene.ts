@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { checkBattleOutcome, type BattleState } from '../battle/battleLogic'
 import { getCardBaseId, type CardContent } from '../content/cards'
+import { getRouteById } from '../content/routes'
 import {
   createInitialBattleSession,
   discardHand,
@@ -1715,9 +1716,19 @@ export class PlayScene extends Phaser.Scene {
     advanceFloorNow: boolean
   } {
     if (this.encounterType === 'boss') {
+      const runState = getRunState()
+      const selectedRoute = getRouteById(runState.selectedRouteId)
+
       return {
-        scene: 'RelicRewardScene',
-        data: { nextScene: 'RunEndScene' },
+        scene: 'RewardScene',
+        data: {
+          encounterType: 'boss',
+          mode: 'boss-signature',
+          routeName: selectedRoute?.name ?? 'Unknown Route',
+          bossId: selectedRoute?.bossId ?? 'unknown-boss',
+          signatureCardId: selectedRoute?.signatureCardId ?? null,
+          nextScene: 'RunEndScene',
+        },
         advanceFloorNow: false,
       }
     }
