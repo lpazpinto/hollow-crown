@@ -639,7 +639,10 @@ export class PlayScene extends Phaser.Scene {
       wordWrap: { width: cardWidth - 24 },
     }).setOrigin(0.5)
 
-    const costText = this.add.text(costGem.x, costGem.y, `${cardData.cost}`, {
+    const emberCost = cardData.emberCost ?? 0
+    const costLabel = emberCost > 0 ? `${cardData.cost}|${emberCost}🔥` : `${cardData.cost}`
+
+    const costText = this.add.text(costGem.x, costGem.y, costLabel, {
       fontSize: this.compactLayout ? '14px' : '15px',
       color: '#f8fafc',
       fontStyle: 'bold',
@@ -975,7 +978,12 @@ export class PlayScene extends Phaser.Scene {
 
     this.session.hand.forEach((cardData, index) => {
       const cardX = startX + index * cardSpacing
-      const canPlay = this.session.currentEnergy >= cardData.cost && this.session.outcome === 'ongoing'
+      // Mixed-cost cards require both energy and Ember to be playable.
+      const emberCost = cardData.emberCost ?? 0
+      const canPlay =
+        this.session.currentEnergy >= cardData.cost
+        && this.session.state.ember >= emberCost
+        && this.session.outcome === 'ongoing'
 
       const cardObjects = this.createCard(
         cardX,
@@ -1241,7 +1249,12 @@ export class PlayScene extends Phaser.Scene {
         return
       }
 
-      const canPlay = this.session.outcome === 'ongoing' && this.session.currentEnergy >= cardData.cost
+      const emberCost = cardData.emberCost ?? 0
+      // Mixed-cost cards require both energy and Ember to be playable.
+      const canPlay =
+        this.session.outcome === 'ongoing'
+        && this.session.currentEnergy >= cardData.cost
+        && this.session.state.ember >= emberCost
       if (canPlay) {
         cardVisual.setInteractive({ useHandCursor: true })
       } else {

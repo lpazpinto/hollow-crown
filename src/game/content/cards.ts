@@ -10,6 +10,7 @@ export type CardContent = {
   effectType: CardEffectType
   value: number
   cost: number
+  emberCost?: number
   rarity: CardRarity
 }
 
@@ -26,9 +27,9 @@ export const UN1_CARD_POOL: CardContent[] = [
   {
     id: 'golden-shield',
     title: 'Golden Shield',
-    description: 'Gain 7 armor',
+    description: 'Gain 4 armor',
     effectType: 'armor',
-    value: 7,
+    value: 4,
     cost: 1,
     rarity: 'common',
   },
@@ -44,10 +45,11 @@ export const UN1_CARD_POOL: CardContent[] = [
   {
     id: 'charge',
     title: 'Charge',
-    description: 'Gain 4 armor. Draw 1 card',
+    description: 'Gain 4 armor. Draw 1 card. Spend 1 Ember',
     effectType: 'armor',
     value: 4,
     cost: 0,
+    emberCost: 1,
     rarity: 'common',
   },
   {
@@ -270,7 +272,7 @@ function getDescriptionForCard(baseId: string, value: number): string {
   if (baseId === 'unicorn-strike') return `Deal ${value} damage`
   if (baseId === 'golden-shield') return `Gain ${value} armor`
   if (baseId === 'ember-fire') return `Deal ${value} damage. If you have Ember, deal +3 damage`
-  if (baseId === 'charge') return `Gain ${value} armor. Draw 1 card`
+  if (baseId === 'charge') return `Gain ${value} armor. Draw 1 card. Spend 1 Ember`
   if (baseId === 'crown-diamonds') return 'Gain 1 Ember. Draw 1 card'
   if (baseId === 'double-strike') return `Deal ${value} damage twice`
   if (baseId === 'silver-protection') return `Gain ${value} armor. If you played an Attack this turn, gain 1 Ember`

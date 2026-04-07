@@ -151,7 +151,10 @@ export function getCurrentIntent(session: BattleSession): EnemyIntent {
 
 export function playCardFromHand(session: BattleSession, cardIndex: number): BattleSession {
   const card = session.hand[cardIndex]
-  if (!card || session.outcome !== 'ongoing' || session.currentEnergy < card.cost) {
+  const emberCost = card?.emberCost ?? 0
+
+  // Mixed-cost cards can require both energy and Ember.
+  if (!card || session.outcome !== 'ongoing' || session.currentEnergy < card.cost || session.state.ember < emberCost) {
     return session
   }
 
@@ -186,6 +189,16 @@ export function playCardFromHand(session: BattleSession, cardIndex: number): Bat
     turnCardState: getUpdatedTurnCardState(withPhaseTransition.turnCardState, card.effectType),
     currentEnergy: session.currentEnergy - card.cost,
     outcome: checkBattleOutcome(stateAfterReflect),
+  }
+
+  if (emberCost > 0) {
+    nextSession = {
+      ...nextSession,
+      state: {
+        ...nextSession.state,
+        ember: Math.max(0, nextSession.state.ember - emberCost),
+      },
+    }
   }
 
   if (drawCount > 0) {
