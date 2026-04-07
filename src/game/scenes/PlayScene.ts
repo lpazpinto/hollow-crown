@@ -89,6 +89,9 @@ export class PlayScene extends Phaser.Scene {
   private pileInspectPageSize = 12
   private pileInspectListText?: Phaser.GameObjects.Text
   private pileInspectPageText?: Phaser.GameObjects.Text
+  // Victory screen overlay objects, cleared on transition.
+  private victoryRewardPanel: Phaser.GameObjects.GameObject[] = []
+  private victoryConfirmReady = false
 
   constructor() {
     super('PlayScene')
@@ -922,40 +925,13 @@ export class PlayScene extends Phaser.Scene {
     if (this.session.outcome === 'victory') {
       const isBossVictory = this.encounterType === 'boss'
       this.stopHeroIdleAnimation()
+      // Battle rewards are calculated here — called once on first victory detection.
       applyBattleResult(this.session.state.heroHp, true)
       const xpResult = awardXpForCurrentEncounter()
       const shardReward = tryGrantShardForCurrentEncounter()
       const nextRoute = this.getPostVictoryRoute()
       const hasLevelUp = hasPendingLevelUp()
-      const rewardSummary = hasLevelUp
-        ? `Level Up x${xpResult.levelsGained}`
-        : nextRoute.scene === 'RewardScene'
-          ? 'Card Draft'
-          : nextRoute.scene === 'RelicRewardScene'
-            ? 'Relic Reward'
-            : 'Onward'
-      const shardSummary = shardReward.granted
-        ? shardReward.isForgeAvailable
-          ? ` • Shard +1 (${shardReward.shardCount}/${getShardTarget()}) • Forge Ready`
-          : ` • Shard +1 (${shardReward.shardCount}/${getShardTarget()})`
-        : ''
 
-      if (shardReward.granted) {
-        this.showRewardToast(
-          shardReward.isForgeAvailable ? 'Forge Unlocked' : 'Shard Gained',
-          shardReward.isForgeAvailable
-            ? `Shard ${shardReward.shardCount}/${getShardTarget()}  •  Forge reward now available`
-            : `Shard ${shardReward.shardCount}/${getShardTarget()}`,
-          shardReward.isForgeAvailable ? '#fef3c7' : '#93c5fd',
-        )
-      }
-
-      this.resultText.setText(
-        isBossVictory
-          ? `Boss Defeated  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}${shardSummary}`
-          : `Victory  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}${shardSummary}`,
-      )
-      this.resultText.setColor(isBossVictory ? '#fef08a' : '#86efac')
       this.showTurnBanner(
         hasLevelUp ? 'Level Up' : (isBossVictory ? 'Boss Defeated' : 'Victory'),
         hasLevelUp ? '#fde68a' : (isBossVictory ? '#fef08a' : '#86efac'),
@@ -968,25 +944,8 @@ export class PlayScene extends Phaser.Scene {
         this.cameras.main.flash(180, 140, 255, 180)
       }
 
-      this.transitioningScene = true
-
-      this.time.delayedCall(isBossVictory ? 760 : (hasLevelUp ? 560 : 420), () => {
-        if (nextRoute.advanceFloorNow) {
-          advanceFloorAfterEncounter()
-        }
-
-        saveRun()
-
-        if (hasPendingLevelUp()) {
-          this.scene.start('LevelUpScene', {
-            nextScene: nextRoute.scene,
-            nextData: nextRoute.data,
-          })
-          return
-        }
-
-        this.scene.start(nextRoute.scene, nextRoute.data)
-      })
+      // Victory reward summary panel is shown here; transition waits for player input.
+      this.showVictoryScreen(xpResult, shardReward, nextRoute, hasLevelUp, isBossVictory)
 
       return
     }
@@ -2151,6 +2110,149 @@ export class PlayScene extends Phaser.Scene {
       obj.destroy()
     })
     this.pileInspectObjects = []
+  }
+
+  // Renders the on-screen victory reward summary and waits for player confirmation.
+  private showVictoryScreen(
+    xpResult: { gainedXp: number; levelsGained: number },
+    shardReward: { granted: boolean; shardCount: number; isForgeAvailable: boolean },
+    nextRoute: { scene: string; data?: Record<string, unknown>; advanceFloorNow: boolean },
+    hasLevelUp: boolean,
+    isBossVictory: boolean,
+  ) {
+    const { width, height } = this.scale
+    const C = this.compactLayout
+
+    // Destroy any leftover panel objects from a previous call.
+    this.victoryRewardPanel.forEach((o) => o.destroy())
+    this.victoryRewardPanel = []
+    this.victoryConfirmReady = false
+
+    // Panel geometry.
+    const panelW = C ? 420 : 500
+    const panelH = C ? 210 : 240
+    const cx = width / 2
+    const cy = height / 2
+
+    const backdrop = this.add.rectangle(cx, cy, panelW, panelH, 0x060d1a, 0.95)
+      .setStrokeStyle(2, 0x3b5c82)
+      .setDepth(50)
+    this.victoryRewardPanel.push(backdrop)
+
+    // Victory headline.
+    const headlineColor = hasLevelUp ? '#fde68a' : (isBossVictory ? '#fef08a' : '#86efac')
+    const headlineText = hasLevelUp ? 'Level Up!' : (isBossVictory ? 'Boss Defeated' : 'Victory')
+    const headline = this.add.text(cx, cy - (C ? 78 : 88), headlineText, {
+      fontSize: C ? '26px' : '30px',
+      color: headlineColor,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(51)
+    this.victoryRewardPanel.push(headline)
+
+    // Horizontal rule below headline.
+    const rule = this.add.rectangle(cx, cy - (C ? 55 : 62), panelW - 40, 1, 0x3b5c82, 0.8).setDepth(51)
+    this.victoryRewardPanel.push(rule)
+
+    // Reward lines — each on its own row.
+    const lineSpacing = C ? 28 : 32
+    const lineStartY = cy - (C ? 36 : 40)
+    const lineFontSize = C ? '16px' : '18px'
+    const rewardLines: Array<{ label: string; color: string }> = []
+
+    // XP gain line.
+    rewardLines.push({ label: `XP  +${xpResult.gainedXp}`, color: '#a5b4fc' })
+
+    // Shard / Forge line.
+    if (shardReward.granted) {
+      if (shardReward.isForgeAvailable) {
+        rewardLines.push({ label: `Shard  ${shardReward.shardCount}/${getShardTarget()}  •  Forge Ready`, color: '#fef3c7' })
+      } else {
+        rewardLines.push({ label: `Shard  +1  (${shardReward.shardCount}/${getShardTarget()})`, color: '#93c5fd' })
+      }
+    }
+
+    // Level-up or next reward hint.
+    if (hasLevelUp) {
+      const times = xpResult.levelsGained > 1 ? ` ×${xpResult.levelsGained}` : ''
+      rewardLines.push({ label: `Level up${times}  →  Choose ability`, color: '#fde68a' })
+    } else {
+      const nextLabel =
+        nextRoute.scene === 'RewardScene'
+          ? '→  Card Draft'
+          : nextRoute.scene === 'RelicRewardScene'
+            ? '→  Relic Reward'
+            : '→  Onward'
+      rewardLines.push({ label: nextLabel, color: '#cbd5e1' })
+    }
+
+    rewardLines.forEach((line, i) => {
+      const lineObj = this.add.text(cx, lineStartY + i * lineSpacing, line.label, {
+        fontSize: lineFontSize,
+        color: line.color,
+      }).setOrigin(0.5).setDepth(51)
+      this.victoryRewardPanel.push(lineObj)
+    })
+
+    // "Continue" prompt — rendered but invisible; revealed after minimum lock.
+    const promptY = cy + (C ? 82 : 94)
+    const promptObj = this.add.text(cx, promptY, 'Click  /  Space  to continue', {
+      fontSize: C ? '13px' : '14px',
+      color: '#475569',
+    }).setOrigin(0.5).setDepth(51).setAlpha(0)
+    this.victoryRewardPanel.push(promptObj)
+
+    // After the minimum readable delay, enable player confirmation and reveal prompt.
+    // Continue input becomes enabled after minimum readable delay (1200ms).
+    this.time.delayedCall(1200, () => {
+      if (this.transitioningScene) {
+        return
+      }
+      this.victoryConfirmReady = true
+      this.tweens.add({ targets: promptObj, alpha: 1, duration: 280 })
+
+      const onConfirm = () => {
+        if (!this.victoryConfirmReady) {
+          return
+        }
+        this.doVictoryTransition(nextRoute, hasLevelUp)
+      }
+
+      // Transition to the next scene when player confirms via pointer or keyboard.
+      this.input.once('pointerdown', onConfirm)
+      this.input.keyboard?.once('keydown-SPACE', onConfirm)
+    })
+  }
+
+  // Applies floor advance, saves run, and transitions to the next scene after victory.
+  private doVictoryTransition(
+    nextRoute: { scene: string; data?: Record<string, unknown>; advanceFloorNow: boolean },
+    hasLevelUp: boolean,
+  ) {
+    if (this.transitioningScene) {
+      return
+    }
+    this.transitioningScene = true
+
+    // Clean up the reward panel before leaving.
+    this.victoryRewardPanel.forEach((o) => o.destroy())
+    this.victoryRewardPanel = []
+
+    if (nextRoute.advanceFloorNow) {
+      advanceFloorAfterEncounter()
+    }
+
+    saveRun()
+
+    // Transition to next scene occurs here after player confirmation.
+    if (hasLevelUp || hasPendingLevelUp()) {
+      this.scene.start('LevelUpScene', {
+        nextScene: nextRoute.scene,
+        nextData: nextRoute.data,
+      })
+      return
+    }
+
+    this.scene.start(nextRoute.scene, nextRoute.data)
   }
 
   private getPostVictoryRoute(): {
