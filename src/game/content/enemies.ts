@@ -4,10 +4,11 @@ export type EnemyIntent = {
   damage: number
   armorValue?: number
   burnValue?: number
+  poisonValue?: number
   reflectValue?: number
 }
 
-export type EnemyIntentActionType = 'attack' | 'armor' | 'burn' | 'reflect'
+export type EnemyIntentActionType = 'attack' | 'armor' | 'burn' | 'poison' | 'reflect'
 
 export type EnemyIntentAction = {
   type: EnemyIntentActionType
@@ -28,6 +29,10 @@ export function getEnemyIntentActions(intent: EnemyIntent): EnemyIntentAction[] 
 
   if ((intent.burnValue ?? 0) > 0) {
     actions.push({ type: 'burn', value: intent.burnValue ?? 0 })
+  }
+
+  if ((intent.poisonValue ?? 0) > 0) {
+    actions.push({ type: 'poison', value: intent.poisonValue ?? 0 })
   }
 
   if ((intent.reflectValue ?? 0) > 0) {

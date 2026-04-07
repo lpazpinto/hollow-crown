@@ -45,7 +45,9 @@ export type BattleSession = {
   maxEnergy: number
   currentIntentIndex: number
   turnNumber: number
+  // Hero status effects are stored on the battle session for turn-based ticking.
   heroBurn: number
+  heroPoison: number
   enemyBurn: number
   enemyReflect: number
   enemyPhase: 1 | 2
@@ -116,6 +118,7 @@ export function createInitialBattleSession(
     currentIntentIndex: 0,
     turnNumber: 1,
     heroBurn: 0,
+    heroPoison: 0,
     enemyBurn: 0,
     enemyReflect: 0,
     enemyPhase: 1,
@@ -215,15 +218,21 @@ export function startNewPlayerTurn(session: BattleSession): BattleSession {
   const nextTurnNumber = session.turnNumber + 1
   // Temporary armor reset timing: player armor clears at player turn start.
   // Enemy armor is cleared at enemy turn start so defend intents remain visible/meaningful during player turn.
-  const stateAfterBurn = applyBurnAtTurnStart({
-    ...session.state,
-    heroArmor: 0,
-  }, session.heroBurn)
+  // Hero status effects tick down at player turn start after applying their damage.
+  const statusTick = applyHeroStatusAtTurnStart(
+    {
+      burn: session.heroBurn,
+      poison: session.heroPoison,
+    },
+    {
+      ...session.state,
+      heroArmor: 0,
+    },
+  )
   const stateAfterAbilityBonus = {
-    ...stateAfterBurn,
-    heroArmor: stateAfterBurn.heroArmor + getAbilityTurnStartArmor(session.abilities),
+    ...statusTick.state,
+    heroArmor: statusTick.state.heroArmor + getAbilityTurnStartArmor(session.abilities),
   }
-  const nextHeroBurn = Math.max(0, session.heroBurn - 1)
   const drawBonus =
     getEveryThirdTurnExtraDraw(nextTurnNumber, session.relics)
     + getAbilityEveryThirdTurnExtraDraw(nextTurnNumber, session.abilities)
@@ -231,7 +240,8 @@ export function startNewPlayerTurn(session: BattleSession): BattleSession {
   const withPhaseTransition = maybeEnterBossPhaseTwo({
     ...session,
     state: stateAfterAbilityBonus,
-    heroBurn: nextHeroBurn,
+    heroBurn: statusTick.nextStatus.burn,
+    heroPoison: statusTick.nextStatus.poison,
     turnNumber: nextTurnNumber,
     turnCardState: {
       playedAttack: false,
@@ -274,6 +284,7 @@ export function resolveEnemyIntentAction(session: BattleSession): BattleSession 
 
   let nextState = stateAfterEnemyBurn
   let nextHeroBurn = withPhaseTransition.heroBurn
+  let nextHeroPoison = withPhaseTransition.heroPoison
   let nextEnemyReflect = 0
 
   // Enemy defend/block is resolved from the same structured action source used by UI preview.
@@ -291,8 +302,14 @@ export function resolveEnemyIntentAction(session: BattleSession): BattleSession 
       return
     }
 
+    // Hero status effects are applied when enemy intent actions resolve.
     if (action.type === 'burn') {
       nextHeroBurn += action.value
+      return
+    }
+
+    if (action.type === 'poison') {
+      nextHeroPoison += action.value
       return
     }
 
@@ -305,6 +322,7 @@ export function resolveEnemyIntentAction(session: BattleSession): BattleSession 
     ...withPhaseTransition,
     state: nextState,
     heroBurn: nextHeroBurn,
+    heroPoison: nextHeroPoison,
     enemyBurn: nextEnemyBurn,
     enemyReflect: nextEnemyReflect,
   }
@@ -550,14 +568,35 @@ function maybeEnterBossPhaseTwo(session: BattleSession): BattleSession {
   }
 }
 
-function applyBurnAtTurnStart(state: BattleState, burnAmount: number): BattleState {
-  if (burnAmount <= 0) {
-    return state
+function applyHeroStatusAtTurnStart(
+  status: { burn: number; poison: number },
+  state: BattleState,
+): {
+  state: BattleState
+  nextStatus: { burn: number; poison: number }
+} {
+  let nextState = state
+
+  if (status.burn > 0) {
+    nextState = {
+      ...nextState,
+      heroHp: Math.max(0, nextState.heroHp - status.burn),
+    }
+  }
+
+  if (status.poison > 0) {
+    nextState = {
+      ...nextState,
+      heroHp: Math.max(0, nextState.heroHp - status.poison),
+    }
   }
 
   return {
-    ...state,
-    heroHp: Math.max(0, state.heroHp - burnAmount),
+    state: nextState,
+    nextStatus: {
+      burn: Math.max(0, status.burn - 1),
+      poison: Math.max(0, status.poison - 1),
+    },
   }
 }
 

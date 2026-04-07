@@ -40,6 +40,7 @@ export class PlayScene extends Phaser.Scene {
 
   private heroHpText!: Phaser.GameObjects.Text
   private heroArmorText!: Phaser.GameObjects.Text
+  private heroStatusText!: Phaser.GameObjects.Text
   private energyText!: Phaser.GameObjects.Text
   private emberText!: Phaser.GameObjects.Text
   private drawPileCountText!: Phaser.GameObjects.Text
@@ -271,7 +272,7 @@ export class PlayScene extends Phaser.Scene {
     // Hero stats HUD: icon-based HP/Armor attached near the hero.
     const heroHudX = heroX - (C ? 54 : 66)
     const heroHudY = spriteY - (C ? 88 : 102)
-    this.add.rectangle(heroHudX, heroHudY, C ? 176 : 208, C ? 62 : 70, 0x0f172a, 0.88)
+    this.add.rectangle(heroHudX, heroHudY, C ? 176 : 208, C ? 86 : 96, 0x0f172a, 0.88)
       .setStrokeStyle(1, 0x4b617f, 0.78)
       .setDepth(6)
     this.heroHpText = this.add.text(heroHudX - (C ? 76 : 92), heroHudY - 18, '♥ 40/40', {
@@ -283,6 +284,13 @@ export class PlayScene extends Phaser.Scene {
       fontSize: C ? '14px' : '15px',
       color: '#bfdbfe',
       fontStyle: 'bold',
+    }).setOrigin(0, 0).setDepth(7)
+    // Hero status effect icons are rendered near the hero for readable combat feedback.
+    this.heroStatusText = this.add.text(heroHudX - (C ? 76 : 92), heroHudY + 28, '', {
+      fontSize: C ? '12px' : '13px',
+      color: '#fca5a5',
+      fontStyle: 'bold',
+      wordWrap: { width: C ? 160 : 188 },
     }).setOrigin(0, 0).setDepth(7)
 
     // Enemy stats + intent HUD: icon-based and anchored near the enemy.
@@ -927,6 +935,7 @@ export class PlayScene extends Phaser.Scene {
     )
     this.heroHpText.setText(`♥ ${this.session.state.heroHp}/${this.heroMaxHp}`)
     this.heroArmorText.setText(`🛡 ${this.session.state.heroArmor}`)
+    this.heroStatusText.setText(this.getHeroStatusSummary())
     this.energyText.setText(`${this.session.currentEnergy}/${this.session.maxEnergy}`)
     this.emberText.setText(`${this.session.state.ember}`)
     this.emberText.setAlpha(this.session.state.ember > 0 ? 1 : 0.64)
@@ -982,10 +991,28 @@ export class PlayScene extends Phaser.Scene {
         return `🔥 ${action.value}`
       }
 
+      if (action.type === 'poison') {
+        return `☠ ${action.value}`
+      }
+
       return `🛡↺ ${action.value}`
     })
 
     return parts.length > 0 ? parts.join('   ') : `⚔ 0`
+  }
+
+  private getHeroStatusSummary(): string {
+    const parts: string[] = []
+
+    if (this.session.heroBurn > 0) {
+      parts.push(`🔥 ${this.session.heroBurn} · ${this.session.heroBurn}T`)
+    }
+
+    if (this.session.heroPoison > 0) {
+      parts.push(`☠ ${this.session.heroPoison} · ${this.session.heroPoison}T`)
+    }
+
+    return parts.length > 0 ? parts.join('   ') : ''
   }
 
   private renderHand() {
