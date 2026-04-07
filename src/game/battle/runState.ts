@@ -9,6 +9,7 @@ export type EncounterType = 'battle' | 'rest' | 'elite' | 'boss'
 export type RunState = {
   currentFloor: number
   maxFloors: number
+  selectedRouteId: string | null
   currentDeck: CardContent[]
   currentRelics: RelicContent[]
   currentAbilities: HeroAbilityContent[]
@@ -38,6 +39,7 @@ export function startNewRun() {
   runState = {
     currentFloor: 1,
     maxFloors: 4,
+    selectedRouteId: null,
     currentDeck: cloneDeck(STARTER_DECK),
     currentRelics: [],
     currentAbilities: [],
@@ -91,6 +93,11 @@ export function getRunState(): RunState {
 export function setCurrentEncounterType(encounterType: EncounterType) {
   ensureRunState()
   ;(runState as RunState).currentEncounterType = encounterType
+}
+
+export function setSelectedRouteId(routeId: string | null) {
+  ensureRunState()
+  ;(runState as RunState).selectedRouteId = routeId
 }
 
 export function getAvailableEncountersForCurrentFloor(): EncounterType[] {
@@ -347,6 +354,7 @@ function canLevelUp(state: RunState): boolean {
 function normalizeRunState(saved: RunState): RunState {
   const normalized = cloneRunState({
     ...saved,
+    selectedRouteId: saved.selectedRouteId ?? null,
     currentAbilities: saved.currentAbilities ?? [],
     heroXp: saved.heroXp ?? 0,
     heroLevel: saved.heroLevel ?? 1,

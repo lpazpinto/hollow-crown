@@ -72,6 +72,7 @@ function isRunState(value: unknown): value is RunState {
   return (
     isNumber(value.currentFloor) &&
     isNumber(value.maxFloors) &&
+    (value.selectedRouteId === undefined || value.selectedRouteId === null || typeof value.selectedRouteId === 'string') &&
     isNumber(value.heroHp) &&
     isNumber(value.maxHeroHp) &&
     (value.heroXp === undefined || isNumber(value.heroXp)) &&

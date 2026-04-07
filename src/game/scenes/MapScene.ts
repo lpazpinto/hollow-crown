@@ -6,17 +6,12 @@ import {
   getRunState,
   getXpForNextLevel,
   resolveRestEncounter,
+  setSelectedRouteId,
   setCurrentEncounterType,
   type EncounterType,
 } from '../battle/runState'
 import { saveRun } from '../battle/runSave'
-
-type RoutePanel = {
-  name: string
-  hint: string
-  statusLabel: 'Playable' | 'Locked' | 'Sealed' | 'Coming Soon' | 'Unknown'
-  isPlayable: boolean
-}
+import { getRouteById, ROUTE_SELECT_ROUTES, type RouteContent } from '../content/routes'
 
 export class MapScene extends Phaser.Scene {
   constructor() {
@@ -75,6 +70,14 @@ export class MapScene extends Phaser.Scene {
       color: '#cbd5e1',
     }).setOrigin(0.5)
 
+    const selectedRoute = getRouteById(run.selectedRouteId)
+    if (selectedRoute) {
+      this.add.text(width / 2, 204, `Selected route: ${selectedRoute.name}`, {
+        fontSize: compactLayout ? '14px' : '15px',
+        color: '#86efac',
+      }).setOrigin(0.5)
+    }
+
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
     })
@@ -82,26 +85,7 @@ export class MapScene extends Phaser.Scene {
     const options = getAvailableEncountersForCurrentFloor()
     const playableEncounterType = this.getPrimaryEncounterType(options)
 
-    const routes: RoutePanel[] = [
-      {
-        name: 'Ashen March',
-        hint: this.getRouteHint(playableEncounterType),
-        statusLabel: 'Playable',
-        isPlayable: true,
-      },
-      {
-        name: 'Veil of Thorns',
-        hint: 'Locked route. Nature relics rumored.',
-        statusLabel: 'Sealed',
-        isPlayable: false,
-      },
-      {
-        name: 'Starforged Deep',
-        hint: 'Coming soon. Arcane vault rewards.',
-        statusLabel: 'Coming Soon',
-        isPlayable: false,
-      },
-    ]
+    const routes = ROUTE_SELECT_ROUTES
 
     const panelWidth = compactLayout ? 252 : 300
     const panelHeight = compactLayout ? 188 : 204
@@ -128,39 +112,56 @@ export class MapScene extends Phaser.Scene {
     panelWidth: number,
     panelHeight: number,
     compactLayout: boolean,
-    route: RoutePanel,
+    route: RouteContent,
     playableEncounterType: EncounterType,
   ) {
-    const fillColor = route.isPlayable ? 0x172033 : 0x0b1220
-    const strokeColor = route.isPlayable ? 0xf8fafc : 0x64748b
+    const isPlayable = route.status === 'playable'
+    const fillColor = isPlayable ? 0x172033 : 0x0b1220
+    const strokeColor = isPlayable ? 0xf8fafc : 0x64748b
 
     const panel = this.add.rectangle(x, y, panelWidth, panelHeight, fillColor)
       .setStrokeStyle(2, strokeColor)
 
-    if (route.isPlayable) {
+    if (isPlayable) {
       panel.setInteractive({ useHandCursor: true })
     }
 
-    this.add.text(x, y - 58, route.name, {
+    this.add.text(x, y - 68, route.name, {
       fontSize: compactLayout ? '25px' : '28px',
-      color: route.isPlayable ? '#f8fafc' : '#94a3b8',
+      color: isPlayable ? '#f8fafc' : '#94a3b8',
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    this.add.text(x, y - 18, route.hint, {
-      fontSize: compactLayout ? '15px' : '16px',
-      color: route.isPlayable ? '#cbd5e1' : '#64748b',
+    this.add.text(x, y - 28, route.theme, {
+      fontSize: compactLayout ? '14px' : '15px',
+      color: isPlayable ? '#cbd5e1' : '#64748b',
       align: 'center',
       wordWrap: { width: panelWidth - 24 },
     }).setOrigin(0.5)
 
-    this.add.text(x, y + 56, route.statusLabel, {
-      fontSize: compactLayout ? '15px' : '16px',
-      color: route.isPlayable ? '#86efac' : '#94a3b8',
-      fontStyle: route.isPlayable ? 'bold' : 'normal',
+    const panelHint = isPlayable
+      ? `${route.rewardHint} ${this.getRouteHint(playableEncounterType)}`
+      : route.rewardHint
+
+    this.add.text(x, y + 16, panelHint, {
+      fontSize: compactLayout ? '13px' : '14px',
+      color: isPlayable ? '#cbd5e1' : '#64748b',
+      align: 'center',
+      wordWrap: { width: panelWidth - 24 },
     }).setOrigin(0.5)
 
-    if (!route.isPlayable) {
+    this.add.text(x, y + 46, `Boss: ${route.bossId}`, {
+      fontSize: compactLayout ? '12px' : '13px',
+      color: isPlayable ? '#a5f3fc' : '#64748b',
+    }).setOrigin(0.5)
+
+    this.add.text(x, y + 72, isPlayable ? 'Playable' : 'Locked', {
+      fontSize: compactLayout ? '15px' : '16px',
+      color: isPlayable ? '#86efac' : '#94a3b8',
+      fontStyle: isPlayable ? 'bold' : 'normal',
+    }).setOrigin(0.5)
+
+    if (!isPlayable) {
       return
     }
 
@@ -173,7 +174,7 @@ export class MapScene extends Phaser.Scene {
         duration: 120,
         ease: 'Quad.Out',
       })
-      this.handleEncounterSelection(playableEncounterType)
+      this.handleEncounterSelection(route.id, playableEncounterType)
     })
   }
 
@@ -209,7 +210,9 @@ export class MapScene extends Phaser.Scene {
     return 'Main hunt. Battle for growth and drafts.'
   }
 
-  private handleEncounterSelection(encounterType: EncounterType) {
+  private handleEncounterSelection(routeId: string, encounterType: EncounterType) {
+    setSelectedRouteId(routeId)
+
     if (encounterType === 'rest') {
       setCurrentEncounterType('rest')
       resolveRestEncounter()
