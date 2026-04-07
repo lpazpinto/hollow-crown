@@ -10,6 +10,7 @@ export type RunState = {
   currentFloor: number
   maxFloors: number
   selectedRouteId: string | null
+  currentRouteStep: number
   currentDeck: CardContent[]
   currentRelics: RelicContent[]
   currentAbilities: HeroAbilityContent[]
@@ -33,13 +34,21 @@ const ENCOUNTER_XP_REWARD: Record<'battle' | 'elite' | 'boss', number> = {
   boss: 17,
 }
 
+const FIXED_ROUTE_PATH: Array<'battle' | 'battle_or_rest' | 'elite' | 'boss'> = [
+  'battle',
+  'battle_or_rest',
+  'elite',
+  'boss',
+]
+
 let runState: RunState | null = null
 
 export function startNewRun() {
   runState = {
     currentFloor: 1,
-    maxFloors: 4,
+    maxFloors: FIXED_ROUTE_PATH.length,
     selectedRouteId: null,
+    currentRouteStep: 0,
     currentDeck: cloneDeck(STARTER_DECK),
     currentRelics: [],
     currentAbilities: [],
@@ -97,12 +106,43 @@ export function setCurrentEncounterType(encounterType: EncounterType) {
 
 export function setSelectedRouteId(routeId: string | null) {
   ensureRunState()
-  ;(runState as RunState).selectedRouteId = routeId
+  const state = runState as RunState
+  state.selectedRouteId = routeId
+
+  if (routeId) {
+    state.currentRouteStep = 0
+    state.currentFloor = 1
+    state.maxFloors = FIXED_ROUTE_PATH.length
+  }
 }
 
 export function getAvailableEncountersForCurrentFloor(): EncounterType[] {
   ensureRunState()
-  const floor = (runState as RunState).currentFloor
+  const state = runState as RunState
+
+  if (state.selectedRouteId) {
+    const stepType = FIXED_ROUTE_PATH[state.currentRouteStep]
+
+    if (stepType === 'battle') {
+      return ['battle']
+    }
+
+    if (stepType === 'battle_or_rest') {
+      return ['battle', 'rest']
+    }
+
+    if (stepType === 'elite') {
+      return ['elite']
+    }
+
+    if (stepType === 'boss') {
+      return ['boss']
+    }
+
+    return []
+  }
+
+  const floor = state.currentFloor
 
   if (floor <= 1) {
     return ['battle']
@@ -219,6 +259,18 @@ export function getXpForNextLevel(): number | null {
 export function advanceFloorAfterEncounter() {
   ensureRunState()
   const state = runState as RunState
+
+  if (state.selectedRouteId) {
+    if (state.currentRouteStep >= FIXED_ROUTE_PATH.length - 1) {
+      state.isRunComplete = true
+    } else {
+      state.currentRouteStep += 1
+      state.currentFloor = state.currentRouteStep + 1
+    }
+
+    state.currentEncounterType = null
+    return
+  }
 
   if (state.currentFloor >= state.maxFloors) {
     state.isRunComplete = true
@@ -355,6 +407,7 @@ function normalizeRunState(saved: RunState): RunState {
   const normalized = cloneRunState({
     ...saved,
     selectedRouteId: saved.selectedRouteId ?? null,
+    currentRouteStep: saved.currentRouteStep ?? Math.max(0, (saved.currentFloor ?? 1) - 1),
     currentAbilities: saved.currentAbilities ?? [],
     heroXp: saved.heroXp ?? 0,
     heroLevel: saved.heroLevel ?? 1,
@@ -376,6 +429,24 @@ function normalizeRunState(saved: RunState): RunState {
 
   if (normalized.normalBattleVictories < 0) {
     normalized.normalBattleVictories = 0
+  }
+
+  if (!Number.isFinite(normalized.currentRouteStep)) {
+    normalized.currentRouteStep = 0
+  }
+
+  if (normalized.currentRouteStep < 0) {
+    normalized.currentRouteStep = 0
+  }
+
+  if (normalized.currentRouteStep >= FIXED_ROUTE_PATH.length) {
+    normalized.currentRouteStep = FIXED_ROUTE_PATH.length - 1
+  }
+
+  normalized.maxFloors = FIXED_ROUTE_PATH.length
+
+  if (normalized.selectedRouteId) {
+    normalized.currentFloor = normalized.currentRouteStep + 1
   }
 
   return normalized
