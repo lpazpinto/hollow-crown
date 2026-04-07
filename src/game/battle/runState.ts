@@ -1,5 +1,6 @@
 import { type HeroAbilityContent, getAbilityBaseId } from '../content/abilities'
 import { STARTER_DECK, createUpgradedCard, type CardContent } from '../content/cards'
+import { getDefaultRoutePath, getRoutePathById } from '../content/routes'
 import type { RelicContent } from '../content/relics'
 import { getAbilityPostEliteBossHeal } from './abilityEffects'
 import { getPostBattleHealAmount } from './relicEffects'
@@ -34,19 +35,14 @@ const ENCOUNTER_XP_REWARD: Record<'battle' | 'elite' | 'boss', number> = {
   boss: 17,
 }
 
-const FIXED_ROUTE_PATH: Array<'battle' | 'battle_or_rest' | 'elite' | 'boss'> = [
-  'battle',
-  'battle_or_rest',
-  'elite',
-  'boss',
-]
-
 let runState: RunState | null = null
 
 export function startNewRun() {
+  const defaultPath = getDefaultRoutePath()
+
   runState = {
     currentFloor: 1,
-    maxFloors: FIXED_ROUTE_PATH.length,
+    maxFloors: defaultPath.length,
     selectedRouteId: null,
     currentRouteStep: 0,
     currentDeck: cloneDeck(STARTER_DECK),
@@ -107,28 +103,43 @@ export function setCurrentEncounterType(encounterType: EncounterType) {
 export function setSelectedRouteId(routeId: string | null) {
   ensureRunState()
   const state = runState as RunState
+
+  if (state.selectedRouteId === routeId) {
+    return
+  }
+
   state.selectedRouteId = routeId
 
   if (routeId) {
+    const routePath = getRoutePathById(routeId)
     state.currentRouteStep = 0
     state.currentFloor = 1
-    state.maxFloors = FIXED_ROUTE_PATH.length
+    state.maxFloors = routePath.length
   }
 }
 
 export function getAvailableEncountersForCurrentFloor(): EncounterType[] {
   ensureRunState()
   const state = runState as RunState
+  const routePath = getRoutePathById(state.selectedRouteId)
 
   if (state.selectedRouteId) {
-    const stepType = FIXED_ROUTE_PATH[state.currentRouteStep]
+    const stepType = routePath[state.currentRouteStep]
+
+    if (stepType === 'battle_or_utility') {
+      return ['battle', 'rest']
+    }
+
+    if (stepType === 'utility_or_special') {
+      return ['rest']
+    }
+
+    if (stepType === 'recovery') {
+      return ['rest']
+    }
 
     if (stepType === 'battle') {
       return ['battle']
-    }
-
-    if (stepType === 'battle_or_rest') {
-      return ['battle', 'rest']
     }
 
     if (stepType === 'elite') {
@@ -259,9 +270,10 @@ export function getXpForNextLevel(): number | null {
 export function advanceFloorAfterEncounter() {
   ensureRunState()
   const state = runState as RunState
+  const routePath = getRoutePathById(state.selectedRouteId)
 
   if (state.selectedRouteId) {
-    if (state.currentRouteStep >= FIXED_ROUTE_PATH.length - 1) {
+    if (state.currentRouteStep >= routePath.length - 1) {
       state.isRunComplete = true
     } else {
       state.currentRouteStep += 1
@@ -404,6 +416,8 @@ function canLevelUp(state: RunState): boolean {
 }
 
 function normalizeRunState(saved: RunState): RunState {
+  const routePath = getRoutePathById(saved.selectedRouteId)
+
   const normalized = cloneRunState({
     ...saved,
     selectedRouteId: saved.selectedRouteId ?? null,
@@ -439,11 +453,11 @@ function normalizeRunState(saved: RunState): RunState {
     normalized.currentRouteStep = 0
   }
 
-  if (normalized.currentRouteStep >= FIXED_ROUTE_PATH.length) {
-    normalized.currentRouteStep = FIXED_ROUTE_PATH.length - 1
+  if (normalized.currentRouteStep >= routePath.length) {
+    normalized.currentRouteStep = routePath.length - 1
   }
 
-  normalized.maxFloors = FIXED_ROUTE_PATH.length
+  normalized.maxFloors = routePath.length
 
   if (normalized.selectedRouteId) {
     normalized.currentFloor = normalized.currentRouteStep + 1

@@ -10,9 +10,15 @@ import {
   type EncounterType,
 } from '../battle/runState'
 import { saveRun } from '../battle/runSave'
-import { getRouteById, ROUTE_SELECT_ROUTES, type RouteContent } from '../content/routes'
-
-const ROUTE_PATH_LABELS = ['Battle', 'Battle / Utility', 'Elite', 'Boss']
+import {
+  getDefaultRoutePath,
+  getRouteById,
+  getRouteNodeLabel,
+  getRoutePathById,
+  ROUTE_SELECT_ROUTES,
+  type RouteNodeType,
+  type RouteContent,
+} from '../content/routes'
 
 export class MapScene extends Phaser.Scene {
   constructor() {
@@ -88,7 +94,7 @@ export class MapScene extends Phaser.Scene {
     const routes = ROUTE_SELECT_ROUTES
 
     // Path progress section: pre-route view starts at first node.
-    this.renderPathProgress(compactLayout, 0, compactLayout ? 240 : 258)
+    this.renderPathProgress(compactLayout, getDefaultRoutePath(), 0, compactLayout ? 240 : 258)
 
     const panelWidth = compactLayout ? 268 : 324
     const panelHeight = compactLayout ? 236 : 252
@@ -134,7 +140,12 @@ export class MapScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     // Path progress section: compact route step visualization.
-    this.renderPathProgress(compactLayout, run.currentRouteStep, compactLayout ? 280 : 300)
+    this.renderPathProgress(
+      compactLayout,
+      getRoutePathById(selectedRoute.id),
+      run.currentRouteStep,
+      compactLayout ? 280 : 300,
+    )
 
     // Next choice section: currently available node actions.
     const buttonWidth = compactLayout ? 240 : 256
@@ -323,13 +334,14 @@ export class MapScene extends Phaser.Scene {
       .join(' ')
   }
 
-  private renderPathProgress(compactLayout: boolean, routeStep: number, y: number) {
+  private renderPathProgress(compactLayout: boolean, routePath: RouteNodeType[], routeStep: number, y: number) {
     const { width } = this.scale
-    const stepIndex = Math.max(0, Math.min(ROUTE_PATH_LABELS.length - 1, routeStep))
+    const labels = routePath.map((node) => getRouteNodeLabel(node))
+    const stepIndex = Math.max(0, Math.min(labels.length - 1, routeStep))
     const stepSpacing = compactLayout ? 154 : 176
-    const startX = width / 2 - ((ROUTE_PATH_LABELS.length - 1) * stepSpacing) / 2
+    const startX = width / 2 - ((labels.length - 1) * stepSpacing) / 2
 
-    ROUTE_PATH_LABELS.forEach((label, index) => {
+    labels.forEach((label, index) => {
       const x = startX + index * stepSpacing
       const isCompleted = index < stepIndex
       const isCurrent = index === stepIndex
@@ -341,7 +353,7 @@ export class MapScene extends Phaser.Scene {
         color: isCurrent ? '#fef3c7' : '#cbd5e1',
       }).setOrigin(0.5)
 
-      if (index < ROUTE_PATH_LABELS.length - 1) {
+      if (index < labels.length - 1) {
         this.add.rectangle(x + stepSpacing / 2, y, stepSpacing - 36, 4, 0x475569)
       }
     })
