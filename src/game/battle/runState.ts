@@ -29,14 +29,19 @@ export type RunState = {
   isRunComplete: boolean
 }
 
-const LEVEL_XP_THRESHOLDS = [0, 11, 24, 38]
+const LEVEL_XP_STEP_COSTS = [8, 12, 16, 20]
+const LEVEL_XP_THRESHOLDS = buildLevelXpThresholds(LEVEL_XP_STEP_COSTS)
 
 const BATTLE_CARD_REWARD_INTERVAL = 2
 
+// Tuning target (route-rewards-levelup-direction-update.md):
+// - normal battle: 4-5 XP
+// - elite: 7-8 XP
+// - boss: 10-12 XP
 const ENCOUNTER_XP_REWARD: Record<'battle' | 'elite' | 'boss', number> = {
-  battle: 6,
-  elite: 11,
-  boss: 17,
+  battle: 5,
+  elite: 8,
+  boss: 12,
 }
 
 const SHARDS_FOR_FORGE = 3
@@ -306,6 +311,15 @@ export function awardXpForCurrentEncounter(): {
     levelsGained += 1
   }
 
+  // Lightweight log to speed up future XP pacing tuning during playtests.
+  console.debug('[run-xp]', {
+    encounterType,
+    gainedXp,
+    totalXp: state.heroXp,
+    level: state.heroLevel,
+    levelsGained,
+  })
+
   return {
     gainedXp,
     levelsGained,
@@ -489,6 +503,17 @@ function canLevelUp(state: RunState): boolean {
   }
 
   return state.heroXp >= LEVEL_XP_THRESHOLDS[nextLevel]
+}
+
+function buildLevelXpThresholds(stepCosts: number[]): number[] {
+  const thresholds = [0]
+
+  stepCosts.forEach((cost) => {
+    const previous = thresholds[thresholds.length - 1]
+    thresholds.push(previous + cost)
+  })
+
+  return thresholds
 }
 
 function normalizeRunState(saved: RunState): RunState {
