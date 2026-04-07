@@ -7,6 +7,7 @@ import {
   type CardEffectType,
 } from './battleLogic'
 import { STARTER_DECK, type CardContent } from '../content/cards'
+import type { BoonContent } from '../content/boons'
 import type { HeroAbilityContent } from '../content/abilities'
 import type { RelicContent } from '../content/relics'
 import {
@@ -59,13 +60,18 @@ export type BattleSession = {
     crownSparkTriggered: boolean
   }
   outcome: BattleOutcome
+  boonState: {
+    firstAttackBonusDamage: number
+  }
 }
 
 type CreateBattleSessionOptions = {
   heroHp?: number
+  maxHeroHp?: number
   encounterType?: EncounterType
   relics?: RelicContent[]
   abilities?: HeroAbilityContent[]
+  boon?: BoonContent | null
 }
 
 export function createInitialBattleSession(
@@ -77,14 +83,25 @@ export function createInitialBattleSession(
   const relics = cloneRelics(options.relics ?? [])
   const abilities = cloneAbilities(options.abilities ?? [])
   const maxEnergy = 3
-  const startEmber = getBattleStartEmberBonus(relics) + getAbilityBattleStartEmber(abilities)
+  const boon = options.boon ?? null
+  const startEmber =
+    getBattleStartEmberBonus(relics)
+    + getAbilityBattleStartEmber(abilities)
+    + (boon?.effectType === 'start_ember' ? boon.value : 0)
   const shuffledDeck = shuffleCards(cloneDeck(deck))
-  const heroHp = options.heroHp ?? 40
+  const maxHeroHp = options.maxHeroHp ?? 40
+  const heroHp = Math.min(
+    maxHeroHp,
+    (options.heroHp ?? 40) + (boon?.effectType === 'battle_start_heal' ? boon.value : 0),
+  )
+  const startArmor = boon?.effectType === 'start_armor' ? boon.value : 0
+  const startDrawBonus = boon?.effectType === 'turn1_extra_draw' ? boon.value : 0
+  const firstAttackBonusDamage = boon?.effectType === 'first_attack_bonus_damage' ? boon.value : 0
 
   const initialSession: BattleSession = {
     state: {
       heroHp,
-      heroArmor: 0,
+      heroArmor: startArmor,
       ember: clampEmber(startEmber),
       enemyHp: enemy.maxHp,
       enemyArmor: 0,
@@ -113,9 +130,12 @@ export function createInitialBattleSession(
       crownSparkTriggered: false,
     },
     outcome: 'ongoing',
+    boonState: {
+      firstAttackBonusDamage,
+    },
   }
 
-  return drawCards(initialSession, 4)
+  return drawCards(initialSession, 4 + startDrawBonus)
 }
 
 export function getCurrentIntent(session: BattleSession): EnemyIntent {
@@ -370,6 +390,7 @@ function applyCardWithHooks(
     if (!nextTriggerState.firstAttackUsed) {
       damageValue += getFirstAttackBonusDamage(session.relics)
       damageValue += getAbilityFirstAttackBonusDamage(session.abilities)
+      damageValue += session.boonState.firstAttackBonusDamage
       nextTriggerState.firstAttackUsed = true
     }
 

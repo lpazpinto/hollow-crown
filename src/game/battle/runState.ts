@@ -1,4 +1,5 @@
 import { type HeroAbilityContent, getAbilityBaseId } from '../content/abilities'
+import { getBoonById, getRandomBoon, type BoonContent } from '../content/boons'
 import { STARTER_DECK, createUpgradedCard, type CardContent } from '../content/cards'
 import { getDefaultRoutePath, getRoutePathById } from '../content/routes'
 import type { RelicContent } from '../content/relics'
@@ -14,6 +15,7 @@ export type RunState = {
   currentRouteStep: number
   shardCount: number
   isForgeAvailable: boolean
+  currentBoonId: string | null
   currentDeck: CardContent[]
   currentRelics: RelicContent[]
   currentAbilities: HeroAbilityContent[]
@@ -52,6 +54,7 @@ export function startNewRun() {
     currentRouteStep: 0,
     shardCount: 0,
     isForgeAvailable: false,
+    currentBoonId: null,
     currentDeck: cloneDeck(STARTER_DECK),
     currentRelics: [],
     currentAbilities: [],
@@ -100,6 +103,26 @@ export function getNormalBattleRewardPreview(): string {
 export function getRunState(): RunState {
   ensureRunState()
   return cloneRunState(runState as RunState)
+}
+
+export function getCurrentBoon(): BoonContent | null {
+  ensureRunState()
+  return getBoonById((runState as RunState).currentBoonId)
+}
+
+export function grantRandomBoon(): BoonContent {
+  ensureRunState()
+  const boon = getRandomBoon()
+  ;(runState as RunState).currentBoonId = boon.id
+  return boon
+}
+
+export function consumeCurrentBoonForBattle(): BoonContent | null {
+  ensureRunState()
+  const state = runState as RunState
+  const boon = getBoonById(state.currentBoonId)
+  state.currentBoonId = null
+  return boon
 }
 
 export function getShardTarget(): number {
@@ -477,6 +500,7 @@ function normalizeRunState(saved: RunState): RunState {
     currentRouteStep: saved.currentRouteStep ?? Math.max(0, (saved.currentFloor ?? 1) - 1),
     shardCount: saved.shardCount ?? 0,
     isForgeAvailable: saved.isForgeAvailable ?? false,
+    currentBoonId: saved.currentBoonId ?? null,
     currentAbilities: saved.currentAbilities ?? [],
     heroXp: saved.heroXp ?? 0,
     heroLevel: saved.heroLevel ?? 1,

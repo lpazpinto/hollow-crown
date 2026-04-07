@@ -1,9 +1,11 @@
 import Phaser from 'phaser'
 import {
   advanceFloorAfterEncounter,
+  getCurrentBoon,
   getAvailableEncountersForCurrentFloor,
   getRunState,
   getShardTarget,
+  grantRandomBoon,
   getXpForNextLevel,
   resolveRestEncounter,
   setSelectedRouteId,
@@ -43,9 +45,11 @@ export class MapScene extends Phaser.Scene {
 
     const selectedRoute = getRouteById(run.selectedRouteId)
     const statusXp = nextLevelXp === null ? `${run.heroXp}` : `${run.heroXp}/${nextLevelXp}`
+    const activeBoon = getCurrentBoon()
     const shardStatus = run.isForgeAvailable
       ? `Shards ${run.shardCount}/${getShardTarget()} • Forge Ready`
       : `Shards ${run.shardCount}/${getShardTarget()}`
+    const boonStatus = activeBoon ? `Boon: ${activeBoon.name}` : 'Boon: None'
 
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
@@ -60,7 +64,7 @@ export class MapScene extends Phaser.Scene {
 
     this.add.rectangle(width / 2, compactLayout ? 82 : 88, compactLayout ? width * 0.9 : 860, 34, 0x111a2d, 0.86)
       .setStrokeStyle(1, 0x3b4e6d, 0.9)
-    this.add.text(width / 2, compactLayout ? 82 : 88, `HP ${run.heroHp}/${run.maxHeroHp}   |   Level ${run.heroLevel}   |   XP ${statusXp}   |   ${shardStatus}`, {
+    this.add.text(width / 2, compactLayout ? 82 : 88, `HP ${run.heroHp}/${run.maxHeroHp}   |   Level ${run.heroLevel}   |   XP ${statusXp}   |   ${shardStatus}   |   ${boonStatus}`, {
       fontSize: compactLayout ? '13px' : '14px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
@@ -367,6 +371,8 @@ export class MapScene extends Phaser.Scene {
     setSelectedRouteId(routeId)
 
     if (encounterType === 'rest') {
+      // Utility nodes award a temporary Boon for the next battle.
+      grantRandomBoon()
       setCurrentEncounterType('rest')
       resolveRestEncounter()
       advanceFloorAfterEncounter()

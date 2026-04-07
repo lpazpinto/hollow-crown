@@ -2,6 +2,13 @@ import { getRunState, restoreRunState, type RunState } from './runState'
 
 const SAVE_KEY = 'hollow-crown-run'
 const ENCOUNTER_TYPES = new Set(['battle', 'rest', 'elite', 'boss'])
+const BOON_EFFECT_TYPES = new Set([
+  'start_ember',
+  'start_armor',
+  'turn1_extra_draw',
+  'battle_start_heal',
+  'first_attack_bonus_damage',
+])
 const CARD_RARITIES = new Set(['common', 'uncommon', 'rare'])
 const ABILITY_EFFECT_TYPES = new Set([
   'battle_start_ember',
@@ -76,6 +83,7 @@ function isRunState(value: unknown): value is RunState {
     (value.currentRouteStep === undefined || isNumber(value.currentRouteStep)) &&
     (value.shardCount === undefined || isNumber(value.shardCount)) &&
     (value.isForgeAvailable === undefined || typeof value.isForgeAvailable === 'boolean') &&
+    (value.currentBoonId === undefined || value.currentBoonId === null || typeof value.currentBoonId === 'string') &&
     isNumber(value.heroHp) &&
     isNumber(value.maxHeroHp) &&
     (value.heroXp === undefined || isNumber(value.heroXp)) &&

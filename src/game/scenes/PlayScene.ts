@@ -15,6 +15,7 @@ import {
   advanceFloorAfterEncounter,
   applyBattleResult,
   awardXpForCurrentEncounter,
+  consumeCurrentBoonForBattle,
   getRunDeck,
   getRunAbilities,
   getRunRelics,
@@ -83,11 +84,14 @@ export class PlayScene extends Phaser.Scene {
     const runState = getRunState()
     this.heroMaxHp = runState.maxHeroHp
     this.encounterType = runState.currentEncounterType ?? 'battle'
+    const battleBoon = consumeCurrentBoonForBattle()
     this.session = createInitialBattleSession(getRunDeck(), {
       heroHp: runState.heroHp,
+      maxHeroHp: runState.maxHeroHp,
       encounterType: this.encounterType,
       relics: getRunRelics(),
       abilities: getRunAbilities(),
+      boon: battleBoon,
     })
 
     this.cameras.main.setBackgroundColor('#111827')
