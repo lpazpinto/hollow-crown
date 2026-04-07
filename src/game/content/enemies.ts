@@ -42,15 +42,15 @@ export const THORN_ACOLYTE: EnemyContent = {
   tier: 'common',
   maxHp: 28,
   initialIntent: {
-    id: 'attack-4-burn-1',
-    label: 'Attack for 4 + Burn 1',
-    damage: 4,
-    burnValue: 1,
+    id: 'attack-5-burn-2',
+    label: 'Attack for 5 + Burn 2',
+    damage: 5,
+    burnValue: 2,
   },
   intents: [
-    { id: 'attack-4-burn-1', label: 'Attack for 4 + Burn 1', damage: 4, burnValue: 1 },
-    { id: 'defend-3', label: 'Defend 3', damage: 0, armorValue: 3 },
-    { id: 'attack-5-burn-1', label: 'Attack for 5 + Burn 1', damage: 5, burnValue: 1 },
+    { id: 'attack-5-burn-2', label: 'Attack for 5 + Burn 2', damage: 5, burnValue: 2 },
+    { id: 'defend-5', label: 'Defend 5', damage: 0, armorValue: 5 },
+    { id: 'attack-7', label: 'Attack for 7', damage: 7 },
   ],
 }
 
