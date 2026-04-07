@@ -807,6 +807,16 @@ export class PlayScene extends Phaser.Scene {
           : ` • Shard +1 (${shardReward.shardCount}/${getShardTarget()})`
         : ''
 
+      if (shardReward.granted) {
+        this.showRewardToast(
+          shardReward.isForgeAvailable ? 'Forge Unlocked' : 'Shard Gained',
+          shardReward.isForgeAvailable
+            ? `Shard ${shardReward.shardCount}/${getShardTarget()}  •  Forge reward now available`
+            : `Shard ${shardReward.shardCount}/${getShardTarget()}`,
+          shardReward.isForgeAvailable ? '#fef3c7' : '#93c5fd',
+        )
+      }
+
       this.resultText.setText(
         isBossVictory
           ? `Boss Defeated  •  XP +${xpResult.gainedXp}  •  ${rewardSummary}${shardSummary}`
@@ -1785,5 +1795,35 @@ export class PlayScene extends Phaser.Scene {
     }
 
     return 'none'
+  }
+
+  private showRewardToast(title: string, detail: string, color = '#93c5fd') {
+    const { width } = this.scale
+    const y = this.compactLayout ? 118 : 126
+    const bg = this.add.rectangle(width / 2, y, 460, 54, 0x0b1220, 0.9)
+      .setStrokeStyle(2, 0x334155)
+      .setDepth(40)
+    const titleText = this.add.text(width / 2, y - 10, title, {
+      fontSize: this.compactLayout ? '16px' : '17px',
+      color,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(41)
+    const detailText = this.add.text(width / 2, y + 10, detail, {
+      fontSize: this.compactLayout ? '12px' : '13px',
+      color: '#e2e8f0',
+      align: 'center',
+    }).setOrigin(0.5).setDepth(41)
+
+    this.tweens.add({
+      targets: [bg, titleText, detailText],
+      alpha: 0,
+      delay: 1250,
+      duration: 220,
+      onComplete: () => {
+        bg.destroy()
+        titleText.destroy()
+        detailText.destroy()
+      },
+    })
   }
 }

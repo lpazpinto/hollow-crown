@@ -1,8 +1,10 @@
 import Phaser from 'phaser'
 import {
   advanceFloorAfterEncounter,
+  getCurrentBoon,
   getAvailableRouteChoices,
   getRunState,
+  getShardTarget,
   grantRandomBoon,
   getXpForNextLevel,
   resolveRestEncounter,
@@ -26,7 +28,7 @@ export class MapScene extends Phaser.Scene {
     super('MapScene')
   }
 
-  create() {
+  create(data: { rewardToast?: { title: string; detail: string; color?: string } } = {}) {
     const { width, height } = this.scale
     const compactLayout = width < 900 || height < 700
     const run = getRunState()
@@ -43,6 +45,8 @@ export class MapScene extends Phaser.Scene {
 
     const selectedRoute = getRouteById(run.selectedRouteId)
     const statusXp = nextLevelXp === null ? `${run.heroXp}` : `${run.heroXp}/${nextLevelXp}`
+    const activeBoon = getCurrentBoon()
+    const shardProgress = `${run.shardCount}/${getShardTarget()}`
 
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
@@ -61,6 +65,32 @@ export class MapScene extends Phaser.Scene {
       fontSize: compactLayout ? '13px' : '14px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
+
+    // Reward status panel: compact shard + boon inspection for current run state.
+    const rewardsPanelX = width - (compactLayout ? 146 : 172)
+    const rewardsPanelY = compactLayout ? 96 : 102
+    const rewardsPanelW = compactLayout ? 268 : 316
+    const rewardsPanelH = compactLayout ? 64 : 72
+    this.add.rectangle(rewardsPanelX, rewardsPanelY, rewardsPanelW, rewardsPanelH, 0x0f172a, 0.82)
+      .setStrokeStyle(1, 0x334155, 0.88)
+    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY - 19, `Shards ${shardProgress}${run.isForgeAvailable ? '  •  Forge Ready' : ''}`, {
+      fontSize: compactLayout ? '12px' : '13px',
+      color: run.isForgeAvailable ? '#fef3c7' : '#93c5fd',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5)
+    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 6, activeBoon ? `Boon: ${activeBoon.name}` : 'Boon: None', {
+      fontSize: compactLayout ? '12px' : '13px',
+      color: activeBoon ? '#86efac' : '#94a3b8',
+    }).setOrigin(0, 0.5)
+    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 24, activeBoon ? activeBoon.description : 'No next-battle boon active.', {
+      fontSize: compactLayout ? '11px' : '12px',
+      color: '#cbd5e1',
+      wordWrap: { width: rewardsPanelW - 20 },
+    }).setOrigin(0, 0.5)
+
+    if (data.rewardToast) {
+      this.showRewardToast(data.rewardToast.title, data.rewardToast.detail, data.rewardToast.color)
+    }
 
     if (!selectedRoute) {
       // Route identity section before first route pick.
@@ -349,14 +379,51 @@ export class MapScene extends Phaser.Scene {
 
     if (selectedEncounterType === 'rest') {
       // Utility nodes award a temporary Boon for the next battle.
-      grantRandomBoon()
+      const boon = grantRandomBoon()
       resolveRestEncounter()
       advanceFloorAfterEncounter()
       saveRun()
-      this.scene.restart()
+      this.scene.restart({
+        rewardToast: {
+          title: 'Boon Gained',
+          detail: `${boon.name}: ${boon.description}`,
+          color: '#86efac',
+        },
+      })
       return
     }
 
     this.scene.start('PlayScene')
+  }
+
+  private showRewardToast(title: string, detail: string, color = '#93c5fd') {
+    const { width } = this.scale
+    const y = 134
+    const bg = this.add.rectangle(width / 2, y, 520, 62, 0x0b1220, 0.92)
+      .setStrokeStyle(2, 0x334155)
+      .setDepth(30)
+    const titleText = this.add.text(width / 2, y - 12, title, {
+      fontSize: '18px',
+      color,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(31)
+    const detailText = this.add.text(width / 2, y + 12, detail, {
+      fontSize: '13px',
+      color: '#e2e8f0',
+      wordWrap: { width: 500 },
+      align: 'center',
+    }).setOrigin(0.5).setDepth(31)
+
+    this.tweens.add({
+      targets: [bg, titleText, detailText],
+      alpha: 0,
+      delay: 1450,
+      duration: 260,
+      onComplete: () => {
+        bg.destroy()
+        titleText.destroy()
+        detailText.destroy()
+      },
+    })
   }
 }
