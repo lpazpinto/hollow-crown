@@ -1,5 +1,9 @@
 import Phaser from 'phaser'
-import { addCardToRunDeck, advanceFloorAfterEncounter } from '../battle/runState'
+import {
+  addCardToRunDeck,
+  advanceFloorAfterEncounter,
+  consumeForgeAvailabilityForShardReward,
+} from '../battle/runState'
 import { saveRun } from '../battle/runSave'
 import {
   generateRewardChoices,
@@ -10,21 +14,23 @@ import {
 
 type RewardSceneData = {
   encounterType?: RewardEncounterType
-  mode?: 'standard' | 'boss-signature'
+  mode?: 'standard' | 'boss-signature' | 'shard-forge'
   routeName?: string
   bossId?: string
   signatureCardId?: string | null
-  nextScene?: 'MapScene' | 'RunEndScene'
+  nextScene?: 'MapScene' | 'RunEndScene' | 'RelicRewardScene'
+  advanceFloorOnSelect?: boolean
 }
 
 export class RewardScene extends Phaser.Scene {
   private rewardChosen = false
   private encounterType: RewardEncounterType = 'battle'
-  private mode: 'standard' | 'boss-signature' = 'standard'
+  private mode: 'standard' | 'boss-signature' | 'shard-forge' = 'standard'
   private routeName = ''
   private bossId = ''
   private signatureCardId: string | null = null
-  private nextScene: 'MapScene' | 'RunEndScene' = 'MapScene'
+  private nextScene: 'MapScene' | 'RunEndScene' | 'RelicRewardScene' = 'MapScene'
+  private advanceFloorOnSelect = true
 
   constructor() {
     super('RewardScene')
@@ -40,22 +46,27 @@ export class RewardScene extends Phaser.Scene {
     this.bossId = data.bossId ?? ''
     this.signatureCardId = data.signatureCardId ?? null
     this.nextScene = data.nextScene ?? 'MapScene'
+    this.advanceFloorOnSelect = data.advanceFloorOnSelect ?? true
 
     this.cameras.main.setBackgroundColor('#111827')
 
-    this.add.text(width / 2, 40, this.mode === 'boss-signature' ? 'Signature Reward' : 'Card Draft', {
+    this.add.text(width / 2, 40, this.mode === 'boss-signature' ? 'Signature Reward' : (this.mode === 'shard-forge' ? 'Shard Forge Reward' : 'Card Draft'), {
       fontSize: '34px',
       color: '#ffffff',
     }).setOrigin(0.5)
 
-    this.add.text(width / 2, 82, this.mode === 'boss-signature' ? 'Boss defeated. Claim your signature card.' : 'Choose 1 card to deepen your run build', {
+    this.add.text(width / 2, 82, this.mode === 'boss-signature'
+      ? 'Boss defeated. Claim your signature card.'
+      : (this.mode === 'shard-forge'
+        ? '3/3 Shards reached. Choose a powerful forged card.'
+        : 'Choose 1 card to deepen your run build'), {
       fontSize: '18px',
       color: '#cbd5e1',
     }).setOrigin(0.5)
 
     this.add.text(width / 2, 100, `Reward Type: ${this.encounterType.toUpperCase()}`, {
       fontSize: '16px',
-      color: '#93c5fd',
+      color: this.mode === 'shard-forge' ? '#fde68a' : '#93c5fd',
     }).setOrigin(0.5)
 
     this.add.text(width / 2, 122, 'Press ESC to return to menu', {
@@ -67,6 +78,11 @@ export class RewardScene extends Phaser.Scene {
       this.add.text(width / 2, 146, `Route: ${this.routeName || 'Unknown Route'}  |  Boss: ${this.bossId || 'Unknown Boss'}`, {
         fontSize: compactLayout ? '14px' : '15px',
         color: '#fca5a5',
+      }).setOrigin(0.5)
+    } else if (this.mode === 'shard-forge') {
+      this.add.text(width / 2, 146, 'Forged from shard progress. This payout is separate from normal battle drafts.', {
+        fontSize: compactLayout ? '14px' : '15px',
+        color: '#fde68a',
       }).setOrigin(0.5)
     }
 
@@ -158,7 +174,13 @@ export class RewardScene extends Phaser.Scene {
 
     try {
       addCardToRunDeck(card)
-      advanceFloorAfterEncounter()
+      if (this.mode === 'shard-forge') {
+        consumeForgeAvailabilityForShardReward()
+      }
+
+      if (this.advanceFloorOnSelect) {
+        advanceFloorAfterEncounter()
+      }
       saveRun()
       this.scene.start(this.nextScene)
     } catch {
@@ -176,6 +198,10 @@ export class RewardScene extends Phaser.Scene {
       }
 
       return generateRewardChoices('boss').slice(0, 1)
+    }
+
+    if (this.mode === 'shard-forge') {
+      return generateRewardChoices('boss')
     }
 
     return generateRewardChoices(this.encounterType)

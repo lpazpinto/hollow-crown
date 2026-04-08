@@ -953,7 +953,7 @@ export class PlayScene extends Phaser.Scene {
       applyBattleResult(this.session.state.heroHp, true)
       const xpResult = awardXpForCurrentEncounter()
       const shardReward = tryGrantShardForCurrentEncounter()
-      const nextRoute = this.getPostVictoryRoute()
+      const nextRoute = this.getPostVictoryRoute(shardReward)
       const hasLevelUp = hasPendingLevelUp()
 
       this.showTurnBanner(
@@ -2139,7 +2139,7 @@ export class PlayScene extends Phaser.Scene {
   // Renders the on-screen victory reward summary and waits for player confirmation.
   private showVictoryScreen(
     xpResult: { gainedXp: number; levelsGained: number },
-    shardReward: { granted: boolean; shardCount: number; isForgeAvailable: boolean },
+    shardReward: { granted: boolean; justCompleted: boolean; shardCount: number; isForgeAvailable: boolean },
     nextRoute: { scene: string; data?: Record<string, unknown>; advanceFloorNow: boolean },
     hasLevelUp: boolean,
     isBossVictory: boolean,
@@ -2190,6 +2190,9 @@ export class PlayScene extends Phaser.Scene {
     if (shardReward.granted) {
       if (shardReward.isForgeAvailable) {
         rewardLines.push({ label: `Shard  ${shardReward.shardCount}/${getShardTarget()}  •  Forge Ready`, color: '#fef3c7' })
+        if (shardReward.justCompleted) {
+          rewardLines.push({ label: 'Shard payoff unlocked  →  Powerful Card Reward', color: '#fde68a' })
+        }
       } else {
         rewardLines.push({ label: `Shard  +1  (${shardReward.shardCount}/${getShardTarget()})`, color: '#93c5fd' })
       }
@@ -2279,13 +2282,33 @@ export class PlayScene extends Phaser.Scene {
     this.scene.start(nextRoute.scene, nextRoute.data)
   }
 
-  private getPostVictoryRoute(): {
+  private getPostVictoryRoute(shardReward: {
+    granted: boolean
+    justCompleted: boolean
+    shardCount: number
+    isForgeAvailable: boolean
+  }): {
     scene: 'RewardScene' | 'RelicRewardScene' | 'MapScene'
     data?: Record<string, unknown>
     advanceFloorNow: boolean
   } {
     // Reward type is determined by encounter type.
     const rewardType = this.getVictoryRewardType(this.encounterType)
+
+    if (shardReward.justCompleted) {
+      // Powerful card reward presentation is triggered here for the 3/3 shard payoff.
+      const nextSceneAfterShardReward = rewardType === 'elite-relic' ? 'RelicRewardScene' : 'MapScene'
+      return {
+        scene: 'RewardScene',
+        data: {
+          encounterType: 'boss',
+          mode: 'shard-forge',
+          nextScene: nextSceneAfterShardReward,
+          advanceFloorOnSelect: rewardType !== 'elite-relic',
+        },
+        advanceFloorNow: false,
+      }
+    }
 
     if (rewardType === 'boss-signature') {
       const runState = getRunState()
@@ -2312,7 +2335,7 @@ export class PlayScene extends Phaser.Scene {
       if (shouldGrantMilestoneDraft) {
         return {
           scene: 'RewardScene',
-          data: { encounterType: 'battle' },
+          data: { encounterType: 'battle', advanceFloorOnSelect: true },
           advanceFloorNow: false,
         }
       }

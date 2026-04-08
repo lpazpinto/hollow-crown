@@ -179,6 +179,7 @@ export function getShardTarget(): number {
 
 export function tryGrantShardForCurrentEncounter(): {
   granted: boolean
+  justCompleted: boolean
   shardCount: number
   isForgeAvailable: boolean
 } {
@@ -190,6 +191,7 @@ export function tryGrantShardForCurrentEncounter(): {
     state.isForgeAvailable = true
     return {
       granted: false,
+      justCompleted: false,
       shardCount: state.shardCount,
       isForgeAvailable: state.isForgeAvailable,
     }
@@ -199,20 +201,36 @@ export function tryGrantShardForCurrentEncounter(): {
   // Shard rewards are no longer default battle rewards; they come from route node reward data.
   const shouldGrant = shardChance > 0 && Math.random() < shardChance
 
+  let justCompleted = false
   if (shouldGrant) {
     // Shard progress is updated here as an out-of-deck run resource.
     state.shardCount = Math.min(SHARDS_FOR_FORGE, state.shardCount + 1)
+    // Shard completion is detected here at the exact moment progress reaches 3/3.
     if (state.shardCount >= SHARDS_FOR_FORGE) {
-      // 3/3 shard payoff becomes available here.
+      // Shard payoff availability is created here.
       state.isForgeAvailable = true
+      justCompleted = true
     }
   }
 
   return {
     granted: shouldGrant,
+    justCompleted,
     shardCount: state.shardCount,
     isForgeAvailable: state.isForgeAvailable,
   }
+}
+
+export function consumeForgeAvailabilityForShardReward() {
+  ensureRunState()
+  const state = runState as RunState
+
+  if (!state.isForgeAvailable) {
+    return
+  }
+
+  state.shardCount = 0
+  state.isForgeAvailable = false
 }
 
 function getRouteChoiceRewardBadges(node: RouteGraphNode): RouteChoiceRewardBadge[] {
