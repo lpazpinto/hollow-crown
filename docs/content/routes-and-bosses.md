@@ -41,13 +41,20 @@ Each route node can include:
 
 - Branch and merge lane structure is implemented.
 - Route tail pacing currently targets:
-	- elite -> post-elite meaningful node -> pre-boss preparation/rest -> boss
+  - elite -> post-elite meaningful node -> pre-boss preparation/rest -> boss
+
+### Boss Reward Direction (Current)
+
+- Boss encounters route to a signature reward flow in `RewardScene`.
+- Shard payoff is separate: reaching 3/3 shards triggers a distinct powerful card reward presentation.
+- Combined direction goal: boss rewards should feel route-themed and identity-defining.
 
 ## Current Planned Content
 
 - Additional fully playable domains (currently locked) with their own route identity: TBD
 - More route variation per domain while keeping web-friendly length: TBD
 - Expanded boss roster and boss-specific reward identity for each domain: TBD
+- Additional route-themed signature reward cards for future bosses/domains: TBD
 
 ## Balancing / Design Notes
 

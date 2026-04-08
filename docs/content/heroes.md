@@ -33,6 +33,23 @@ Defined in `src/game/battle/runState.ts` at run start:
 - Resource used in cards and combat: Ember
 - Current status: implemented through card effects and combat resource handling
 
+### Current Abilities (Ability Pool)
+
+Defined in `src/game/content/abilities.ts` and surfaced through level-up choices:
+
+- Cinder Core
+- Steady Heart
+- Horn Edge
+- Warding Horn
+- Rhythm Breath
+- Golden Oath
+
+### Current Design Direction
+
+- Hero growth should come from combined layers (deck + abilities + shards/boons + level-ups).
+- Keep hero expression readable and lightweight for short web sessions.
+- Avoid heavyweight RPG systems (large talent trees/equipment grids) in the current phase.
+
 ## Current Planned Content
 
 - Additional hero profiles: TBD
