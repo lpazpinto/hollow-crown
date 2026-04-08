@@ -1273,34 +1273,82 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private animateReshuffleToDeck(onComplete: () => void) {
+    // Reshuffle animation starts here.
     this.lockBattleInput()
-    const burstCount = this.compactLayout ? 4 : 5
+    const burstCount = this.compactLayout ? 5 : 6
+    // Reshuffle timing is controlled here.
+    const liftDuration = this.compactLayout ? 220 : 250
+    const funnelDuration = this.compactLayout ? 360 : 400
+    const cardDelay = this.compactLayout ? 38 : 44
     let finished = 0
+
+    // Reshuffle visual positioning is controlled here.
+    const reshuffleCenterX = (this.discardAnchorX + this.deckAnchorX) / 2
+    const reshuffleCenterY = this.deckAnchorY - (this.compactLayout ? 52 : 62)
+    const label = this.add.text(reshuffleCenterX, reshuffleCenterY - (this.compactLayout ? 34 : 38), 'Reshuffle', {
+      fontSize: this.compactLayout ? '14px' : '16px',
+      color: '#bfdbfe',
+      fontStyle: 'bold',
+      stroke: '#0f172a',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(9).setAlpha(0)
+
+    this.tweens.add({
+      targets: label,
+      alpha: 1,
+      y: label.y - 4,
+      duration: 160,
+      ease: 'Quad.Out',
+    })
 
     for (let i = 0; i < burstCount; i += 1) {
       const cardBack = this.createTemporaryCardBack(
         this.discardAnchorX + Phaser.Math.Between(-9, 9),
         this.discardAnchorY + Phaser.Math.Between(-7, 7),
+        this.compactLayout ? 1.28 : 1.42,
+        8,
       )
 
       this.tweens.add({
         targets: cardBack,
-        x: this.deckAnchorX + Phaser.Math.Between(-7, 7),
-        y: this.deckAnchorY + Phaser.Math.Between(-5, 5),
-        alpha: 0,
-        scaleX: 0.76,
-        scaleY: 0.76,
+        x: reshuffleCenterX + Phaser.Math.Between(-34, 34),
+        y: reshuffleCenterY + Phaser.Math.Between(-16, 12),
+        scaleX: this.compactLayout ? 1.08 : 1.16,
+        scaleY: this.compactLayout ? 1.08 : 1.16,
         angle: Phaser.Math.Between(-14, 14),
-        duration: 175,
-        delay: i * 32,
-        ease: 'Cubic.InOut',
+        duration: liftDuration,
+        delay: i * cardDelay,
+        ease: 'Sine.Out',
         onComplete: () => {
-          cardBack.forEach((obj) => obj.destroy())
-          finished += 1
-          if (finished >= burstCount) {
-            this.cameras.main.flash(50, 160, 205, 255, false)
-            onComplete()
-          }
+          this.tweens.add({
+            targets: cardBack,
+            x: this.deckAnchorX + Phaser.Math.Between(-9, 9),
+            y: this.deckAnchorY + Phaser.Math.Between(-7, 7),
+            alpha: 0,
+            scaleX: 0.82,
+            scaleY: 0.82,
+            angle: Phaser.Math.Between(-10, 10),
+            duration: funnelDuration,
+            ease: 'Cubic.InOut',
+            onComplete: () => {
+              cardBack.forEach((obj) => obj.destroy())
+              finished += 1
+              if (finished >= burstCount) {
+                this.tweens.add({
+                  targets: label,
+                  alpha: 0,
+                  y: label.y - 6,
+                  duration: 160,
+                  ease: 'Quad.In',
+                  onComplete: () => {
+                    label.destroy()
+                    this.cameras.main.flash(90, 160, 205, 255, false)
+                    onComplete()
+                  },
+                })
+              }
+            },
+          })
         },
       })
     }
@@ -1336,14 +1384,14 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private createTemporaryCardBack(x: number, y: number): Phaser.GameObjects.Rectangle[] {
-    const width = this.compactLayout ? 18 : 20
-    const height = this.compactLayout ? 24 : 26
+  private createTemporaryCardBack(x: number, y: number, scaleMultiplier = 1, depthBase = 4): Phaser.GameObjects.Rectangle[] {
+    const width = (this.compactLayout ? 18 : 20) * scaleMultiplier
+    const height = (this.compactLayout ? 24 : 26) * scaleMultiplier
     const base = this.add.rectangle(x, y, width, height, 0x1e293b, 0.95)
       .setStrokeStyle(1, 0xcbd5e1, 0.9)
-      .setDepth(4)
+      .setDepth(depthBase)
     const stripe = this.add.rectangle(x, y, width - 6, 3, 0x93c5fd, 0.9)
-      .setDepth(5)
+      .setDepth(depthBase + 1)
 
     return [base, stripe]
   }
