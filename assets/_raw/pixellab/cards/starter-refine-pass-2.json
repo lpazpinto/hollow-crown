@@ -1,0 +1,103 @@
+{
+  "batch": "starter-refine-pass-2",
+  "created_at": "2026-04-08",
+  "source_art_rules": "docs/art_rules.md",
+  "notes": [
+    "refine illustration only",
+    "portrait-friendly composition",
+    "no frame",
+    "no UI",
+    "no text",
+    "strong silhouette",
+    "restrained colors",
+    "simple hand-drawable shapes",
+    "consistent across all four cards"
+  ],
+  "output_folder": "assets/_raw/pixellab/cards",
+  "objects": [
+    {
+      "card_id": "unicorn-strike",
+      "variation": "a",
+      "file": "unicorn-strike-refine-a.png",
+      "object_id": "b716a4de-3730-46eb-b9d2-642d9305f89b",
+      "status": "completed"
+    },
+    {
+      "card_id": "unicorn-strike",
+      "variation": "b",
+      "file": "unicorn-strike-refine-b.png",
+      "object_id": "1c968c64-564a-4c7b-b143-39d1856f8f55",
+      "status": "processing"
+    },
+    {
+      "card_id": "unicorn-strike",
+      "variation": "c",
+      "file": "unicorn-strike-refine-c.png",
+      "object_id": "ed2d51b6-eca8-4315-a72d-ed351a7c0bac",
+      "status": "completed"
+    },
+    {
+      "card_id": "golden-shield",
+      "variation": "a",
+      "file": "golden-shield-refine-a.png",
+      "object_id": "08549d9e-b79a-4382-9ef6-28c8030e6cfc",
+      "status": "completed"
+    },
+    {
+      "card_id": "golden-shield",
+      "variation": "b",
+      "file": "golden-shield-refine-b.png",
+      "object_id": "ebf20e03-db7e-4b53-8a87-47f015207c1d",
+      "status": "completed"
+    },
+    {
+      "card_id": "golden-shield",
+      "variation": "c",
+      "file": "golden-shield-refine-c.png",
+      "object_id": "00fcc598-a12c-44dd-8ea7-28efc35a7470",
+      "status": "processing"
+    },
+    {
+      "card_id": "charge",
+      "variation": "a",
+      "file": "charge-refine-a.png",
+      "object_id": "3a264306-270d-43e1-bf74-c083afe4992a",
+      "status": "processing"
+    },
+    {
+      "card_id": "charge",
+      "variation": "b",
+      "file": "charge-refine-b.png",
+      "object_id": "2c321745-5480-4f4d-a919-c5244f081dbb",
+      "status": "completed"
+    },
+    {
+      "card_id": "charge",
+      "variation": "c",
+      "file": "charge-refine-c.png",
+      "object_id": "6b886490-09a3-4b9c-9c66-6eefec1c4765",
+      "status": "completed"
+    },
+    {
+      "card_id": "crown-diamonds",
+      "variation": "a",
+      "file": "crown-diamonds-refine-a.png",
+      "object_id": "a3f8f268-fe2f-4e32-b249-33e941cca72d",
+      "status": "completed"
+    },
+    {
+      "card_id": "crown-diamonds",
+      "variation": "b",
+      "file": "crown-diamonds-refine-b.png",
+      "object_id": "2966548f-b8b4-4f17-91f3-75348afeb1f1",
+      "status": "processing"
+    },
+    {
+      "card_id": "crown-diamonds",
+      "variation": "c",
+      "file": "crown-diamonds-refine-c.png",
+      "object_id": "31c808a5-ecdc-409b-ab31-511889ed1650",
+      "status": "completed"
+    }
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "batch": "starter-refine-pass-3-targeted",
+  "created_at": "2026-04-08",
+  "source_art_rules": "docs/art_rules.md",
+  "shared_character_brief": "adorable chibi anime unicorn with white coat, pink mane and tail with subtle violet accents, large violet eyes, golden horn, tiny pink hooves",
+  "output_folder": "assets/_raw/pixellab/cards",
+  "objects": [
+    {
+      "card_id": "unicorn-strike",
+      "file": "unicorn-strike-refine-targeted.png",
+      "object_id": "3cdbe7ac-41ee-48e9-a443-7a06d0c7b129",
+      "status": "completed"
+    },
+    {
+      "card_id": "golden-shield",
+      "file": "golden-shield-refine-targeted.png",
+      "object_id": "939ec2b7-79a9-4946-8df7-8fe9cbda3ec6",
+      "status": "completed"
+    },
+    {
+      "card_id": "charge",
+      "file": "charge-refine-targeted.png",
+      "object_id": "ead628b6-76d6-4bb1-8e46-7838ca1a226b",
+      "status": "completed"
+    },
+    {
+      "card_id": "crown-diamonds",
+      "file": "crown-diamonds-refine-targeted.png",
+      "object_id": "aa1afad6-b2e9-4c70-a4d8-eba40f52f304",
+      "status": "completed"
+    }
+  ]
+}

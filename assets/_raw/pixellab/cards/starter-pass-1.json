@@ -1,0 +1,53 @@
+{
+  "batch": "starter-pass-1",
+  "created_at": "2026-04-08",
+  "style_constraints": {
+    "source": "docs/art_rules.md",
+    "notes": [
+      "charming fantasy pixel art",
+      "readability at small size",
+      "strong silhouettes",
+      "restrained colors",
+      "simple hand-drawable forms",
+      "no frame",
+      "no text",
+      "no UI",
+      "transparent background"
+    ]
+  },
+  "output_folder": "assets/_raw/pixellab/cards",
+  "objects": [
+    {
+      "card_id": "unicorn-strike",
+      "card_title": "Unicorn Strike",
+      "object_id": "c098a8ed-9f9f-474f-a9bf-ab1fe2f90499",
+      "status": "completed",
+      "file": "unicorn-strike-pass-1.png",
+      "prompt": "single silver unicorn horn striking diagonally through a warm ember slash arc, centered standalone card illustration, charming fantasy pixel art, very clear silhouette, restrained colors, simple hand-drawable forms, transparent background, no frame, no text, no UI"
+    },
+    {
+      "card_id": "golden-shield",
+      "card_title": "Golden Shield",
+      "object_id": "0bb30ade-e8c4-4bc9-a424-5be71c51db8b",
+      "status": "completed",
+      "file": "golden-shield-pass-1.png",
+      "prompt": "single round golden shield with a small blue jewel and clean protective glow, centered standalone card illustration, charming fantasy pixel art, very clear silhouette, restrained colors, simple hand-drawable forms, transparent background, no frame, no text, no UI"
+    },
+    {
+      "card_id": "charge",
+      "card_title": "Charge",
+      "object_id": "28ea9590-cab0-4d24-94c9-0bb27dff22b1",
+      "status": "completed",
+      "file": "charge-pass-1.png",
+      "prompt": "small brave unicorn charging forward with a simple shield aura and minimal motion streaks, centered standalone card illustration, charming fantasy pixel art, very clear silhouette, restrained colors, simple hand-drawable forms, transparent background, no frame, no text, no UI"
+    },
+    {
+      "card_id": "crown-diamonds",
+      "card_title": "Crown Diamonds",
+      "object_id": "d45633d2-6d0b-4895-bb55-899f95e9ff62",
+      "status": "completed",
+      "file": "crown-diamonds-pass-1.png",
+      "prompt": "small cluster of crown-shaped golden diamonds with a subtle teal magical spark, centered standalone card illustration, charming fantasy pixel art, very clear silhouette, restrained colors, simple hand-drawable forms, transparent background, no frame, no text, no UI"
+    }
+  ]
+}

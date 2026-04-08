@@ -6,6 +6,7 @@ import {
 } from '../battle/runState'
 import { saveRun } from '../battle/runSave'
 import {
+  getCardBaseId,
   generateRewardChoices,
   getCardById,
   type CardContent,
@@ -22,6 +23,21 @@ type RewardSceneData = {
   advanceFloorOnSelect?: boolean
 }
 
+const CARD_VISUAL_ASSETS: Array<{ key: string, path: string }> = [
+  { key: 'card-frame-attack', path: 'assets/cards/frame-attack.png' },
+  { key: 'card-frame-defense', path: 'assets/cards/frame-defense.png' },
+  { key: 'card-frame-utility', path: 'assets/cards/frame-utility.png' },
+  { key: 'card-rarity-overlay-common', path: 'assets/cards/rarity-overlay-common.png' },
+  { key: 'card-rarity-overlay-uncommon', path: 'assets/cards/rarity-overlay-uncommon.png' },
+  { key: 'card-rarity-overlay-rare', path: 'assets/cards/rarity-overlay-rare.png' },
+  { key: 'card-rarity-gems-uncommon', path: 'assets/cards/rarity-gems-uncommon.png' },
+  { key: 'card-rarity-gems-rare', path: 'assets/cards/rarity-gems-rare.png' },
+  { key: 'card-art-unicorn-strike', path: 'assets/cards/art-unicorn-strike.png' },
+  { key: 'card-art-golden-shield', path: 'assets/cards/art-golden-shield.png' },
+  { key: 'card-art-charge', path: 'assets/cards/art-charge.png' },
+  { key: 'card-art-crown-diamonds', path: 'assets/cards/art-crown-diamonds.png' },
+]
+
 export class RewardScene extends Phaser.Scene {
   private rewardChosen = false
   private encounterType: RewardEncounterType = 'battle'
@@ -34,6 +50,14 @@ export class RewardScene extends Phaser.Scene {
 
   constructor() {
     super('RewardScene')
+  }
+
+  preload() {
+    CARD_VISUAL_ASSETS.forEach((asset) => {
+      if (!this.textures.exists(asset.key)) {
+        this.load.image(asset.key, asset.path)
+      }
+    })
   }
 
   create(data: RewardSceneData = {}) {
@@ -113,49 +137,119 @@ export class RewardScene extends Phaser.Scene {
   private createRewardCard(x: number, y: number, compactLayout: boolean, cardData: CardContent, onClick: () => void) {
     const cardWidth = compactLayout ? 176 : 188
     const cardHeight = compactLayout ? 224 : 236
-    const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0xf8fafc)
-      .setStrokeStyle(3, 0x1f2937)
+    const frameType = this.getCardFrameType(cardData)
+    const frameKey = `card-frame-${frameType}`
+    const overlayKey = `card-rarity-overlay-${cardData.rarity}`
+    const gemsKey = cardData.rarity === 'common' ? null : `card-rarity-gems-${cardData.rarity}`
+    const artKey = this.getCardArtKey(cardData)
+
+    const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0xffffff, 0.001)
+      .setStrokeStyle(0, 0x000000, 0)
       .setInteractive({ useHandCursor: true })
 
-    this.add.text(x, y - 70, cardData.title, {
-      fontSize: compactLayout ? '21px' : '24px',
+    const visuals: Phaser.GameObjects.GameObject[] = []
+    const postFrameVisuals: Phaser.GameObjects.GameObject[] = []
+
+    if (this.textures.exists(overlayKey)) {
+      visuals.push(this.add.image(x, y, overlayKey).setDisplaySize(cardWidth, cardHeight))
+    }
+
+    if (this.textures.exists(frameKey)) {
+      visuals.push(this.add.image(x, y, frameKey).setDisplaySize(cardWidth, cardHeight))
+    }
+
+    const artWindow = this.add.rectangle(
+      x,
+      y - (compactLayout ? 18 : 20),
+      cardWidth - 28,
+      compactLayout ? 72 : 78,
+      0x0f172a,
+      0.16,
+    ).setStrokeStyle(1, 0x0f172a, 0.34)
+    postFrameVisuals.push(artWindow)
+
+    if (artKey && this.textures.exists(artKey)) {
+      const artImage = this.add.image(x, artWindow.y, artKey)
+      const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
+      const maxW = cardWidth - 32
+      const maxH = compactLayout ? 66 : 72
+      const scale = Math.min(maxW / source.width, maxH / source.height)
+      artImage.setDisplaySize(source.width * scale, source.height * scale)
+      postFrameVisuals.push(artImage)
+    }
+
+    if (gemsKey && this.textures.exists(gemsKey)) {
+      postFrameVisuals.push(this.add.image(x, y, gemsKey).setDisplaySize(cardWidth, cardHeight))
+    }
+
+    const titlePlate = this.add.rectangle(
+      x,
+      y - cardHeight / 2 + (compactLayout ? 36 : 40),
+      cardWidth - 56,
+      compactLayout ? 22 : 24,
+      0xf8fafc,
+      0.8,
+    ).setStrokeStyle(1, 0x1f2937, 0.35)
+
+    const title = this.add.text(x, y - cardHeight / 2 + (compactLayout ? 36 : 40), cardData.title, {
+      fontSize: compactLayout ? '15px' : '17px',
       color: '#111827',
       fontStyle: 'bold',
       wordWrap: { width: cardWidth - 24 },
       align: 'center',
     }).setOrigin(0.5)
 
-    this.add.text(x, y, cardData.description, {
-      fontSize: compactLayout ? '15px' : '16px',
-      color: '#374151',
+    const bodyPlate = this.add.rectangle(
+      x,
+      y + (compactLayout ? 44 : 48),
+      cardWidth - 40,
+      compactLayout ? 58 : 64,
+      0xf8fafc,
+      0.7,
+    ).setStrokeStyle(1, 0x475569, 0.28)
+
+    const description = this.add.text(x, y + (compactLayout ? 44 : 48), cardData.description, {
+      fontSize: compactLayout ? '12px' : '13px',
+      color: '#111827',
       align: 'center',
       wordWrap: { width: cardWidth - 36 },
     }).setOrigin(0.5)
 
-    this.add.text(x, y + 76, `Cost: ${cardData.cost}`, {
-      fontSize: compactLayout ? '15px' : '16px',
+    const cost = this.add.text(x, y + (compactLayout ? 88 : 94), `Cost: ${cardData.cost}`, {
+      fontSize: compactLayout ? '14px' : '15px',
       color: '#111827',
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    this.add.text(x, y + 98, `Rarity: ${cardData.rarity.toUpperCase()}`, {
+    const rarity = this.add.text(x, y + cardHeight / 2 - (compactLayout ? 20 : 22), `Type: ${frameType.toUpperCase()}`, {
       fontSize: compactLayout ? '13px' : '14px',
-      color: '#334155',
+      color: '#111827',
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
+    const cardObjects = [card, ...visuals, ...postFrameVisuals, titlePlate, title, bodyPlate, description, cost, rarity]
+
     card.on('pointerover', () => {
-      card.setStrokeStyle(3, 0xf59e0b)
+      cardObjects.forEach((obj) => {
+        const target = obj as Phaser.GameObjects.GameObject & { scaleX: number, scaleY: number, setScale: (x: number, y?: number) => void }
+        target.setScale(target.scaleX * 1.015, target.scaleY * 1.015)
+      })
     })
 
     card.on('pointerout', () => {
-      card.setStrokeStyle(3, 0x1f2937)
+      cardObjects.forEach((obj) => {
+        const target = obj as Phaser.GameObjects.GameObject & { setScale: (x: number, y?: number) => void }
+        target.setScale(1, 1)
+      })
     })
 
     card.on('pointerdown', () => {
-      card.setScale(0.97)
+      cardObjects.forEach((obj) => {
+        const target = obj as Phaser.GameObjects.GameObject & { setScale: (x: number, y?: number) => void }
+        target.setScale(0.97, 0.97)
+      })
       this.tweens.add({
-        targets: card,
+        targets: cardObjects,
         scaleX: 1,
         scaleY: 1,
         duration: 120,
@@ -163,6 +257,24 @@ export class RewardScene extends Phaser.Scene {
       })
       onClick()
     })
+  }
+
+  private getCardFrameType(card: CardContent): 'attack' | 'defense' | 'utility' {
+    if (card.effectType === 'damage') {
+      return 'attack'
+    }
+
+    if (card.effectType === 'armor') {
+      return 'defense'
+    }
+
+    return 'utility'
+  }
+
+  private getCardArtKey(card: CardContent): string | null {
+    const baseId = getCardBaseId(card.id)
+    const artKey = `card-art-${baseId}`
+    return this.textures.exists(artKey) ? artKey : null
   }
 
   private selectReward(card: CardContent) {

@@ -1,0 +1,39 @@
+{
+  "batch": "frame-families-pass-3-minimal",
+  "created_at": "2026-04-08",
+  "design_direction": {
+    "identity": "exactly equal frame shape across all types",
+    "production_method": "attack base preserved; defense and utility recolored from the same source for pixel-identical geometry",
+    "differences_allowed": "color accents only",
+    "forbidden_differences": [
+      "corner motifs",
+      "icons",
+      "shield marks",
+      "stars",
+      "gems",
+      "extra ornament"
+    ],
+    "rarity_layer": "outer border reserved for future rarity"
+  },
+  "output_folder": "assets/_raw/pixellab/cards",
+  "objects": [
+    {
+      "family": "attack",
+      "file": "frame-attack-pass-3-minimal.png",
+      "object_id": "11152f64-4da9-4b42-94a0-5d1a5926ccb9",
+      "status": "completed"
+    },
+    {
+      "family": "defense",
+      "file": "frame-defense-pass-3-minimal.png",
+      "object_id": "95a35444-b5d0-4922-bb81-843b3a013534",
+      "status": "completed"
+    },
+    {
+      "family": "utility",
+      "file": "frame-utility-pass-3-minimal.png",
+      "object_id": "de8326df-0e23-4a25-89cc-13d5a5f519a5",
+      "status": "completed"
+    }
+  ]
+}

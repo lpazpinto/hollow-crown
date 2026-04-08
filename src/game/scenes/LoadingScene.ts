@@ -45,6 +45,21 @@ const ASHEN_KNIGHT_SHEET = {
   frameHeight: 88,
 }
 
+const CARD_IMAGE_ASSETS: Array<{ key: string, path: string }> = [
+  { key: 'card-frame-attack', path: 'assets/cards/frame-attack.png' },
+  { key: 'card-frame-defense', path: 'assets/cards/frame-defense.png' },
+  { key: 'card-frame-utility', path: 'assets/cards/frame-utility.png' },
+  { key: 'card-rarity-overlay-common', path: 'assets/cards/rarity-overlay-common.png' },
+  { key: 'card-rarity-overlay-uncommon', path: 'assets/cards/rarity-overlay-uncommon.png' },
+  { key: 'card-rarity-overlay-rare', path: 'assets/cards/rarity-overlay-rare.png' },
+  { key: 'card-rarity-gems-uncommon', path: 'assets/cards/rarity-gems-uncommon.png' },
+  { key: 'card-rarity-gems-rare', path: 'assets/cards/rarity-gems-rare.png' },
+  { key: 'card-art-unicorn-strike', path: 'assets/cards/art-unicorn-strike.png' },
+  { key: 'card-art-golden-shield', path: 'assets/cards/art-golden-shield.png' },
+  { key: 'card-art-charge', path: 'assets/cards/art-charge.png' },
+  { key: 'card-art-crown-diamonds', path: 'assets/cards/art-crown-diamonds.png' },
+]
+
 export class LoadingScene extends Phaser.Scene {
   constructor() {
     super('LoadingScene')
@@ -72,6 +87,10 @@ export class LoadingScene extends Phaser.Scene {
     this.load.spritesheet(ASHEN_KNIGHT_SHEET.key, ASHEN_KNIGHT_SHEET.path, {
       frameWidth: ASHEN_KNIGHT_SHEET.frameWidth,
       frameHeight: ASHEN_KNIGHT_SHEET.frameHeight,
+    })
+
+    CARD_IMAGE_ASSETS.forEach((asset) => {
+      this.load.image(asset.key, asset.path)
     })
   }
 

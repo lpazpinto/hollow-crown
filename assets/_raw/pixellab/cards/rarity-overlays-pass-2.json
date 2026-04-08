@@ -1,0 +1,22 @@
+{
+  "batch": "rarity-overlays-pass-2",
+  "created_at": "2026-04-08",
+  "source_script": "scripts/create_rarity_overlays.py",
+  "design_notes": {
+    "layering": "overlay intended as underlay behind the frame silhouette",
+    "rarity_progression": "more rare = more noble + more gems",
+    "gem_counts": {
+      "common": 2,
+      "uncommon": 4,
+      "rare": 8
+    }
+  },
+  "files": [
+    "rarity-overlay-common.png",
+    "rarity-overlay-uncommon.png",
+    "rarity-overlay-rare.png",
+    "rarity-preview-common.png",
+    "rarity-preview-uncommon.png",
+    "rarity-preview-rare.png"
+  ]
+}

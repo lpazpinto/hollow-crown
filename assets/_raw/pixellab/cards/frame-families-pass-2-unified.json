@@ -1,0 +1,36 @@
+{
+  "batch": "frame-families-pass-2-unified",
+  "created_at": "2026-04-08",
+  "source_art_rules": "docs/art_rules.md",
+  "design_direction": {
+    "shared_identity": "same frame silhouette and ornament language across all card types",
+    "type_read": "color accents plus small internal icon motifs only",
+    "type_colors": {
+      "attack": "red ember",
+      "defense": "blue",
+      "utility": "green"
+    },
+    "rarity_layer": "outermost border reserved as noble rarity ring"
+  },
+  "output_folder": "assets/_raw/pixellab/cards",
+  "objects": [
+    {
+      "family": "attack",
+      "file": "frame-attack-pass-2-unified.png",
+      "object_id": "7db1cb7d-3183-4e9f-b059-4e6a03a700c7",
+      "status": "completed"
+    },
+    {
+      "family": "defense",
+      "file": "frame-defense-pass-2-unified.png",
+      "object_id": "f42eecc6-6c9d-4383-b56c-a86a30387530",
+      "status": "completed"
+    },
+    {
+      "family": "utility",
+      "file": "frame-utility-pass-2-unified.png",
+      "object_id": "a10065b6-1576-4d9a-a292-1979507518f4",
+      "status": "completed"
+    }
+  ]
+}
