@@ -1,54 +1,43 @@
 # Documentation Index
 
-This folder is organized to separate direction docs, system references, content references, UI notes, and implementation notes.
+This index explains how docs are organized and where contributors should start.
 
-## Start Here
+## Read In This Order
 
-1. Read source-of-truth direction docs:
+1. Project snapshot
+   - `overview/game-status.md`
+2. Foundational direction docs (core product/system direction)
+   - `core-loop-v2-rpg-direction.md`
+   - `route-select-and-boss-reward-direction.md`
    - `route-rewards-levelup-direction-update.md`
+3. Iteration and playtest direction docs (newer adjustments and priorities)
    - `playtest-feedback-next-direction.md`
    - `route_reward_ux_playtest_guidance_v_2.md`
-2. Read current project snapshot:
-   - `overview/game-status.md`
-3. Use system and content references while implementing features.
+   - `route-reward-ux-playtest-guidance-v2.md` (filename compatibility alias)
+4. System and content references for implementation
+   - `systems/`
+   - `content/`
 
-## Current Documentation Set (Preserved)
+## Documentation Hierarchy
 
-This is the active documentation set for the project. The latest direction should be taken from the three source-of-truth docs, while the others remain valuable reference/history.
+### 1) Broad Project Direction Docs
 
-- `battle-scene-v2.md`
-- `card-rarity-and-reward-rules.md`
+These define the intended game identity and major design direction.
+
 - `core-loop-v2-rpg-direction.md`
-- `enemy-and-relic-implementation-rules.md`
-- `first-design-sheet.md`
-- `playtest-feedback-next-direction.md`
-- `route-rewards-levelup-direction-update.md`
 - `route-select-and-boss-reward-direction.md`
-- `route_reward_ux_playtest_guidance_v_2.md`
-- `route-reward-ux-playtest-guidance-v2.md` (compatibility alias)
-
-## Source-of-Truth Direction Docs (Preserved)
-
-These are the current design direction sources and remain at `docs/` root:
-
 - `route-rewards-levelup-direction-update.md`
+
+### 2) Playtest Feedback / Iteration Docs
+
+These refine priorities and adjust implementation direction based on recent testing.
+
 - `playtest-feedback-next-direction.md`
 - `route_reward_ux_playtest_guidance_v_2.md`
 
-## Overview
+### 3) Content Reference Docs
 
-- `overview/game-status.md`: current playable scope, implemented systems, and active in-progress work.
-
-## Systems Reference
-
-- `systems/route-flow.md`
-- `systems/rewards-and-progression.md`
-- `systems/battle-flow.md`
-- `systems/run-state-and-save.md`
-- `systems/shards-and-boons.md`
-- `systems/level-up-flow.md`
-
-## Content Reference
+These are living reference sheets for implemented and planned content.
 
 - `content/heroes.md`
 - `content/cards.md`
@@ -56,25 +45,33 @@ These are the current design direction sources and remain at `docs/` root:
 - `content/relics.md`
 - `content/routes-and-bosses.md`
 
-## UI and UX Notes
+### 4) Implementation-Specific Docs
 
-- `ui-ux/route-selection-ui.md`
+These map behavior to current systems and code-facing rules.
 
-## Playtests and Direction Tracking
-
-- `playtests/README.md`
-
-## Implementation Notes
-
+- `systems/route-flow.md`
+- `systems/rewards-and-progression.md`
+- `systems/shards-and-boons.md`
+- `systems/level-up-flow.md`
+- `systems/battle-flow.md`
+- `systems/run-state-and-save.md`
 - `implementation/README.md`
 
-## Legacy and Supporting Docs (Preserved)
+### 5) UI / UX Notes
 
-The following docs are still preserved and useful for deeper context:
-
+- `ui-ux/route-selection-ui.md`
 - `battle-scene-v2.md`
-- `card-rarity-and-reward-rules.md`
-- `core-loop-v2-rpg-direction.md`
-- `enemy-and-relic-implementation-rules.md`
+
+## Historical / Supporting Reference Docs
+
+These remain useful for context and approved content foundations.
+
 - `first-design-sheet.md`
-- `route-select-and-boss-reward-direction.md`
+- `enemy-and-relic-implementation-rules.md`
+- `card-rarity-and-reward-rules.md`
+
+## How To Use This Set
+
+- Use the broad direction docs + playtest docs together when deciding behavior changes.
+- Use system/content references to confirm current implementation and naming.
+- When docs overlap, prefer newer iteration direction while keeping older docs for rationale/history.
