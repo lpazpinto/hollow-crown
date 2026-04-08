@@ -450,24 +450,34 @@ export class PlayScene extends Phaser.Scene {
     })
 
     // Bottom command band with matching HUD framing.
-    const bottomBarTopY = height - (C ? 226 : 244)
+    // Bottom command band — extended upward to give pile zone its own readable row above the hand zone.
+    const bottomBarTopY = height - (C ? 248 : 266)
+    // Battle stage boundary line — sits just above the bottom zone.
     this.add.rectangle(width / 2, bottomBarTopY - (C ? 16 : 20), width * 0.86, 2, 0x334155, 0.62).setDepth(1)
-    this.add.rectangle(width / 2, bottomBarTopY + (C ? 110 : 116), width, C ? 220 : 232, 0x0b1020, 0.84).setDepth(0)
+    // Bottom zone background fills from bottomBarTopY to screen bottom.
+    this.add.rectangle(width / 2, height - (C ? 124 : 133), width, C ? 248 : 266, 0x0b1020, 0.84).setDepth(0)
+    // Top edge of bottom zone.
     this.add.rectangle(width / 2, bottomBarTopY, width, 2, 0x2d4666).setDepth(1)
 
+    // Hand zone panel — covers only the card playfield, not the pile row.
     const handPanelCenterX = width / 2
-    const handPanelCenterY = height - (C ? 144 : 158)
+    const handPanelCenterY = height - (C ? 110 : 123)
     const handPanelW = C ? 410 : 560
-    const handPanelH = C ? 144 : 156
+    const handPanelH = C ? 104 : 120
     this.add.rectangle(handPanelCenterX, handPanelCenterY, handPanelW, handPanelH, 0x131d2e, 0.9)
       .setStrokeStyle(1, 0x4b617f, 0.75)
       .setDepth(0)
     this.add.rectangle(handPanelCenterX, handPanelCenterY - handPanelH / 2 + 10, handPanelW - 18, 2, 0x6d87a8, 0.6).setDepth(1)
 
-    const pilesY = handPanelCenterY - handPanelH / 2 + (C ? 24 : 26)
+    // Hand/deck/discard spacing is controlled here.
+    // Pile row sits in its own dedicated zone above the hand panel, separated by a clear gap.
+    // pilesY is the vertical center of the pile row zone.
+    const pilesY = height - (C ? 214 : 230)
     const pileW = C ? 96 : 110
     const pileH = C ? 54 : 60
+    // Deck position is defined here — left of center in the pile row.
     const deckPileX = width / 2 - (C ? 126 : 168)
+    // Discard position is defined here — right of center in the pile row.
     const discardPileX = width / 2 + (C ? 126 : 168)
     this.centerActionX = width / 2
     this.centerActionY = spriteY + (C ? 4 : 6)
@@ -520,16 +530,20 @@ export class PlayScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(3)
 
-    this.add.text(width / 2, pilesY, 'Hand', {
-      fontSize: C ? '12px' : '13px',
-      color: '#c7d6ea',
-      fontStyle: 'bold',
+    // Subtle hint centered between pile boxes — prompts pile inspection.
+    this.add.text(width / 2, pilesY, 'tap to inspect', {
+      fontSize: C ? '10px' : '11px',
+      color: '#3d526a',
     }).setOrigin(0.5).setDepth(2)
 
-    this.add.text(width / 2, pilesY + (C ? 20 : 24), 'Tap pile to inspect', {
-      fontSize: C ? '10px' : '11px',
-      color: '#7f8ea7',
-    }).setOrigin(0.5).setDepth(2)
+    // Pile-to-hand separator line — reshuffle animation anchor area is derived from this layout (above this line).
+    this.add.rectangle(width / 2, height - (C ? 170 : 182), handPanelW, 1, 0x2d3a52, 0.55).setDepth(1)
+    // Hand label sits just above the hand zone panel, below the separator.
+    this.add.text(handPanelCenterX, height - (C ? 168 : 179), 'Hand', {
+      fontSize: C ? '11px' : '12px',
+      color: '#5a7898',
+      fontStyle: 'bold',
+    }).setOrigin(0.5, 1).setDepth(2)
 
     this.drawPileCountText = this.add.text(this.deckAnchorX, this.deckAnchorY + (C ? 29 : 34), '0', {
       fontSize: C ? '13px' : '14px',
