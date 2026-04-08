@@ -11,6 +11,7 @@ import {
   setCurrentRouteChoiceNode,
   setSelectedRouteId,
   type EncounterType,
+  type RouteChoiceRewardBadge,
 } from '../battle/runState'
 import { saveRun } from '../battle/runSave'
 import {
@@ -149,7 +150,7 @@ export class MapScene extends Phaser.Scene {
         compactLayout,
         choice.encounterType,
         choice.label,
-        choice.rewardHint,
+        choice.rewardBadges,
         () => {
           this.handleEncounterSelection(selectedRoute.id, choice.nodeId, choice.encounterType)
         },
@@ -172,7 +173,7 @@ export class MapScene extends Phaser.Scene {
     compactLayout: boolean,
     encounterType: EncounterType,
     nodeLabel: string,
-    rewardHint: string | null,
+    rewardBadges: RouteChoiceRewardBadge[],
     onClick: () => void,
   ) {
     const button = this.add.rectangle(x, y, buttonWidth, compactLayout ? 86 : 92, 0x1e293b)
@@ -193,12 +194,12 @@ export class MapScene extends Phaser.Scene {
       align: 'center',
     }).setOrigin(0.5)
 
-    if (rewardHint) {
-      // Route-node reward opportunities are telegraphed here for strategic pathing.
-      this.add.text(x, y + (compactLayout ? 34 : 36), rewardHint, {
-        fontSize: compactLayout ? '11px' : '12px',
-        color: '#93c5fd',
-        fontStyle: 'bold',
+    if (rewardBadges.length > 0) {
+      // Route reward category display is defined here as compact icon-label badges.
+      this.add.text(x, y + (compactLayout ? 34 : 36), this.formatRewardBadgeLine(rewardBadges, compactLayout), {
+        fontSize: compactLayout ? '10px' : '11px',
+        color: '#bfdbfe',
+        align: 'center',
       }).setOrigin(0.5)
     }
 
@@ -303,7 +304,8 @@ export class MapScene extends Phaser.Scene {
       const isCompleted = completedNodeSet.has(node.id)
       const isReachable = reachableNodeSet.has(node.id)
       const isBoss = node.encounterType === 'boss'
-      const hasShardOpportunity = (node.rewards?.shardChance ?? 0) > 0
+      const nodeRewardBadges = this.getNodeRewardBadges(node)
+      const hasRewardTelegraph = nodeRewardBadges.length > 0
 
       const fillColor = isCompleted
         ? 0x16a34a
@@ -312,7 +314,7 @@ export class MapScene extends Phaser.Scene {
           : isBoss
             ? 0x7f1d1d
             : 0x334155
-      const strokeColor = hasShardOpportunity
+      const strokeColor = hasRewardTelegraph
         ? 0x7dd3fc
         : isReachable
           ? 0xfef3c7
@@ -327,8 +329,8 @@ export class MapScene extends Phaser.Scene {
         fontStyle: isReachable ? 'bold' : 'normal',
       }).setOrigin(0.5)
 
-      if (hasShardOpportunity) {
-        this.add.text(position.x, position.y - nodeRadius - 10, 'SHARD', {
+      if (isReachable && hasRewardTelegraph) {
+        this.add.text(position.x, position.y - nodeRadius - 10, this.formatRewardBadgeLine(nodeRewardBadges.slice(0, 2), compactLayout), {
           fontSize: compactLayout ? '9px' : '10px',
           color: '#7dd3fc',
           fontStyle: 'bold',
@@ -381,6 +383,60 @@ export class MapScene extends Phaser.Scene {
     })
 
     return nodesByDepth
+  }
+
+  private getNodeRewardBadges(node: RouteGraphNode): RouteChoiceRewardBadge[] {
+    const badges: RouteChoiceRewardBadge[] = []
+
+    if (node.encounterType === 'battle') {
+      badges.push({ category: 'battle', label: 'Battle' })
+    }
+
+    if (node.encounterType === 'elite') {
+      badges.push({ category: 'elite', label: 'Elite' })
+    }
+
+    const shardChance = node.rewards?.shardChance ?? 0
+    if (shardChance > 0) {
+      badges.push({ category: 'shard', label: shardChance >= 0.65 ? 'High Shard Chance' : 'Shard Chance' })
+    }
+
+    const grantsHealing = node.rewards?.grantsHealing ?? (node.encounterType === 'rest')
+    if (grantsHealing) {
+      badges.push({ category: 'healing', label: 'Healing' })
+    }
+
+    const grantsBoon = node.rewards?.grantsBoon ?? (node.encounterType === 'rest')
+    if (grantsBoon) {
+      badges.push({ category: 'boon', label: 'Boon' })
+    }
+
+    if (node.encounterType === 'elite' || node.rewards?.relicCategoryLabel) {
+      badges.push({
+        category: 'relic',
+        label: node.rewards?.relicCategoryLabel ?? 'Mysterious Relic',
+      })
+    }
+
+    return badges
+  }
+
+  private formatRewardBadgeLine(badges: RouteChoiceRewardBadge[], compactLayout: boolean): string {
+    const maxBadges = compactLayout ? 2 : 3
+    return badges
+      .slice(0, maxBadges)
+      .map((badge) => this.getBadgeToken(badge))
+      .join('  ')
+  }
+
+  // Route node labels/icons are mapped here for quick, lightweight category scanning.
+  private getBadgeToken(badge: RouteChoiceRewardBadge): string {
+    if (badge.category === 'battle') return '[X] Battle'
+    if (badge.category === 'elite') return '[!] Elite'
+    if (badge.category === 'shard') return '[S] Shard'
+    if (badge.category === 'healing') return '[+] Heal'
+    if (badge.category === 'boon') return '[B] Boon'
+    return `[?] ${badge.label}`
   }
 
   private getEncounterTypeTag(encounterType: RouteGraphNode['encounterType']): string {

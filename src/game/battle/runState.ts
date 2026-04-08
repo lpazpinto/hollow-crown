@@ -5,6 +5,7 @@ import {
   getDefaultRouteLayoutId,
   getDefaultRoutePath,
   getRouteChoiceNodes,
+  type RouteGraphNode,
   getRouteNodeById,
   getRouteNodeIdsForStep,
   getRoutePathById,
@@ -51,7 +52,14 @@ export type RouteChoice = {
   nodeId: string
   encounterType: EncounterType
   label: string
-  rewardHint: string | null
+  rewardBadges: RouteChoiceRewardBadge[]
+}
+
+export type RouteRewardCategory = 'shard' | 'healing' | 'boon' | 'relic' | 'battle' | 'elite'
+
+export type RouteChoiceRewardBadge = {
+  category: RouteRewardCategory
+  label: string
 }
 
 const LEVEL_XP_STEP_COSTS = [8, 12, 16, 20]
@@ -207,20 +215,44 @@ export function tryGrantShardForCurrentEncounter(): {
   }
 }
 
-function getRouteChoiceRewardHint(shardChance: number | undefined): string | null {
-  if (!shardChance || shardChance <= 0) {
-    return null
+function getRouteChoiceRewardBadges(node: RouteGraphNode): RouteChoiceRewardBadge[] {
+  const badges: RouteChoiceRewardBadge[] = []
+
+  if (node.encounterType === 'battle') {
+    badges.push({ category: 'battle', label: 'Battle' })
   }
 
-  if (shardChance >= 1) {
-    return 'Guaranteed Shard'
+  if (node.encounterType === 'elite') {
+    badges.push({ category: 'elite', label: 'Elite' })
   }
 
-  if (shardChance >= 0.65) {
-    return 'High Shard Chance'
+  const shardChance = node.rewards?.shardChance ?? 0
+  if (shardChance > 0) {
+    badges.push({
+      category: 'shard',
+      label: shardChance >= 0.65 ? 'High Shard Chance' : 'Shard Chance',
+    })
   }
 
-  return 'Shard Chance'
+  const grantsHealing = node.rewards?.grantsHealing ?? (node.encounterType === 'rest')
+  if (grantsHealing) {
+    badges.push({ category: 'healing', label: 'Healing' })
+  }
+
+  const grantsBoon = node.rewards?.grantsBoon ?? (node.encounterType === 'rest')
+  if (grantsBoon) {
+    badges.push({ category: 'boon', label: 'Boon' })
+  }
+
+  // Hidden relic behavior is enforced here: show only category teaser labels, never exact relic identity.
+  if (node.encounterType === 'elite' || node.rewards?.relicCategoryLabel) {
+    badges.push({
+      category: 'relic',
+      label: node.rewards?.relicCategoryLabel ?? 'Mysterious Relic',
+    })
+  }
+
+  return badges
 }
 
 function getShardChanceForCurrentEncounterNode(state: RunState): number {
@@ -290,7 +322,7 @@ export function getAvailableRouteChoices(): RouteChoice[] {
     nodeId: node.id,
     encounterType: node.encounterType,
     label: node.label,
-    rewardHint: getRouteChoiceRewardHint(node.rewards?.shardChance),
+    rewardBadges: getRouteChoiceRewardBadges(node),
   }))
 }
 
