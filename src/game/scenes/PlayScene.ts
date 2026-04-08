@@ -1373,74 +1373,77 @@ export class PlayScene extends Phaser.Scene {
   private animateReshuffleToDeck(onComplete: () => void) {
     // Reshuffle animation starts here.
     this.lockBattleInput()
-    const burstCount = this.compactLayout ? 5 : 6
+    const C = this.compactLayout
+    const burstCount = C ? 5 : 6
     // Reshuffle timing is controlled here.
-    const liftDuration = this.compactLayout ? 220 : 250
-    const funnelDuration = this.compactLayout ? 360 : 400
-    const cardDelay = this.compactLayout ? 38 : 44
+    // Total visible duration: (burstCount-1)*cardDelay + liftDuration + funnelDuration + labelFade ≈ 750-900ms.
+    const liftDuration = C ? 240 : 260
+    const funnelDuration = C ? 300 : 330
+    const cardDelay = C ? 36 : 40
     let finished = 0
 
     // Reshuffle visual positioning is controlled here.
+    // Center is raised noticeably above the deck/discard row so the effect reads as a mid-screen event.
     const reshuffleCenterX = (this.discardAnchorX + this.deckAnchorX) / 2
-    const reshuffleCenterY = this.deckAnchorY - (this.compactLayout ? 52 : 62)
-    const label = this.add.text(reshuffleCenterX, reshuffleCenterY - (this.compactLayout ? 34 : 38), 'Reshuffle', {
-      fontSize: this.compactLayout ? '14px' : '16px',
-      color: '#bfdbfe',
+    const reshuffleCenterY = this.deckAnchorY - (C ? 90 : 108)
+    const labelY = reshuffleCenterY - (C ? 40 : 46)
+
+    const label = this.add.text(reshuffleCenterX, labelY, 'Reshuffle', {
+      fontSize: C ? '15px' : '17px',
+      color: '#c7e0ff',
       fontStyle: 'bold',
-      stroke: '#0f172a',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(9).setAlpha(0)
+      stroke: '#0a1120',
+      strokeThickness: 5,
+    }).setOrigin(0.5).setDepth(13).setAlpha(0)
 
     this.tweens.add({
       targets: label,
       alpha: 1,
-      y: label.y - 4,
-      duration: 160,
+      y: labelY - 5,
+      duration: 180,
       ease: 'Quad.Out',
     })
 
     for (let i = 0; i < burstCount; i += 1) {
-      const cardBack = this.createTemporaryCardBack(
-        this.discardAnchorX + Phaser.Math.Between(-9, 9),
-        this.discardAnchorY + Phaser.Math.Between(-7, 7),
-        this.compactLayout ? 1.28 : 1.42,
-        8,
+      // Reshuffle animation visuals are created here — each card back is a Container for proper child layout.
+      const container = this.createReshuffleCardContainer(
+        this.discardAnchorX + Phaser.Math.Between(-10, 10),
+        this.discardAnchorY + Phaser.Math.Between(-8, 8),
       )
 
       this.tweens.add({
-        targets: cardBack,
-        x: reshuffleCenterX + Phaser.Math.Between(-34, 34),
-        y: reshuffleCenterY + Phaser.Math.Between(-16, 12),
-        scaleX: this.compactLayout ? 1.08 : 1.16,
-        scaleY: this.compactLayout ? 1.08 : 1.16,
-        angle: Phaser.Math.Between(-14, 14),
+        targets: container,
+        x: reshuffleCenterX + Phaser.Math.Between(-36, 36),
+        y: reshuffleCenterY + Phaser.Math.Between(-14, 12),
+        angle: Phaser.Math.Between(-18, 18),
         duration: liftDuration,
         delay: i * cardDelay,
         ease: 'Sine.Out',
         onComplete: () => {
           this.tweens.add({
-            targets: cardBack,
-            x: this.deckAnchorX + Phaser.Math.Between(-9, 9),
-            y: this.deckAnchorY + Phaser.Math.Between(-7, 7),
+            targets: container,
+            x: this.deckAnchorX + Phaser.Math.Between(-8, 8),
+            y: this.deckAnchorY + Phaser.Math.Between(-6, 6),
             alpha: 0,
-            scaleX: 0.82,
-            scaleY: 0.82,
-            angle: Phaser.Math.Between(-10, 10),
+            scaleX: 0.78,
+            scaleY: 0.78,
+            angle: Phaser.Math.Between(-12, 12),
             duration: funnelDuration,
             ease: 'Cubic.InOut',
             onComplete: () => {
-              cardBack.forEach((obj) => obj.destroy())
+              container.destroy()
               finished += 1
               if (finished >= burstCount) {
+                // All cards have funneled into the deck; fade label and fire callback.
                 this.tweens.add({
                   targets: label,
                   alpha: 0,
-                  y: label.y - 6,
-                  duration: 160,
+                  y: label.y - 7,
+                  duration: 140,
                   ease: 'Quad.In',
                   onComplete: () => {
                     label.destroy()
-                    this.cameras.main.flash(90, 160, 205, 255, false)
+                    this.cameras.main.flash(100, 150, 205, 255, false)
                     onComplete()
                   },
                 })
@@ -1482,16 +1485,23 @@ export class PlayScene extends Phaser.Scene {
     }
   }
 
-  private createTemporaryCardBack(x: number, y: number, scaleMultiplier = 1, depthBase = 4): Phaser.GameObjects.Rectangle[] {
-    const width = (this.compactLayout ? 18 : 20) * scaleMultiplier
-    const height = (this.compactLayout ? 24 : 26) * scaleMultiplier
-    const base = this.add.rectangle(x, y, width, height, 0x1e293b, 0.95)
-      .setStrokeStyle(1, 0xcbd5e1, 0.9)
-      .setDepth(depthBase)
-    const stripe = this.add.rectangle(x, y, width - 6, 3, 0x93c5fd, 0.9)
-      .setDepth(depthBase + 1)
-
-    return [base, stripe]
+  // Reshuffle card visual size and appearance is defined here.
+  // Uses a Container so child elements maintain relative offsets during tween.
+  private createReshuffleCardContainer(x: number, y: number): Phaser.GameObjects.Container {
+    const C = this.compactLayout
+    const w = C ? 40 : 48
+    const h = C ? 54 : 64
+    // Base card back
+    const base = this.add.rectangle(0, 0, w, h, 0x18294a, 0.97)
+      .setStrokeStyle(2, 0x7eb8d8, 0.94)
+    // Inner inset border
+    const inner = this.add.rectangle(0, 0, w - 8, h - 8, 0x1e3457, 0.0)
+      .setStrokeStyle(1, 0x4d87b5, 0.60)
+    // Horizontal stripe across mid-card
+    const stripe = this.add.rectangle(0, 0, w - 12, C ? 4 : 5, 0x4a8ec4, 0.82)
+    // Small corner accent
+    const accent = this.add.rectangle(0, C ? -14 : -18, C ? 8 : 10, C ? 8 : 10, 0x3469a6, 0.68)
+    return this.add.container(x, y, [base, inner, stripe, accent]).setDepth(12)
   }
 
   private lockBattleInput() {
