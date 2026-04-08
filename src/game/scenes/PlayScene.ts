@@ -162,9 +162,9 @@ export class PlayScene extends Phaser.Scene {
     const battleBoonName = this.battleBoon ? this.battleBoon.name : effectTerms.none
     const battlePassiveCount = this.session.abilities.length
     // Active effect summary is rendered here.
-    this.add.text(effectSummaryX, panelY - (C ? 16 : 18), 'Active Effects  •  Tap to inspect', {
-      fontSize: C ? '10px' : '11px',
-      color: '#93c5fd',
+    this.add.text(effectSummaryX, panelY - (C ? 16 : 18), 'Active Effects  •  tap', {
+      fontSize: C ? '11px' : '12px',
+      color: '#7ea8d4',
       fontStyle: 'bold',
     }).setOrigin(0, 0.5).setDepth(3)
     this.add.text(effectSummaryX, panelY + (C ? 0 : 1), `${effectTerms.boon}: ${battleBoonName}`, {
@@ -216,6 +216,23 @@ export class PlayScene extends Phaser.Scene {
       this.encounterType === 'boss' ? 0xe9b663 : 0xc19595,
       0.85,
     ).setDepth(2)
+
+    // Enemy section label in right panel header.
+    const rightPanelLabelX = rightPanel.x - sidePanelW / 2 + (C ? 10 : 12)
+    const enemyTypeLabel = this.encounterType === 'boss' ? 'Boss' : this.encounterType === 'elite' ? 'Elite' : 'Enemy'
+    const enemyNameColor = this.encounterType === 'boss' ? '#e9b663' : '#f8d2d2'
+    const enemyTypeColor = this.encounterType === 'boss' ? '#a88040' : '#8a6060'
+    this.add.text(rightPanelLabelX, panelY - (C ? 16 : 18), enemyTypeLabel, {
+      fontSize: C ? '10px' : '11px',
+      color: enemyTypeColor,
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5).setDepth(3)
+    this.add.text(rightPanelLabelX, panelY + (C ? 1 : 2), this.session.enemy.name, {
+      fontSize: C ? '12px' : '13px',
+      color: enemyNameColor,
+      fontStyle: 'bold',
+      wordWrap: { width: sidePanelW - (C ? 24 : 28) },
+    }).setOrigin(0, 0.5).setDepth(3)
 
     // Battlefield band to anchor both combatants and avoid a floating look.
     const battleBandY = C ? Math.floor(height * 0.5) : Math.floor(height * 0.49)
@@ -509,19 +526,19 @@ export class PlayScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(2)
 
-    this.add.text(width / 2, pilesY + (C ? 20 : 24), 'Play cards from hand • Tap piles to inspect', {
+    this.add.text(width / 2, pilesY + (C ? 20 : 24), 'Tap pile to inspect', {
       fontSize: C ? '10px' : '11px',
       color: '#7f8ea7',
     }).setOrigin(0.5).setDepth(2)
 
-    this.drawPileCountText = this.add.text(this.deckAnchorX, this.deckAnchorY + (C ? 29 : 34), 'Deck 0', {
-      fontSize: C ? '12px' : '13px',
+    this.drawPileCountText = this.add.text(this.deckAnchorX, this.deckAnchorY + (C ? 29 : 34), '0', {
+      fontSize: C ? '13px' : '14px',
       color: '#b0c8e3',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(3)
 
-    this.discardPileText = this.add.text(this.discardAnchorX, this.discardAnchorY + (C ? 29 : 34), 'Discard 0', {
-      fontSize: C ? '12px' : '13px',
+    this.discardPileText = this.add.text(this.discardAnchorX, this.discardAnchorY + (C ? 29 : 34), '0', {
+      fontSize: C ? '13px' : '14px',
       color: '#b0c8e3',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(3)
@@ -562,9 +579,9 @@ export class PlayScene extends Phaser.Scene {
       0.88,
     ).setStrokeStyle(1, 0x6b7280, 0.7).setDepth(1)
 
-    this.add.text(width - (C ? 118 : 138), actionPanelY - (C ? 44 : 48), 'Action', {
+    this.add.text(width - (C ? 118 : 138), actionPanelY - (C ? 44 : 48), 'Turn', {
       fontSize: C ? '11px' : '12px',
-      color: '#e5e7eb',
+      color: '#9ca3af',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(3)
 
@@ -1085,8 +1102,8 @@ export class PlayScene extends Phaser.Scene {
       this.previousEmber = this.session.state.ember
     }
 
-    this.drawPileCountText.setText(`Deck ${this.session.drawPile.length}`)
-    this.discardPileText.setText(`Discard ${this.session.discardPile.length}`)
+    this.drawPileCountText.setText(`${this.session.drawPile.length}`)
+    this.discardPileText.setText(`${this.session.discardPile.length}`)
 
     const hasDeckCards = this.session.drawPile.length > 0
     this.deckPileVisuals.forEach((pile, index) => {
