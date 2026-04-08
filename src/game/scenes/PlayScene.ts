@@ -896,24 +896,44 @@ export class PlayScene extends Phaser.Scene {
 
         impactResolved = true
 
-        this.session = playCardFromHand(this.session, cardIndex)
-        this.playDamageFeedback(previousState, this.session.state, {
-          source: 'hero',
-          cardKind: presentation.kind,
-        })
-        this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
+        const sessionBeforePlay = this.session
+        const nextSession = playCardFromHand(sessionBeforePlay, cardIndex)
+        // Player-turn reshuffle trigger:
+        // if deck is empty before resolving the card and hand size recovers after draw,
+        // the draw came from discard->deck reshuffle and should be animated.
+        const shouldAnimateReshuffleOnPlay =
+          sessionBeforePlay.drawPile.length === 0
+          && nextSession.hand.length >= sessionBeforePlay.hand.length
 
-        if (visual) {
-          this.animateCardToDiscard(visual, presentation.kind, () => {
-            finishCardResolution()
+        const finalizeResolvedPlay = () => {
+          this.session = nextSession
+          this.playDamageFeedback(previousState, this.session.state, {
+            source: 'hero',
+            cardKind: presentation.kind,
           })
-          this.time.delayedCall(360, () => {
-            finishCardResolution()
+          this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
+
+          if (visual) {
+            this.animateCardToDiscard(visual, presentation.kind, () => {
+              finishCardResolution()
+            })
+            this.time.delayedCall(360, () => {
+              finishCardResolution()
+            })
+            return
+          }
+
+          finishCardResolution()
+        }
+
+        if (shouldAnimateReshuffleOnPlay) {
+          this.animateReshuffleToDeck(() => {
+            finalizeResolvedPlay()
           })
           return
         }
 
-        finishCardResolution()
+        finalizeResolvedPlay()
       }
 
       this.playHeroCardAction(presentation.kind, resolveImpact)
