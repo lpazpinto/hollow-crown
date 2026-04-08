@@ -1,4 +1,5 @@
 import Phaser from 'phaser'
+import { type BoonContent } from '../content/boons'
 import {
   advanceFloorAfterEncounter,
   getCurrentBoon,
@@ -67,26 +68,44 @@ export class MapScene extends Phaser.Scene {
     }).setOrigin(0.5)
 
     // Reward status panel: compact shard + boon inspection for current run state.
+    // Active boon summary in route selection is rendered here.
     const rewardsPanelX = width - (compactLayout ? 146 : 172)
     const rewardsPanelY = compactLayout ? 96 : 102
     const rewardsPanelW = compactLayout ? 268 : 316
     const rewardsPanelH = compactLayout ? 64 : 72
     this.add.rectangle(rewardsPanelX, rewardsPanelY, rewardsPanelW, rewardsPanelH, 0x0f172a, 0.82)
-      .setStrokeStyle(1, 0x334155, 0.88)
+      .setStrokeStyle(1, activeBoon ? 0x22c55e : 0x334155, activeBoon ? 0.72 : 0.88)
     this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY - 19, `Shards ${shardProgress}${run.isForgeAvailable ? '  •  Forge Ready' : ''}`, {
       fontSize: compactLayout ? '12px' : '13px',
       color: run.isForgeAvailable ? '#fef3c7' : '#93c5fd',
       fontStyle: 'bold',
     }).setOrigin(0, 0.5)
-    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 6, activeBoon ? `Boon: ${activeBoon.name}` : 'Boon: None', {
-      fontSize: compactLayout ? '12px' : '13px',
-      color: activeBoon ? '#86efac' : '#94a3b8',
-    }).setOrigin(0, 0.5)
-    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 24, activeBoon ? activeBoon.description : 'No next-battle boon active.', {
-      fontSize: compactLayout ? '11px' : '12px',
-      color: '#cbd5e1',
-      wordWrap: { width: rewardsPanelW - 20 },
-    }).setOrigin(0, 0.5)
+    if (activeBoon) {
+      // Green left accent bar to visually separate the active-boon section.
+      this.add.rectangle(
+        rewardsPanelX - rewardsPanelW / 2 + 3,
+        rewardsPanelY + 14,
+        4,
+        compactLayout ? 36 : 40,
+        0x22c55e,
+        0.88,
+      )
+      this.add.text(rewardsPanelX - rewardsPanelW / 2 + 12, rewardsPanelY + 4, `[B] ${activeBoon.name}`, {
+        fontSize: compactLayout ? '12px' : '13px',
+        color: '#86efac',
+        fontStyle: 'bold',
+      }).setOrigin(0, 0.5)
+      this.add.text(rewardsPanelX - rewardsPanelW / 2 + 12, rewardsPanelY + 22, `${activeBoon.description}  •  next battle only`, {
+        fontSize: compactLayout ? '10px' : '11px',
+        color: '#a7f3c8',
+        wordWrap: { width: rewardsPanelW - 24 },
+      }).setOrigin(0, 0.5)
+    } else {
+      this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 14, 'No active boon', {
+        fontSize: compactLayout ? '11px' : '12px',
+        color: '#475569',
+      }).setOrigin(0, 0.5)
+    }
 
     if (data.rewardToast) {
       this.showRewardToast(data.rewardToast.title, data.rewardToast.detail, data.rewardToast.color)
@@ -462,20 +481,81 @@ export class MapScene extends Phaser.Scene {
     if (selectedEncounterType === 'rest') {
       // Utility nodes award a temporary Boon for the next battle.
       const boon = grantRandomBoon()
-      resolveRestEncounter()
-      advanceFloorAfterEncounter()
-      saveRun()
-      this.scene.restart({
-        rewardToast: {
-          title: 'Boon Gained',
-          detail: `${boon.name}: ${boon.description}`,
-          color: '#86efac',
-        },
+      // Boon gain feedback is presented here — a confirmable overlay replaces the fast auto-toast.
+      this.showBoonGainPanel(boon, () => {
+        resolveRestEncounter()
+        advanceFloorAfterEncounter()
+        saveRun()
+        this.scene.restart()
       })
       return
     }
 
     this.scene.start('PlayScene')
+  }
+
+  private showBoonGainPanel(boon: BoonContent, onConfirm: () => void) {
+    const { width, height } = this.scale
+    const cx = width / 2
+    const cy = height / 2
+    const panelW = 460
+    const panelH = 240
+
+    const overlay = this.add.rectangle(cx, cy, width, height, 0x000000, 0.52).setDepth(40)
+    const panel = this.add.rectangle(cx, cy, panelW, panelH, 0x0b1a2f, 0.97)
+      .setStrokeStyle(2, 0x22c55e).setDepth(41)
+    this.add.rectangle(cx, cy - panelH / 2 + 10, panelW - 20, 2, 0x4ade80, 0.85).setDepth(42)
+
+    this.add.text(cx, cy - 82, 'Boon Gained', {
+      fontSize: '22px',
+      color: '#86efac',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(42)
+
+    this.add.text(cx, cy - 48, boon.name, {
+      fontSize: '28px',
+      color: '#d1fae5',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(42)
+
+    this.add.text(cx, cy - 8, boon.description, {
+      fontSize: '17px',
+      color: '#a7f3c8',
+      align: 'center',
+      wordWrap: { width: panelW - 40 },
+    }).setOrigin(0.5).setDepth(42)
+
+    this.add.text(cx, cy + 32, '• Active for next battle only •', {
+      fontSize: '13px',
+      color: '#4ade80',
+      fontStyle: 'italic',
+    }).setOrigin(0.5).setDepth(42)
+
+    // Confirm prompt — shown after a short lock so the text is read before dismissal.
+    const confirmText = this.add.text(cx, cy + 68, '', {
+      fontSize: '14px',
+      color: '#64748b',
+    }).setOrigin(0.5).setDepth(42)
+
+    const panelObjects = [overlay, panel]
+    let confirmReady = false
+
+    const dismiss = () => {
+      if (!confirmReady) {
+        return
+      }
+      panelObjects.forEach((obj) => obj.destroy())
+      onConfirm()
+    }
+
+    this.time.delayedCall(900, () => {
+      confirmReady = true
+      confirmText.setText('Click or press Space to continue')
+      confirmText.setColor('#86efac')
+
+      this.input.once('pointerdown', dismiss)
+      this.input.keyboard?.once('keydown-SPACE', dismiss)
+    })
   }
 
   private showRewardToast(title: string, detail: string, color = '#93c5fd') {

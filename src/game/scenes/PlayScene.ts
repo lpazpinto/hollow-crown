@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { checkBattleOutcome, type BattleState } from '../battle/battleLogic'
+import { type BoonContent } from '../content/boons'
 import { getCardBaseId, type CardContent } from '../content/cards'
 import { getRouteById } from '../content/routes'
 import { getEnemyIntentActions, type EnemyIntentAction } from '../content/enemies'
@@ -89,6 +90,8 @@ export class PlayScene extends Phaser.Scene {
   private pileInspectPageSize = 12
   private pileInspectListText?: Phaser.GameObjects.Text
   private pileInspectPageText?: Phaser.GameObjects.Text
+  // Active boon consumed at battle start; stored for in-battle display.
+  private battleBoon: BoonContent | null = null
   // Victory screen overlay objects, cleared on transition.
   private victoryRewardPanel: Phaser.GameObjects.GameObject[] = []
   private victoryConfirmReady = false
@@ -106,6 +109,7 @@ export class PlayScene extends Phaser.Scene {
     this.heroMaxHp = runState.maxHeroHp
     this.encounterType = runState.currentEncounterType ?? 'battle'
     const battleBoon = consumeCurrentBoonForBattle()
+    this.battleBoon = battleBoon
     this.session = createInitialBattleSession(getRunDeck(), {
       heroHp: runState.heroHp,
       maxHeroHp: runState.maxHeroHp,
@@ -142,6 +146,26 @@ export class PlayScene extends Phaser.Scene {
       0.96,
     ).setStrokeStyle(2, 0x5b7699).setDepth(1)
     this.add.rectangle(leftPanel.x, leftPanel.y - sidePanelH / 2 + 8, sidePanelW - 10, 2, 0x7da2c9, 0.85).setDepth(2)
+
+    // Active boon UI in battle is rendered here.
+    const boonLabelX = leftPanel.x - sidePanelW / 2 + (C ? 10 : 12)
+    if (this.battleBoon) {
+      this.add.text(boonLabelX, panelY - (C ? 10 : 12), `[B] ${this.battleBoon.name}`, {
+        fontSize: C ? '12px' : '13px',
+        color: '#86efac',
+        fontStyle: 'bold',
+      }).setOrigin(0, 0.5).setDepth(3)
+      this.add.text(boonLabelX, panelY + (C ? 10 : 11), `${this.battleBoon.description}  •  next battle only`, {
+        fontSize: C ? '10px' : '11px',
+        color: '#a7f3c8',
+        wordWrap: { width: sidePanelW - (C ? 24 : 28) },
+      }).setOrigin(0, 0.5).setDepth(3)
+    } else {
+      this.add.text(boonLabelX, panelY, 'No active boon', {
+        fontSize: C ? '11px' : '12px',
+        color: '#334155',
+      }).setOrigin(0, 0.5).setDepth(3)
+    }
 
     const centerPanel = this.add.rectangle(
       width / 2,
