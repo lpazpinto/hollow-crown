@@ -1,6 +1,8 @@
 import Phaser from 'phaser'
 import {
   getCurrentBoon,
+  getRunAbilities,
+  getRunRelics,
   getRunState,
   getShardTarget,
   getXpForNextLevel,
@@ -42,7 +44,15 @@ export class DomainSelectScene extends Phaser.Scene {
 
     const statusXp = nextLevelXp === null ? `${run.heroXp}` : `${run.heroXp}/${nextLevelXp}`
     const activeBoon = getCurrentBoon()
+    const runAbilities = getRunAbilities()
+    const runRelics = getRunRelics()
     const shardProgress = `${run.shardCount}/${getShardTarget()}`
+    // Visible terminology is defined here for domain selection summaries.
+    const effectTerms = {
+      boon: 'Boon',
+      passives: 'Passives',
+      none: 'None',
+    }
 
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
@@ -64,7 +74,7 @@ export class DomainSelectScene extends Phaser.Scene {
     const rewardsPanelX = width - (compactLayout ? 146 : 172)
     const rewardsPanelY = compactLayout ? 96 : 102
     const rewardsPanelW = compactLayout ? 268 : 316
-    const rewardsPanelH = compactLayout ? 64 : 72
+    const rewardsPanelH = compactLayout ? 82 : 92
     this.add.rectangle(rewardsPanelX, rewardsPanelY, rewardsPanelW, rewardsPanelH, 0x0f172a, 0.82)
       .setStrokeStyle(1, 0x334155, 0.88)
     this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY - 19, `Shards ${shardProgress}${run.isForgeAvailable ? '  •  Forge Ready' : ''}`, {
@@ -72,15 +82,53 @@ export class DomainSelectScene extends Phaser.Scene {
       color: run.isForgeAvailable ? '#fef3c7' : '#93c5fd',
       fontStyle: 'bold',
     }).setOrigin(0, 0.5)
-    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 6, activeBoon ? `Boon: ${activeBoon.name}` : 'Boon: None', {
+    // Active effect summary is rendered here.
+    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 2, 'Active Effects  •  Tap to inspect', {
+      fontSize: compactLayout ? '10px' : '11px',
+      color: '#93c5fd',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5)
+    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 22, `${effectTerms.boon}: ${activeBoon ? activeBoon.name : effectTerms.none}`, {
       fontSize: compactLayout ? '12px' : '13px',
       color: activeBoon ? '#86efac' : '#94a3b8',
-    }).setOrigin(0, 0.5)
-    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 24, activeBoon ? activeBoon.description : 'No next-battle boon active.', {
-      fontSize: compactLayout ? '11px' : '12px',
-      color: '#cbd5e1',
+      fontStyle: 'bold',
       wordWrap: { width: rewardsPanelW - 20 },
     }).setOrigin(0, 0.5)
+    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 42, `${effectTerms.passives}: ${runAbilities.length}`, {
+      fontSize: compactLayout ? '11px' : '12px',
+      color: '#cbd5e1',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5)
+    const effectInspectHit = this.add.rectangle(
+      rewardsPanelX,
+      rewardsPanelY + 12,
+      rewardsPanelW - 12,
+      rewardsPanelH - 20,
+      0x000000,
+      0.001,
+    ).setInteractive({ useHandCursor: true })
+    effectInspectHit.on('pointerdown', () => {
+      // Effect inspection panel or overlay is triggered here.
+      const effectLines = [
+        `Boon: ${activeBoon ? activeBoon.name : 'None'}`,
+        activeBoon ? activeBoon.description : 'No next-battle boon is active.',
+        '',
+        `Passives (${runAbilities.length})`,
+        ...(runAbilities.length > 0
+          ? runAbilities.map((ability, index) => `${index + 1}. ${ability.name} - ${ability.description}`)
+          : ['None']),
+        '',
+        `Relics (${runRelics.length})`,
+        ...(runRelics.length > 0
+          ? runRelics.map((relic, index) => `${index + 1}. ${relic.name} - ${relic.description}`)
+          : ['None']),
+      ]
+      this.showInfoListPanel(
+        'Active Effects',
+        'Boon = temporary next-battle effect • Passives = run-long hero effects',
+        effectLines,
+      )
+    })
 
     this.add.text(width / 2, compactLayout ? 130 : 138, 'Choose a domain to begin this run path.', {
       fontSize: compactLayout ? '15px' : '16px',
@@ -239,5 +287,52 @@ export class DomainSelectScene extends Phaser.Scene {
         this.add.rectangle(x + stepSpacing / 2, y, stepSpacing - 36, 4, 0x475569)
       }
     })
+  }
+
+  private showInfoListPanel(title: string, subtitle: string, lines: string[]) {
+    const { width, height } = this.scale
+    const cx = width / 2
+    const cy = height / 2
+    const panelW = 560
+    const panelH = 330
+
+    const overlay = this.add.rectangle(cx, cy, width, height, 0x000000, 0.52).setDepth(60)
+    const panel = this.add.rectangle(cx, cy, panelW, panelH, 0x0b1220, 0.96)
+      .setStrokeStyle(2, 0x3b82f6)
+      .setDepth(61)
+    const titleText = this.add.text(cx, cy - 130, title, {
+      fontSize: '24px',
+      color: '#dbeafe',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(62)
+    const subtitleText = this.add.text(cx, cy - 98, subtitle, {
+      fontSize: '13px',
+      color: '#93c5fd',
+      align: 'center',
+    }).setOrigin(0.5).setDepth(62)
+
+    const bodyText = this.add.text(cx - panelW / 2 + 22, cy - 70, lines.join('\n'), {
+      fontSize: '13px',
+      color: '#e2e8f0',
+      lineSpacing: 5,
+      wordWrap: { width: panelW - 44 },
+    }).setOrigin(0, 0).setDepth(62)
+
+    const hintText = this.add.text(cx, cy + panelH / 2 - 24, 'Click or press Space to close', {
+      fontSize: '12px',
+      color: '#64748b',
+    }).setOrigin(0.5).setDepth(62)
+
+    const close = () => {
+      overlay.destroy()
+      panel.destroy()
+      titleText.destroy()
+      subtitleText.destroy()
+      bodyText.destroy()
+      hintText.destroy()
+    }
+
+    this.input.once('pointerdown', close)
+    this.input.keyboard?.once('keydown-SPACE', close)
   }
 }

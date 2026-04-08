@@ -176,7 +176,7 @@ export class LevelUpScene extends Phaser.Scene {
     this.addOptionText(width / 2, 280, 'Choose a passive ability')
 
     if (choices.length === 0) {
-      this.addOptionText(width / 2, 322, 'All blessings are already learned. Pick a card upgrade instead.')
+      this.addOptionText(width / 2, 322, 'All passives are already learned. Pick a card upgrade instead.')
       this.showCardUpgradeChoices()
       return
     }

@@ -67,8 +67,6 @@ export class PlayScene extends Phaser.Scene {
   private enemySprite?: Phaser.GameObjects.Sprite
   private previousEmber = 0
   private actionInProgress = false
-  private abilityObjects: Phaser.GameObjects.GameObject[] = []
-  private relicObjects: Phaser.GameObjects.GameObject[] = []
   private handObjects: Phaser.GameObjects.GameObject[] = []
   private handCardVisuals: Array<{ card: Phaser.GameObjects.Rectangle, objects: Phaser.GameObjects.GameObject[] }> = []
   private energyPips: Phaser.GameObjects.Rectangle[] = []
@@ -93,6 +91,8 @@ export class PlayScene extends Phaser.Scene {
   private pileInspectPageSize = 12
   private pileInspectListText?: Phaser.GameObjects.Text
   private pileInspectPageText?: Phaser.GameObjects.Text
+  private isEffectInspectOpen = false
+  private effectInspectObjects: Phaser.GameObjects.GameObject[] = []
   // Active boon consumed at battle start; stored for in-battle display.
   private battleBoon: BoonContent | null = null
   // Victory screen overlay objects, cleared on transition.
@@ -136,9 +136,17 @@ export class PlayScene extends Phaser.Scene {
 
     const panelY = Math.floor(hudH / 2)
     const sidePanelW = C ? 258 : 304
-    const sidePanelH = C ? 56 : 62
+    const sidePanelH = C ? 68 : 76
     const centerPanelW = C ? 270 : 318
     const centerPanelH = C ? 56 : 62
+
+    // Visible terminology is defined here for the battle HUD.
+    const effectTerms = {
+      boon: 'Boon',
+      passives: 'Passives',
+      relics: 'Relics',
+      none: 'None',
+    }
 
     const leftPanel = this.add.rectangle(
       14 + sidePanelW / 2,
@@ -150,25 +158,37 @@ export class PlayScene extends Phaser.Scene {
     ).setStrokeStyle(2, 0x5b7699).setDepth(1)
     this.add.rectangle(leftPanel.x, leftPanel.y - sidePanelH / 2 + 8, sidePanelW - 10, 2, 0x7da2c9, 0.85).setDepth(2)
 
-    // Active boon UI in battle is rendered here.
-    const boonLabelX = leftPanel.x - sidePanelW / 2 + (C ? 10 : 12)
-    if (this.battleBoon) {
-      this.add.text(boonLabelX, panelY - (C ? 10 : 12), `[B] ${this.battleBoon.name}`, {
-        fontSize: C ? '12px' : '13px',
-        color: '#86efac',
-        fontStyle: 'bold',
-      }).setOrigin(0, 0.5).setDepth(3)
-      this.add.text(boonLabelX, panelY + (C ? 10 : 11), `${this.battleBoon.description}  •  next battle only`, {
-        fontSize: C ? '10px' : '11px',
-        color: '#a7f3c8',
-        wordWrap: { width: sidePanelW - (C ? 24 : 28) },
-      }).setOrigin(0, 0.5).setDepth(3)
-    } else {
-      this.add.text(boonLabelX, panelY, 'No active boon', {
-        fontSize: C ? '11px' : '12px',
-        color: '#334155',
-      }).setOrigin(0, 0.5).setDepth(3)
-    }
+    const effectSummaryX = leftPanel.x - sidePanelW / 2 + (C ? 10 : 12)
+    const battleBoonName = this.battleBoon ? this.battleBoon.name : effectTerms.none
+    const battlePassiveCount = this.session.abilities.length
+    // Active effect summary is rendered here.
+    this.add.text(effectSummaryX, panelY - (C ? 16 : 18), 'Active Effects  •  Tap to inspect', {
+      fontSize: C ? '10px' : '11px',
+      color: '#93c5fd',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5).setDepth(3)
+    this.add.text(effectSummaryX, panelY + (C ? 0 : 1), `${effectTerms.boon}: ${battleBoonName}`, {
+      fontSize: C ? '12px' : '13px',
+      color: this.battleBoon ? '#86efac' : '#94a3b8',
+      fontStyle: 'bold',
+      wordWrap: { width: sidePanelW - (C ? 24 : 28) },
+    }).setOrigin(0, 0.5).setDepth(3)
+    this.add.text(effectSummaryX, panelY + (C ? 18 : 22), `${effectTerms.passives}: ${battlePassiveCount}  •  ${effectTerms.relics}: ${this.session.relics.length}`, {
+      fontSize: C ? '11px' : '12px',
+      color: '#cbd5e1',
+      wordWrap: { width: sidePanelW - (C ? 24 : 28) },
+    }).setOrigin(0, 0.5).setDepth(3)
+    const effectInspectHit = this.add.rectangle(leftPanel.x, panelY, sidePanelW - 12, sidePanelH - 10, 0x000000, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(4)
+    effectInspectHit.on('pointerdown', () => {
+      // Effect inspection panel or overlay is triggered here.
+      if (this.isEffectInspectOpen || this.isPileInspectOpen) {
+        return
+      }
+
+      this.showEffectInspectionPanel()
+    })
 
     const centerPanel = this.add.rectangle(
       width / 2,
@@ -404,6 +424,11 @@ export class PlayScene extends Phaser.Scene {
         return
       }
 
+      if (this.isEffectInspectOpen) {
+        this.closeEffectInspectionPanel()
+        return
+      }
+
       this.scene.start('MenuScene')
     })
 
@@ -571,12 +596,6 @@ export class PlayScene extends Phaser.Scene {
       this.animatePress(endTurnButton)
       this.resolveEndTurn()
     })
-
-    // Compact passives strip on bottom-left.
-    const ablCenterX = C ? 98 : 144
-    const ablY = height - (C ? 160 : 176)
-    this.renderAbilities(ablCenterX, ablY)
-    this.renderRelics(ablCenterX, ablY + (C ? 36 : 42))
 
     this.handCardY = height - (C ? 86 : 96)
 
@@ -1505,126 +1524,76 @@ export class PlayScene extends Phaser.Scene {
     return Math.min(maxSpacing, availableWidth / (this.session.hand.length - 1))
   }
 
-  private renderRelics(x: number, startY: number) {
-    if (this.relicObjects.length > 0) {
-      this.relicObjects.forEach((obj) => obj.destroy())
-      this.relicObjects = []
-    }
+  private showEffectInspectionPanel() {
+    const { width, height } = this.scale
+    const cx = width / 2
+    const cy = height / 2
+    const panelW = this.compactLayout ? 540 : 600
+    const panelH = this.compactLayout ? 340 : 380
+    const passiveLines = this.session.abilities.length > 0
+      ? this.session.abilities.map((ability, index) => `${index + 1}. ${ability.name} - ${ability.description}`)
+      : ['None']
+    const relicLines = this.session.relics.length > 0
+      ? this.session.relics.map((relic, index) => `${index + 1}. ${relic.name} - ${relic.description}`)
+      : ['None']
+    const lines = [
+      `Boon: ${this.battleBoon ? this.battleBoon.name : 'None'}`,
+      this.battleBoon ? this.battleBoon.description : 'No next-battle boon is active in this combat.',
+      '',
+      `Passives (${this.session.abilities.length})`,
+      ...passiveLines,
+      '',
+      `Relics (${this.session.relics.length})`,
+      ...relicLines,
+    ]
 
-    const panelWidth = this.compactLayout ? 192 : 256
-    const panel = this.add.rectangle(
-      x,
-      startY + (this.compactLayout ? 12 : 14),
-      panelWidth,
-      this.compactLayout ? 24 : 28,
-      0x18253a,
-      0.95,
-    ).setStrokeStyle(1, 0x536f95).setDepth(1)
-
-    const title = this.add.text(x - panelWidth / 2 + 6, startY + 2, 'Passives', {
-      fontSize: this.compactLayout ? '9px' : '10px',
-      color: '#a9c0db',
+    const overlay = this.add.rectangle(cx, cy, width, height, 0x000000, 0.56)
+      .setInteractive()
+      .setDepth(60)
+    const panel = this.add.rectangle(cx, cy, panelW, panelH, 0x0b1220, 0.97)
+      .setStrokeStyle(2, 0x3b82f6)
+      .setDepth(61)
+    const titleText = this.add.text(cx, cy - panelH / 2 + 34, 'Active Effects', {
+      fontSize: this.compactLayout ? '22px' : '24px',
+      color: '#dbeafe',
       fontStyle: 'bold',
-    }).setOrigin(0, 0).setDepth(2)
+    }).setOrigin(0.5).setDepth(62)
+    const subtitleText = this.add.text(cx, cy - panelH / 2 + 64, 'Boon = temporary next-battle effect • Passives = run-long hero effects', {
+      fontSize: this.compactLayout ? '12px' : '13px',
+      color: '#93c5fd',
+      align: 'center',
+      wordWrap: { width: panelW - 44 },
+    }).setOrigin(0.5).setDepth(62)
+    const bodyText = this.add.text(cx - panelW / 2 + 24, cy - panelH / 2 + 96, lines.join('\n'), {
+      fontSize: this.compactLayout ? '12px' : '13px',
+      color: '#e2e8f0',
+      lineSpacing: 5,
+      wordWrap: { width: panelW - 48 },
+    }).setOrigin(0, 0).setDepth(62)
+    const hintText = this.add.text(cx, cy + panelH / 2 - 24, 'Click or press Space to close', {
+      fontSize: this.compactLayout ? '11px' : '12px',
+      color: '#64748b',
+    }).setOrigin(0.5).setDepth(62)
 
-    this.relicObjects.push(panel, title)
+    this.isEffectInspectOpen = true
+    this.effectInspectObjects = [overlay, panel, titleText, subtitleText, bodyText, hintText]
 
-    const relics = this.session.relics
-    if (relics.length === 0) {
-      const none = this.add.text(x - panelWidth / 2 + 62, startY + 2, 'None', {
-        fontSize: this.compactLayout ? '9px' : '10px',
-        color: '#7388a4',
-      }).setOrigin(0, 0).setDepth(2)
-      this.relicObjects.push(none)
-      return
-    }
-
-    let chipX = x - panelWidth / 2 + (this.compactLayout ? 54 : 66)
-    const chipY = startY + 2
-    const maxX = x + panelWidth / 2 - 8
-
-    relics.forEach((relic, index) => {
-      if (index >= 4) {
-        return
-      }
-
-      const chipLabel = relic.name.length > 10 ? `${relic.name.slice(0, 9)}…` : relic.name
-      const chip = this.add.text(chipX, chipY, chipLabel, {
-        fontSize: this.compactLayout ? '8px' : '9px',
-        color: '#bfdbfe',
-        backgroundColor: '#223854',
-        padding: { x: 4, y: 1 },
-      }).setOrigin(0, 0).setDepth(2)
-
-      if (chipX + chip.width > maxX) {
-        chip.destroy()
-        return
-      }
-
-      chipX += chip.width + 4
-      this.relicObjects.push(chip)
+    overlay.on('pointerdown', () => {
+      this.closeEffectInspectionPanel()
+    })
+    this.input.keyboard?.once('keydown-SPACE', () => {
+      this.closeEffectInspectionPanel()
     })
   }
 
-  private renderAbilities(x: number, startY: number) {
-    if (this.abilityObjects.length > 0) {
-      this.abilityObjects.forEach((obj) => obj.destroy())
-      this.abilityObjects = []
-    }
-
-    const panelWidth = this.compactLayout ? 192 : 256
-    const panel = this.add.rectangle(
-      x,
-      startY + (this.compactLayout ? 12 : 14),
-      panelWidth,
-      this.compactLayout ? 24 : 28,
-      0x221f30,
-      0.96,
-    ).setStrokeStyle(1, 0x8c7450).setDepth(1)
-
-    const title = this.add.text(x - panelWidth / 2 + 6, startY + 2, 'Blessings', {
-      fontSize: this.compactLayout ? '9px' : '10px',
-      color: '#f8dfaf',
-      fontStyle: 'bold',
-    }).setOrigin(0, 0).setDepth(2)
-
-    this.abilityObjects.push(panel, title)
-
-    const abilities = this.session.abilities
-    if (abilities.length === 0) {
-      const none = this.add.text(x - panelWidth / 2 + 62, startY + 2, 'None', {
-        fontSize: this.compactLayout ? '9px' : '10px',
-        color: '#938676',
-      }).setOrigin(0, 0).setDepth(2)
-      this.abilityObjects.push(none)
+  private closeEffectInspectionPanel() {
+    if (!this.isEffectInspectOpen) {
       return
     }
 
-    let chipX = x - panelWidth / 2 + (this.compactLayout ? 54 : 66)
-    const chipY = startY + 2
-    const maxX = x + panelWidth / 2 - 8
-
-    abilities.forEach((ability, index) => {
-      if (index >= 4) {
-        return
-      }
-
-      const chipLabel = ability.name.length > 10 ? `${ability.name.slice(0, 9)}…` : ability.name
-      const chip = this.add.text(chipX, chipY, chipLabel, {
-        fontSize: this.compactLayout ? '8px' : '9px',
-        color: '#fde68a',
-        backgroundColor: '#433122',
-        padding: { x: 4, y: 1 },
-      }).setOrigin(0, 0).setDepth(2)
-
-      if (chipX + chip.width > maxX) {
-        chip.destroy()
-        return
-      }
-
-      chipX += chip.width + 4
-      this.abilityObjects.push(chip)
-    })
+    this.effectInspectObjects.forEach((obj) => obj.destroy())
+    this.effectInspectObjects = []
+    this.isEffectInspectOpen = false
   }
 
   private updateResourcePips() {
@@ -2311,7 +2280,7 @@ export class PlayScene extends Phaser.Scene {
     // Level-up or next reward hint.
     if (hasLevelUp) {
       const times = xpResult.levelsGained > 1 ? ` ×${xpResult.levelsGained}` : ''
-      rewardLines.push({ label: `Level up${times}  →  Choose ability`, color: '#fde68a' })
+      rewardLines.push({ label: `Level up${times}  →  Choose passive`, color: '#fde68a' })
     } else {
       const nextLabel =
         nextRoute.scene === 'RewardScene'

@@ -4,6 +4,7 @@ import {
   advanceFloorAfterEncounter,
   getCurrentBoon,
   getAvailableRouteChoices,
+  getRunAbilities,
   getRunDeck,
   getRunRelics,
   getRunState,
@@ -49,9 +50,16 @@ export class MapScene extends Phaser.Scene {
     const selectedRoute = getRouteById(run.selectedRouteId)
     const statusXp = nextLevelXp === null ? `${run.heroXp}` : `${run.heroXp}/${nextLevelXp}`
     const activeBoon = getCurrentBoon()
+    const runAbilities = getRunAbilities()
     const runDeck = getRunDeck()
     const runRelics = getRunRelics()
     const shardProgress = `${run.shardCount}/${getShardTarget()}`
+    // Visible terminology is defined here for route selection summaries.
+    const effectTerms = {
+      boon: 'Boon',
+      passives: 'Passives',
+      none: 'None',
+    }
 
     this.input.keyboard?.on('keydown-ESC', () => {
       this.scene.start('MenuScene')
@@ -125,12 +133,11 @@ export class MapScene extends Phaser.Scene {
       this.showInfoListPanel('Relics', `${runRelics.length} relics active`, relicLines)
     })
 
-    // Reward status panel: compact shard + boon inspection for current run state.
-    // Active boon summary in route selection is rendered here.
+    // Active effect summary is rendered here.
     const rewardsPanelX = width - (compactLayout ? 146 : 172)
     const rewardsPanelY = compactLayout ? 96 : 102
     const rewardsPanelW = compactLayout ? 268 : 316
-    const rewardsPanelH = compactLayout ? 64 : 72
+    const rewardsPanelH = compactLayout ? 82 : 92
     this.add.rectangle(rewardsPanelX, rewardsPanelY, rewardsPanelW, rewardsPanelH, 0x0f172a, 0.82)
       .setStrokeStyle(1, activeBoon ? 0x22c55e : 0x334155, activeBoon ? 0.72 : 0.88)
     this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY - 19, `Shards ${shardProgress}${run.isForgeAvailable ? '  •  Forge Ready' : ''}`, {
@@ -138,53 +145,52 @@ export class MapScene extends Phaser.Scene {
       color: run.isForgeAvailable ? '#fef3c7' : '#93c5fd',
       fontStyle: 'bold',
     }).setOrigin(0, 0.5)
-    if (activeBoon) {
-      // Green left accent bar to visually separate the active-boon section.
-      this.add.rectangle(
-        rewardsPanelX - rewardsPanelW / 2 + 3,
-        rewardsPanelY + 14,
-        4,
-        compactLayout ? 36 : 40,
-        0x22c55e,
-        0.88,
-      )
-      this.add.text(rewardsPanelX - rewardsPanelW / 2 + 12, rewardsPanelY + 4, `[B] ${activeBoon.name}`, {
-        fontSize: compactLayout ? '12px' : '13px',
-        color: '#86efac',
-        fontStyle: 'bold',
-      }).setOrigin(0, 0.5)
-      this.add.text(rewardsPanelX - rewardsPanelW / 2 + 12, rewardsPanelY + 22, `${activeBoon.description}  •  next battle only`, {
-        fontSize: compactLayout ? '10px' : '11px',
-        color: '#a7f3c8',
-        wordWrap: { width: rewardsPanelW - 24 },
-      }).setOrigin(0, 0.5)
-    } else {
-      this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 14, 'No active boon', {
-        fontSize: compactLayout ? '11px' : '12px',
-        color: '#475569',
-      }).setOrigin(0, 0.5)
-    }
+    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 2, 'Active Effects  •  Tap to inspect', {
+      fontSize: compactLayout ? '10px' : '11px',
+      color: '#93c5fd',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5)
+    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 22, `${effectTerms.boon}: ${activeBoon ? activeBoon.name : effectTerms.none}`, {
+      fontSize: compactLayout ? '12px' : '13px',
+      color: activeBoon ? '#86efac' : '#94a3b8',
+      fontStyle: 'bold',
+      wordWrap: { width: rewardsPanelW - 20 },
+    }).setOrigin(0, 0.5)
+    this.add.text(rewardsPanelX - rewardsPanelW / 2 + 10, rewardsPanelY + 42, `${effectTerms.passives}: ${runAbilities.length}`, {
+      fontSize: compactLayout ? '11px' : '12px',
+      color: '#cbd5e1',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5)
 
     const boonInspectHit = this.add.rectangle(
       rewardsPanelX,
-      rewardsPanelY + 15,
+      rewardsPanelY + 12,
       rewardsPanelW - 12,
-      compactLayout ? 38 : 42,
+      rewardsPanelH - 20,
       0x000000,
       0.001,
     ).setInteractive({ useHandCursor: true }).setDepth(2)
     boonInspectHit.on('pointerdown', () => {
-      // Boon detail inspection is triggered here.
-      if (activeBoon) {
-        this.showInfoListPanel(
-          'Active Boon',
-          'Temporary: consumed in next battle',
-          [activeBoon.name, activeBoon.description],
-        )
-        return
-      }
-
-      this.showInfoListPanel('Active Boon', 'No boon active', ['Visit a utility/rest node to gain a temporary boon.'])
+      // Effect inspection panel or overlay is triggered here.
+      const effectLines = [
+        `Boon: ${activeBoon ? activeBoon.name : 'None'}`,
+        activeBoon ? activeBoon.description : 'No next-battle boon is active.',
+        '',
+        `Passives (${runAbilities.length})`,
+        ...(runAbilities.length > 0
+          ? runAbilities.map((ability, index) => `${index + 1}. ${ability.name} - ${ability.description}`)
+          : ['None']),
+        '',
+        `Relics (${runRelics.length})`,
+        ...(runRelics.length > 0
+          ? runRelics.slice(0, 10).map((relic, index) => `${index + 1}. ${relic.name} - ${relic.description}`)
+          : ['None']),
+      ]
+      this.showInfoListPanel(
+        'Active Effects',
+        'Boon = temporary next-battle effect • Passives = run-long hero effects',
+        effectLines,
+      )
     })
 
     if (data.rewardToast) {
