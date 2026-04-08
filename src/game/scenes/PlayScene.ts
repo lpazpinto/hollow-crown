@@ -48,14 +48,17 @@ export class PlayScene extends Phaser.Scene {
   private heroHpText!: Phaser.GameObjects.Text
   private heroArmorText!: Phaser.GameObjects.Text
   private heroStatusText!: Phaser.GameObjects.Text
+  private heroStatsContainer!: Phaser.GameObjects.Container
   private energyText!: Phaser.GameObjects.Text
   private emberText!: Phaser.GameObjects.Text
   private drawPileCountText!: Phaser.GameObjects.Text
   private discardPileText!: Phaser.GameObjects.Text
   private enemyHpText!: Phaser.GameObjects.Text
+  private enemyArmorText!: Phaser.GameObjects.Text
   private intentLabel!: Phaser.GameObjects.Text
   private intentText!: Phaser.GameObjects.Text
   private enemyNameText!: Phaser.GameObjects.Text
+  private enemyStatsContainer!: Phaser.GameObjects.Container
   private resultText!: Phaser.GameObjects.Text
   private turnBannerText!: Phaser.GameObjects.Text
   private heroPanel!: Phaser.GameObjects.Rectangle
@@ -303,61 +306,97 @@ export class PlayScene extends Phaser.Scene {
         .setStrokeStyle(1, this.encounterType === 'boss' ? 0xf59e0b : 0xef4444, 0.72)
     }
 
-    // Hero stats HUD: icon-based HP/Armor attached near the hero.
-    const heroHudX = heroX - (C ? 54 : 66)
-    const heroHudY = spriteY - (C ? 88 : 102)
-    this.add.rectangle(heroHudX, heroHudY, C ? 176 : 208, C ? 86 : 96, 0x0f172a, 0.88)
-      .setStrokeStyle(1, 0x4b617f, 0.78)
-      .setDepth(6)
-    this.heroHpText = this.add.text(heroHudX - (C ? 76 : 92), heroHudY - 18, '♥ 40/40', {
-      fontSize: C ? '16px' : '18px',
-      color: '#7dd3fc',
+    const heroChipW = C ? 92 : 104
+    const heroArmorChipW = C ? 68 : 76
+    const heroChipH = C ? 24 : 28
+    // Hero floating stat UI is created here.
+    this.heroStatsContainer = this.add.container(0, 0).setDepth(7)
+    const heroHpBadge = this.add.rectangle(0, 0, heroChipW, heroChipH, 0x07111f, 0.76)
+      .setStrokeStyle(1, 0x7dd3fc, 0.5)
+    const heroArmorBadge = this.add.rectangle(0, C ? 30 : 34, heroArmorChipW, C ? 22 : 24, 0x07111f, 0.7)
+      .setStrokeStyle(1, 0xbfdbfe, 0.42)
+    this.heroHpText = this.add.text(0, 0, '♥ 40/40', {
+      fontSize: C ? '14px' : '16px',
+      color: '#e0f2fe',
       fontStyle: 'bold',
-    }).setOrigin(0, 0).setDepth(7)
-    this.heroArmorText = this.add.text(heroHudX - (C ? 76 : 92), heroHudY + 6, '🛡 0', {
-      fontSize: C ? '14px' : '15px',
-      color: '#bfdbfe',
-      fontStyle: 'bold',
-    }).setOrigin(0, 0).setDepth(7)
-    // Hero status effect icons are rendered near the hero for readable combat feedback.
-    this.heroStatusText = this.add.text(heroHudX - (C ? 76 : 92), heroHudY + 28, '', {
+      stroke: '#020617',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setShadow(0, 2, '#020617', 4, true, true)
+    this.heroArmorText = this.add.text(0, C ? 30 : 34, '🛡 0', {
       fontSize: C ? '12px' : '13px',
+      color: '#dbeafe',
+      fontStyle: 'bold',
+      stroke: '#020617',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setShadow(0, 2, '#020617', 4, true, true)
+    // Hero status effect icons stay near the hero but no longer need a heavy panel.
+    this.heroStatusText = this.add.text(0, C ? 56 : 62, '', {
+      fontSize: C ? '11px' : '12px',
       color: '#fca5a5',
       fontStyle: 'bold',
-      wordWrap: { width: C ? 160 : 188 },
-    }).setOrigin(0, 0).setDepth(7)
+      stroke: '#020617',
+      strokeThickness: 3,
+      align: 'center',
+      wordWrap: { width: C ? 140 : 166 },
+    }).setOrigin(0.5, 0).setShadow(0, 2, '#020617', 4, true, true)
+    this.heroStatsContainer.add([heroHpBadge, heroArmorBadge, this.heroHpText, this.heroArmorText, this.heroStatusText])
 
-    // Enemy stats + intent HUD: icon-based and anchored near the enemy.
-    // The box is split into two rows: current state (HP/armor) and upcoming intent preview.
-    const enemyHudX = enemyX + (C ? 56 : 66)
-    const enemyHudY = spriteY - (C ? 94 : 108)
-    this.add.rectangle(enemyHudX, enemyHudY, C ? 190 : 224, C ? 116 : 128, 0x1f1722, 0.9)
-      .setStrokeStyle(1, this.encounterType === 'boss' ? 0xf59e0b : 0xa17676, 0.85)
-      .setDepth(6)
-    this.enemyNameText = this.add.text(enemyHudX + (C ? 84 : 100), enemyHudY - 38, this.session.enemy.name, {
-      fontSize: C ? '13px' : '15px',
+    const enemyHpChipW = C ? 90 : 104
+    const enemyArmorChipW = C ? 72 : 84
+    const enemyChipH = C ? 24 : 28
+    // Enemy floating stat UI is created here.
+    this.enemyStatsContainer = this.add.container(0, 0).setDepth(7)
+    this.enemyNameText = this.add.text(0, C ? -18 : -20, this.session.enemy.name, {
+      fontSize: C ? '12px' : '14px',
       color: this.encounterType === 'boss' ? '#fde68a' : '#f8d2d2',
       fontStyle: 'bold',
-      align: 'right',
-    }).setOrigin(1, 0).setDepth(7)
-    this.enemyHpText = this.add.text(enemyHudX - (C ? 84 : 100), enemyHudY - 22, `♥ ${this.session.enemy.maxHp}/${this.session.enemy.maxHp}`, {
-      fontSize: C ? '14px' : '15px',
-      color: '#fecaca',
+      stroke: '#020617',
+      strokeThickness: 4,
+      align: 'center',
+    }).setOrigin(0.5).setShadow(0, 2, '#020617', 4, true, true)
+    const enemyHpBadge = this.add.rectangle(-(C ? 34 : 38), C ? 8 : 10, enemyHpChipW, enemyChipH, 0x18070b, 0.8)
+      .setStrokeStyle(1, 0xfca5a5, 0.46)
+    const enemyArmorBadge = this.add.rectangle(C ? 40 : 46, C ? 8 : 10, enemyArmorChipW, C ? 22 : 24, 0x111827, 0.74)
+      .setStrokeStyle(1, 0xcbd5e1, 0.42)
+    this.enemyHpText = this.add.text(-(C ? 34 : 38), C ? 8 : 10, `♥ ${this.session.enemy.maxHp}/${this.session.enemy.maxHp}`, {
+      fontSize: C ? '12px' : '13px',
+      color: '#fee2e2',
       fontStyle: 'bold',
-    }).setOrigin(0, 0).setDepth(7)
-    // Horizontal divider separates the current-state row from the intent preview row.
-    this.add.rectangle(enemyHudX, enemyHudY + 4, C ? 170 : 200, 1, 0x4b3a4a, 0.6).setDepth(7)
-    // Multi-action intent rendering: NEXT label + intent parts displayed side by side in one row.
-    this.intentLabel = this.add.text(enemyHudX - (C ? 84 : 100), enemyHudY + 12, 'NEXT', {
+      stroke: '#020617',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setShadow(0, 2, '#020617', 4, true, true)
+    this.enemyArmorText = this.add.text(C ? 40 : 46, C ? 8 : 10, '🛡 0', {
+      fontSize: C ? '11px' : '12px',
+      color: '#e2e8f0',
+      fontStyle: 'bold',
+      stroke: '#020617',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setShadow(0, 2, '#020617', 4, true, true)
+    this.intentLabel = this.add.text(0, C ? 34 : 38, 'NEXT', {
       fontSize: C ? '10px' : '11px',
       color: '#94a3b8',
       fontStyle: 'bold',
-    }).setOrigin(0, 0).setDepth(7)
-    this.intentText = this.add.text(enemyHudX - (C ? 84 : 100), enemyHudY + 30, '', {
-      fontSize: C ? '13px' : '14px',
+      stroke: '#020617',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setShadow(0, 2, '#020617', 4, true, true)
+    this.intentText = this.add.text(0, C ? 50 : 56, '', {
+      fontSize: C ? '12px' : '13px',
       color: this.encounterType === 'boss' ? '#fde68a' : '#fef3c7',
       fontStyle: 'bold',
-    }).setOrigin(0, 0).setDepth(7)
+      stroke: '#020617',
+      strokeThickness: 4,
+      align: 'center',
+      wordWrap: { width: C ? 156 : 188 },
+    }).setOrigin(0.5, 0).setShadow(0, 2, '#020617', 4, true, true)
+    this.enemyStatsContainer.add([
+      this.enemyNameText,
+      enemyHpBadge,
+      enemyArmorBadge,
+      this.enemyHpText,
+      this.enemyArmorText,
+      this.intentLabel,
+      this.intentText,
+    ])
 
     this.input.keyboard?.on('keydown-ESC', () => {
       if (this.isPileInspectOpen) {
@@ -545,6 +584,7 @@ export class PlayScene extends Phaser.Scene {
 
     this.previousEmber = this.session.state.ember
     this.pendingDrawAnimation = true
+    this.syncFloatingStatPositions()
     this.updateBattleText()
 
     if (this.encounterType === 'boss') {
@@ -553,6 +593,23 @@ export class PlayScene extends Phaser.Scene {
       this.showTurnBanner('Player Turn', '#fde68a')
       this.startHeroIdleAnimation()
     }
+  }
+
+  update() {
+    this.syncFloatingStatPositions()
+  }
+
+  // Stat positions are synced to character positions here.
+  private syncFloatingStatPositions() {
+    const heroTarget = this.heroSprite ?? this.heroPanel
+    const enemyTarget = this.enemySprite ?? this.enemyPanel
+    const heroOffsetX = this.compactLayout ? -2 : -4
+    const heroOffsetY = this.compactLayout ? -108 : -126
+    const enemyOffsetX = this.compactLayout ? 10 : 12
+    const enemyOffsetY = this.compactLayout ? -114 : -132
+
+    this.heroStatsContainer.setPosition(heroTarget.x + heroOffsetX, heroTarget.y + heroOffsetY)
+    this.enemyStatsContainer.setPosition(enemyTarget.x + enemyOffsetX, enemyTarget.y + enemyOffsetY)
   }
 
   private createHeroSprite(x: number, y: number): Phaser.GameObjects.Sprite | undefined {
@@ -984,15 +1041,20 @@ export class PlayScene extends Phaser.Scene {
       this.cameras.main.shake(180, 0.008)
     }
 
-    const enemyArmorText = this.session.state.enemyArmor > 0 ? `  🛡 ${this.session.state.enemyArmor}` : ''
-    const enemyBurnText = this.session.enemyBurn > 0 ? `  🔥 ${this.session.enemyBurn}` : ''
+    const heroStatusSummary = this.getHeroStatusSummary()
+    const enemyArmorSummary = this.session.enemyBurn > 0
+      ? `🛡 ${this.session.state.enemyArmor}  🔥 ${this.session.enemyBurn}`
+      : `🛡 ${this.session.state.enemyArmor}`
 
-    this.enemyHpText.setText(
-      `♥ ${this.session.state.enemyHp}/${this.session.enemy.maxHp}${enemyArmorText}${enemyBurnText}`,
-    )
+    // Floating stat values refresh after state changes here.
+    this.enemyHpText.setText(`♥ ${this.session.state.enemyHp}/${this.session.enemy.maxHp}`)
+    this.enemyArmorText.setText(enemyArmorSummary)
+    this.enemyArmorText.setAlpha(this.session.state.enemyArmor > 0 || this.session.enemyBurn > 0 ? 1 : 0.72)
     this.heroHpText.setText(`♥ ${this.session.state.heroHp}/${this.heroMaxHp}`)
     this.heroArmorText.setText(`🛡 ${this.session.state.heroArmor}`)
-    this.heroStatusText.setText(this.getHeroStatusSummary())
+    this.heroArmorText.setAlpha(this.session.state.heroArmor > 0 ? 1 : 0.72)
+    this.heroStatusText.setText(heroStatusSummary)
+    this.heroStatusText.setVisible(heroStatusSummary.length > 0)
     this.energyText.setText(`${this.session.currentEnergy}/${this.session.maxEnergy}`)
     this.emberText.setText(`${this.session.state.ember}`)
     this.emberText.setAlpha(this.session.state.ember > 0 ? 1 : 0.64)
