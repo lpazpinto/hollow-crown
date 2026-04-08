@@ -2,35 +2,35 @@
 
 ## Overview
 
-Hollow Crown is a Phaser 3 + TypeScript fantasy card-crawler prototype built for short, web-friendly runs.
+Hollow Crown is a Phaser 3 + TypeScript fantasy card-crawler for short, web-friendly runs.
 
-Core loop:
+Current loop:
 
-1. Choose a route/domain path.
+1. Choose a domain route path.
 2. Resolve encounters (battle, utility/rest, elite, boss).
-3. Gain layered progression rewards (XP, cards, relics, boons, shards).
-4. Continue route progression until boss completion.
+3. Gain layered progression (XP, cards, relics, boons, shards).
+4. Continue route progression until boss resolution.
 
-This project has moved beyond a template/prototype-only shell and currently includes full scene flow, run-state persistence, and multiple reward/progression systems.
+This repository is no longer a bare template state. It already contains full scene flow, route progression, battle resolution, reward scenes, and run persistence.
 
 ## Current Game Direction
 
-Current direction is a light RPG card-crawler, not a pure deck-only roguelike.
+The project is moving toward a light RPG card-crawler identity (not a deck-only roguelike clone).
 
-Design priorities:
+Direction priorities:
 
-- route decisions should feel strategic and readable,
-- battle information should be clearer and more icon-friendly,
-- rewards should be layered and player-facing,
-- hero growth should come from both deck changes and run progression systems.
+- route choices should communicate clear risk/reward categories,
+- battle HUD should improve readability and intent clarity,
+- rewards should be explicit and player-facing,
+- run growth should come from multiple layers (deck + level-up + passives + temporary effects).
 
-Source-of-truth direction docs:
+Latest direction source-of-truth docs:
 
 - `docs/route-rewards-levelup-direction-update.md`
 - `docs/playtest-feedback-next-direction.md`
 - `docs/route_reward_ux_playtest_guidance_v_2.md`
 
-Additional preserved direction/reference docs:
+Related preserved direction/reference docs (historical + supporting):
 
 - `docs/battle-scene-v2.md`
 - `docs/card-rarity-and-reward-rules.md`
@@ -38,69 +38,74 @@ Additional preserved direction/reference docs:
 - `docs/enemy-and-relic-implementation-rules.md`
 - `docs/first-design-sheet.md`
 - `docs/route-select-and-boss-reward-direction.md`
+- `docs/route-reward-ux-playtest-guidance-v2.md` (filename compatibility alias)
 
 ## Current Implemented Features
 
-### Run and Scene Flow
+### Scene Flow
 
-- Menu with new run / continue run.
-- Domain selection scene.
-- Route selection scene with graph progression.
-- Battle scene with turn flow and outcome routing.
-- Level-up scene, card reward scene, relic reward scene, run-end scene.
+- Menu: new run / continue run
+- Domain select
+- Route map select
+- Battle scene
+- Level-up scene
+- Card reward scene
+- Relic reward scene
+- Run end scene
 
-### Route and Progression Systems
+### Route Selection and Progression
 
-- Branching route graph data with static + procedural layouts.
-- Route node reward telegraphing categories (shard/heal/boon/relic/battle/elite).
-- Expanded elite-to-boss pacing (post-elite node plus pre-boss preparation).
-- Compact route summary and lightweight inspection panels.
+- Branching route graph layouts (static + deterministic procedural)
+- Reachable-node progression and completion tracking
+- Reward-category telegraphing (battle, elite, shard, healing, boon, relic teaser)
+- Elite-to-boss pacing with post-elite and pre-boss preparation nodes
+- Compact route summary with lightweight deck/relic/boon inspection
 
-### Battle Systems
+### Battle and Combat Data
 
-- Card combat with energy + ember resources.
-- Enemy intent action model (attack/armor/burn/poison/reflect).
-- Deck/discard inspection during battle.
-- Boon visibility in battle HUD.
+- Turn-based card combat with energy + ember resource model
+- Enemy intents normalized into action parts (attack/armor/burn/poison/reflect)
+- Deck/discard inspection in battle
+- Active-boon HUD display during battle
 
 ### Rewards and Growth
 
-- XP by encounter type.
-- Pending level-up queue with growth choices.
-- Milestone normal-battle card draft cadence.
-- Elite relic reward flow.
-- Boss signature reward flow.
-- Shard progression from route opportunities (not automatic every battle).
-- 3/3 shard payoff flow with explicit player-facing reward presentation.
-- Temporary next-battle boon grants and readable boon feedback.
+- XP by encounter type
+- Pending level-up queue + level-up choice scene
+- Milestone normal-battle draft cadence
+- Elite relic reward flow
+- Boss signature reward flow
+- Route-driven shard opportunities (not auto-per-battle)
+- 3/3 shard payoff flow with explicit reward presentation
+- Temporary boon grant/consume flow with readable UX
 
-### Save/Load
+### Save / Load
 
-- Local run save/load via `localStorage`.
-- Run-state validation and normalization for compatibility.
+- Local save/load via `localStorage`
+- Run-state validation + normalization for compatibility
 
 ## In Progress
 
-The following are actively planned or being iterated:
+The following are planned or currently iterated, not fully complete:
 
-- additional playable domains and bosses,
-- broader content pools (cards, enemies, relics, route variants),
-- further battle readability and intent presentation polish,
-- continued balance tuning for early pressure, armor efficiency, and reward pacing,
-- route lore/boss alignment improvements.
+- additional playable domains and bosses (currently one playable domain)
+- expanded content pools (cards, enemies, relics, route variants)
+- battle readability polish (UI density and intent communication)
+- continuing balance pass (early pressure, armor efficiency, reward pacing)
+- route lore and boss alignment refinement
 
 ## Tech Stack
 
 - Phaser 3
 - TypeScript
 - Vite
-- Poki Phaser plugin (`@poki/phaser-3`)
+- `@poki/phaser-3` plugin
 
-Project code areas:
+Project areas:
 
-- `src/game/scenes/` scene flow and UI
+- `src/game/scenes/` scene and UI flow
 - `src/game/content/` content data (cards, enemies, relics, routes, boons, abilities)
-- `src/game/battle/` battle logic, run-state, save/load
+- `src/game/battle/` run-state, combat logic, reward routing, save/load
 - `public/assets/` runtime assets
 
 ## Local Setup
@@ -116,7 +121,7 @@ Project code areas:
 npm install
 ```
 
-### Run Development Server
+### Run Development
 
 ```bash
 npm run dev
@@ -128,7 +133,7 @@ npm run dev
 npm run build
 ```
 
-### Optional No-Log Scripts
+### Optional No-Log Commands
 
 ```bash
 npm run dev-nolog
@@ -137,20 +142,20 @@ npm run build-nolog
 
 ## Documentation Guide
 
-Start with:
+Start here:
 
 - `docs/README.md`
 
-Main docs structure:
+Documentation structure:
 
 - `docs/overview/` project snapshot and status
-- `docs/systems/` implementation-facing system references
+- `docs/systems/` system behavior references
 - `docs/content/` content reference sheets
-- `docs/ui-ux/` interface/readability notes
-- `docs/playtests/` direction doc entry points
-- `docs/implementation/` code anchor and implementation notes
+- `docs/ui-ux/` UI and readability notes
+- `docs/playtests/` playtest-direction index
+- `docs/implementation/` code anchors and implementation notes
 
-Key systems refs:
+Key systems references:
 
 - `docs/systems/route-flow.md`
 - `docs/systems/rewards-and-progression.md`
@@ -159,12 +164,10 @@ Key systems refs:
 - `docs/systems/battle-flow.md`
 - `docs/systems/run-state-and-save.md`
 
-Legacy/supporting direction docs are preserved in `docs/` root for context.
-
 ## Next Priorities
 
-1. Expand playable route/domain content while preserving compact run length.
-2. Continue battle readability improvements (intent clarity and UI density control).
-3. Complete reward clarity pass so shard/boon/relic outcomes stay explicit and understandable.
-4. Continue balancing pass for encounter pressure and progression pacing.
-5. Keep docs synchronized with implementation after each system/content update.
+1. Expand domain/boss content while preserving compact run length.
+2. Continue battle readability improvements (especially intent and HUD density).
+3. Keep reward feedback explicit for shards, boons, relic opportunities, and level-up outcomes.
+4. Continue balance iteration for early-game pressure and progression cadence.
+5. Keep documentation synchronized with code after each feature pass.
