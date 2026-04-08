@@ -30,6 +30,15 @@ Source-of-truth direction docs:
 - `docs/playtest-feedback-next-direction.md`
 - `docs/route_reward_ux_playtest_guidance_v_2.md`
 
+Additional preserved direction/reference docs:
+
+- `docs/battle-scene-v2.md`
+- `docs/card-rarity-and-reward-rules.md`
+- `docs/core-loop-v2-rpg-direction.md`
+- `docs/enemy-and-relic-implementation-rules.md`
+- `docs/first-design-sheet.md`
+- `docs/route-select-and-boss-reward-direction.md`
+
 ## Current Implemented Features
 
 ### Run and Scene Flow
@@ -140,6 +149,15 @@ Main docs structure:
 - `docs/ui-ux/` interface/readability notes
 - `docs/playtests/` direction doc entry points
 - `docs/implementation/` code anchor and implementation notes
+
+Key systems refs:
+
+- `docs/systems/route-flow.md`
+- `docs/systems/rewards-and-progression.md`
+- `docs/systems/shards-and-boons.md`
+- `docs/systems/level-up-flow.md`
+- `docs/systems/battle-flow.md`
+- `docs/systems/run-state-and-save.md`
 
 Legacy/supporting direction docs are preserved in `docs/` root for context.
 

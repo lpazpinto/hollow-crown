@@ -12,6 +12,21 @@ This folder is organized to separate direction docs, system references, content 
    - `overview/game-status.md`
 3. Use system and content references while implementing features.
 
+## Current Documentation Set (Preserved)
+
+This is the active documentation set for the project. The latest direction should be taken from the three source-of-truth docs, while the others remain valuable reference/history.
+
+- `battle-scene-v2.md`
+- `card-rarity-and-reward-rules.md`
+- `core-loop-v2-rpg-direction.md`
+- `enemy-and-relic-implementation-rules.md`
+- `first-design-sheet.md`
+- `playtest-feedback-next-direction.md`
+- `route-rewards-levelup-direction-update.md`
+- `route-select-and-boss-reward-direction.md`
+- `route_reward_ux_playtest_guidance_v_2.md`
+- `route-reward-ux-playtest-guidance-v2.md` (compatibility alias)
+
 ## Source-of-Truth Direction Docs (Preserved)
 
 These are the current design direction sources and remain at `docs/` root:
@@ -30,6 +45,8 @@ These are the current design direction sources and remain at `docs/` root:
 - `systems/rewards-and-progression.md`
 - `systems/battle-flow.md`
 - `systems/run-state-and-save.md`
+- `systems/shards-and-boons.md`
+- `systems/level-up-flow.md`
 
 ## Content Reference
 
