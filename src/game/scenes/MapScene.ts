@@ -101,36 +101,26 @@ export class MapScene extends Phaser.Scene {
       color: '#cbd5e1',
       fontStyle: 'bold',
     }).setOrigin(0, 0.5)
-    this.add.text(summaryPanelX + summaryPanelW / 2 - 10, summaryPanelY + 28, 'Tap row to inspect', {
+    this.add.text(summaryPanelX + summaryPanelW / 2 - 10, summaryPanelY + 28, 'Tap to inspect', {
       fontSize: compactLayout ? '10px' : '11px',
       color: '#64748b',
       align: 'right',
     }).setOrigin(1, 0.5)
-
-    const deckInspectHit = this.add.rectangle(summaryPanelX, summaryPanelY - 2, summaryPanelW - 16, 20, 0x000000, 0.001)
+    const runSummaryInspectHit = this.add.rectangle(summaryPanelX, summaryPanelY, summaryPanelW - 12, summaryPanelH - 12, 0x000000, 0.001)
       .setInteractive({ useHandCursor: true })
       .setDepth(2)
-    deckInspectHit.on('pointerdown', () => {
-      // Deck inspection is triggered here.
-      const deckLines = runDeck.slice(0, 14).map((card, index) => `${index + 1}. ${card.title} (${card.cost})`)
-      if (runDeck.length > 14) {
-        deckLines.push(`... +${runDeck.length - 14} more`)
-      }
-      this.showInfoListPanel('Deck', `${runDeck.length} cards in current run`, deckLines)
-    })
-
-    const relicInspectHit = this.add.rectangle(summaryPanelX, summaryPanelY + 18, summaryPanelW - 16, 20, 0x000000, 0.001)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(2)
-    relicInspectHit.on('pointerdown', () => {
-      // Relic inspection is triggered here.
-      const relicLines = runRelics.length > 0
-        ? runRelics.slice(0, 10).map((relic, index) => `${index + 1}. ${relic.name} - ${relic.description}`)
-        : ['No relics collected yet.']
-      if (runRelics.length > 10) {
-        relicLines.push(`... +${runRelics.length - 10} more`)
-      }
-      this.showInfoListPanel('Relics', `${runRelics.length} relics active`, relicLines)
+    runSummaryInspectHit.on('pointerdown', () => {
+      // Run Summary click interaction is wired here.
+      const summaryLines = this.collectRunSummaryLines({
+        run,
+        statusXp,
+        shardProgress,
+        activeBoon,
+        runAbilities,
+        runRelics,
+        runDeck,
+      })
+      this.showRunSummaryOverlay(summaryLines)
     })
 
     // Active effect summary is rendered here.
@@ -688,6 +678,118 @@ export class MapScene extends Phaser.Scene {
     }
 
     this.input.once('pointerdown', close)
+    this.input.keyboard?.once('keydown-SPACE', close)
+  }
+
+  private collectRunSummaryLines(params: {
+    run: ReturnType<typeof getRunState>
+    statusXp: string
+    shardProgress: string
+    activeBoon: BoonContent | null
+    runAbilities: ReturnType<typeof getRunAbilities>
+    runRelics: ReturnType<typeof getRunRelics>
+    runDeck: ReturnType<typeof getRunDeck>
+  }): string[] {
+    const { run, statusXp, shardProgress, activeBoon, runAbilities, runRelics, runDeck } = params
+    const deckCounts = new Map<string, { count: number; cost: number }>()
+
+    runDeck.forEach((card) => {
+      const existing = deckCounts.get(card.title)
+      if (existing) {
+        existing.count += 1
+        return
+      }
+
+      deckCounts.set(card.title, { count: 1, cost: card.cost })
+    })
+
+    const deckCompositionLines = Array.from(deckCounts.entries())
+      .sort((left, right) => {
+        if (right[1].count !== left[1].count) {
+          return right[1].count - left[1].count
+        }
+
+        return left[0].localeCompare(right[0])
+      })
+      .slice(0, 12)
+      .map(([title, value]) => `${value.count}x ${title} (${value.cost})`)
+
+    if (deckCounts.size > 12) {
+      deckCompositionLines.push(`... +${deckCounts.size - 12} more card entries`)
+    }
+
+    // Summary data is collected from run state here.
+    return [
+      `HP: ${run.heroHp}/${run.maxHeroHp}`,
+      `Level: ${run.heroLevel}`,
+      `XP: ${statusXp}`,
+      `Shards: ${shardProgress}${run.isForgeAvailable ? '  •  Forge Ready' : ''}`,
+      '',
+      `Boon: ${activeBoon ? activeBoon.name : 'None'}`,
+      activeBoon ? `${activeBoon.description}  •  next battle only` : 'No next-battle boon active.',
+      '',
+      `Passives (${runAbilities.length})`,
+      ...(runAbilities.length > 0
+        ? runAbilities.map((ability, index) => `${index + 1}. ${ability.name} - ${ability.description}`)
+        : ['None']),
+      '',
+      `Relics (${runRelics.length})`,
+      ...(runRelics.length > 0
+        ? runRelics.map((relic, index) => `${index + 1}. ${relic.name} - ${relic.description}`)
+        : ['None']),
+      '',
+      `Deck (${runDeck.length} cards)`,
+      ...(deckCompositionLines.length > 0 ? deckCompositionLines : ['None']),
+    ]
+  }
+
+  private showRunSummaryOverlay(lines: string[]) {
+    const { width, height } = this.scale
+    const cx = width / 2
+    const cy = height / 2
+    const panelW = this.scale.width < 900 || this.scale.height < 700 ? Math.min(width - 36, 560) : Math.min(width - 96, 660)
+    const panelH = this.scale.width < 900 || this.scale.height < 700 ? Math.min(height - 42, 500) : Math.min(height - 72, 560)
+
+    const overlay = this.add.rectangle(cx, cy, width, height, 0x000000, 0.58)
+      .setInteractive()
+      .setDepth(70)
+    // Summary overlay is rendered here.
+    const panel = this.add.rectangle(cx, cy, panelW, panelH, 0x0b1220, 0.97)
+      .setStrokeStyle(2, 0x3b82f6)
+      .setDepth(71)
+    const titleText = this.add.text(cx, cy - panelH / 2 + 30, 'Run Summary', {
+      fontSize: panelW < 600 ? '22px' : '24px',
+      color: '#dbeafe',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(72)
+    const subtitleText = this.add.text(cx, cy - panelH / 2 + 58, 'Current run state before the next route choice', {
+      fontSize: panelW < 600 ? '12px' : '13px',
+      color: '#93c5fd',
+      align: 'center',
+      wordWrap: { width: panelW - 40 },
+    }).setOrigin(0.5).setDepth(72)
+    const bodyText = this.add.text(cx - panelW / 2 + 22, cy - panelH / 2 + 88, lines.join('\n'), {
+      fontSize: panelW < 600 ? '12px' : '13px',
+      color: '#e2e8f0',
+      lineSpacing: 4,
+      wordWrap: { width: panelW - 44 },
+    }).setOrigin(0, 0).setDepth(72)
+    const hintText = this.add.text(cx, cy + panelH / 2 - 22, 'Click outside or press Space to close', {
+      fontSize: panelW < 600 ? '11px' : '12px',
+      color: '#64748b',
+    }).setOrigin(0.5).setDepth(72)
+
+    const close = () => {
+      // Summary overlay is dismissed here.
+      overlay.destroy()
+      panel.destroy()
+      titleText.destroy()
+      subtitleText.destroy()
+      bodyText.destroy()
+      hintText.destroy()
+    }
+
+    overlay.on('pointerdown', close)
     this.input.keyboard?.once('keydown-SPACE', close)
   }
 
