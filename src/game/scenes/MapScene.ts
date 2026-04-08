@@ -27,6 +27,17 @@ import {
   type RouteContent,
 } from '../content/routes'
 
+type RunSummarySectionKey = 'overview' | 'effects' | 'deck'
+
+type RunSummarySection = {
+  label: string
+  title: string
+  subtitle: string
+  lines: string[]
+}
+
+type RunSummarySections = Record<RunSummarySectionKey, RunSummarySection>
+
 export class MapScene extends Phaser.Scene {
   constructor() {
     super('MapScene')
@@ -111,7 +122,7 @@ export class MapScene extends Phaser.Scene {
       .setDepth(2)
     runSummaryInspectHit.on('pointerdown', () => {
       // Run Summary click interaction is wired here.
-      const summaryLines = this.collectRunSummaryLines({
+      const summarySections = this.collectRunSummarySections({
         run,
         statusXp,
         shardProgress,
@@ -120,7 +131,7 @@ export class MapScene extends Phaser.Scene {
         runRelics,
         runDeck,
       })
-      this.showRunSummaryOverlay(summaryLines)
+      this.showRunSummaryOverlay(summarySections)
     })
 
     // Active effect summary is rendered here.
@@ -681,7 +692,7 @@ export class MapScene extends Phaser.Scene {
     this.input.keyboard?.once('keydown-SPACE', close)
   }
 
-  private collectRunSummaryLines(params: {
+  private collectRunSummarySections(params: {
     run: ReturnType<typeof getRunState>
     statusXp: string
     shardProgress: string
@@ -689,9 +700,9 @@ export class MapScene extends Phaser.Scene {
     runAbilities: ReturnType<typeof getRunAbilities>
     runRelics: ReturnType<typeof getRunRelics>
     runDeck: ReturnType<typeof getRunDeck>
-  }): string[] {
+  }): RunSummarySections {
     const { run, statusXp, shardProgress, activeBoon, runAbilities, runRelics, runDeck } = params
-    const deckCounts = new Map<string, { count: number; cost: number }>()
+    const deckCounts = new Map<string, { count: number; cost: number; description: string }>()
 
     runDeck.forEach((card) => {
       const existing = deckCounts.get(card.title)
@@ -700,9 +711,10 @@ export class MapScene extends Phaser.Scene {
         return
       }
 
-      deckCounts.set(card.title, { count: 1, cost: card.cost })
+      deckCounts.set(card.title, { count: 1, cost: card.cost, description: card.description })
     })
 
+    // Deck list rendering is handled here.
     const deckCompositionLines = Array.from(deckCounts.entries())
       .sort((left, right) => {
         if (right[1].count !== left[1].count) {
@@ -711,20 +723,51 @@ export class MapScene extends Phaser.Scene {
 
         return left[0].localeCompare(right[0])
       })
-      .slice(0, 12)
-      .map(([title, value]) => `${value.count}x ${title} (${value.cost})`)
-
-    if (deckCounts.size > 12) {
-      deckCompositionLines.push(`... +${deckCounts.size - 12} more card entries`)
-    }
+      .map(([title, value]) => `${value.count}x ${title} (${value.cost}) - ${value.description}`)
 
     // Summary data is collected from run state here.
+    // Run summary sections are defined here.
+    return {
+      overview: {
+        label: 'Overview',
+        title: 'Run Overview',
+        subtitle: 'Current core state before the next route choice',
+        lines: [
+          `HP: ${run.heroHp}/${run.maxHeroHp}`,
+          `Level: ${run.heroLevel}`,
+          `XP: ${statusXp}`,
+          `Shards: ${shardProgress}${run.isForgeAvailable ? '  •  Forge Ready' : ''}`,
+          '',
+          `Boon: ${activeBoon ? activeBoon.name : 'None'}`,
+          activeBoon ? 'Temporary next-battle effect is active.' : 'No next-battle boon active.',
+          '',
+          `Passives: ${runAbilities.length}`,
+          `Relics: ${runRelics.length}`,
+          `Deck: ${runDeck.length} cards • ${deckCounts.size} unique entries`,
+        ],
+      },
+      effects: {
+        label: 'Effects',
+        title: 'Effects Details',
+        subtitle: 'Boon = temporary next-battle effect • Passives = run-long hero effects',
+        lines: this.getRunSummaryEffectLines(activeBoon, runAbilities, runRelics),
+      },
+      deck: {
+        label: 'Deck',
+        title: 'Deck Composition',
+        subtitle: `${runDeck.length} cards in the current run deck`,
+        lines: deckCompositionLines.length > 0 ? deckCompositionLines : ['None'],
+      },
+    }
+  }
+
+  // Relic/passive/boon detail rendering is handled here.
+  private getRunSummaryEffectLines(
+    activeBoon: BoonContent | null,
+    runAbilities: ReturnType<typeof getRunAbilities>,
+    runRelics: ReturnType<typeof getRunRelics>,
+  ): string[] {
     return [
-      `HP: ${run.heroHp}/${run.maxHeroHp}`,
-      `Level: ${run.heroLevel}`,
-      `XP: ${statusXp}`,
-      `Shards: ${shardProgress}${run.isForgeAvailable ? '  •  Forge Ready' : ''}`,
-      '',
       `Boon: ${activeBoon ? activeBoon.name : 'None'}`,
       activeBoon ? `${activeBoon.description}  •  next battle only` : 'No next-battle boon active.',
       '',
@@ -737,18 +780,16 @@ export class MapScene extends Phaser.Scene {
       ...(runRelics.length > 0
         ? runRelics.map((relic, index) => `${index + 1}. ${relic.name} - ${relic.description}`)
         : ['None']),
-      '',
-      `Deck (${runDeck.length} cards)`,
-      ...(deckCompositionLines.length > 0 ? deckCompositionLines : ['None']),
     ]
   }
 
-  private showRunSummaryOverlay(lines: string[]) {
+  private showRunSummaryOverlay(sections: RunSummarySections) {
     const { width, height } = this.scale
     const cx = width / 2
     const cy = height / 2
     const panelW = this.scale.width < 900 || this.scale.height < 700 ? Math.min(width - 36, 560) : Math.min(width - 96, 660)
     const panelH = this.scale.width < 900 || this.scale.height < 700 ? Math.min(height - 42, 500) : Math.min(height - 72, 560)
+    let activeSection: RunSummarySectionKey = 'overview'
 
     const overlay = this.add.rectangle(cx, cy, width, height, 0x000000, 0.58)
       .setInteractive()
@@ -756,19 +797,25 @@ export class MapScene extends Phaser.Scene {
     // Summary overlay is rendered here.
     const panel = this.add.rectangle(cx, cy, panelW, panelH, 0x0b1220, 0.97)
       .setStrokeStyle(2, 0x3b82f6)
+      .setInteractive()
       .setDepth(71)
-    const titleText = this.add.text(cx, cy - panelH / 2 + 30, 'Run Summary', {
+    const titleText = this.add.text(cx, cy - panelH / 2 + 30, sections.overview.title, {
       fontSize: panelW < 600 ? '22px' : '24px',
       color: '#dbeafe',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(72)
-    const subtitleText = this.add.text(cx, cy - panelH / 2 + 58, 'Current run state before the next route choice', {
+    const subtitleText = this.add.text(cx, cy - panelH / 2 + 58, sections.overview.subtitle, {
       fontSize: panelW < 600 ? '12px' : '13px',
       color: '#93c5fd',
       align: 'center',
       wordWrap: { width: panelW - 40 },
     }).setOrigin(0.5).setDepth(72)
-    const bodyText = this.add.text(cx - panelW / 2 + 22, cy - panelH / 2 + 88, lines.join('\n'), {
+    const tabY = cy - panelH / 2 + 94
+    const tabSpacing = panelW < 600 ? 112 : 128
+    const tabKeys: RunSummarySectionKey[] = ['overview', 'effects', 'deck']
+    const tabButtons: Phaser.GameObjects.Rectangle[] = []
+    const tabLabels: Phaser.GameObjects.Text[] = []
+    const bodyText = this.add.text(cx - panelW / 2 + 22, cy - panelH / 2 + 130, sections.overview.lines.join('\n'), {
       fontSize: panelW < 600 ? '12px' : '13px',
       color: '#e2e8f0',
       lineSpacing: 4,
@@ -779,12 +826,55 @@ export class MapScene extends Phaser.Scene {
       color: '#64748b',
     }).setOrigin(0.5).setDepth(72)
 
+    const refreshTabState = () => {
+      titleText.setText(sections[activeSection].title)
+      subtitleText.setText(sections[activeSection].subtitle)
+      bodyText.setText(sections[activeSection].lines.join('\n'))
+
+      tabButtons.forEach((button, index) => {
+        const key = tabKeys[index]
+        const isActive = key === activeSection
+        button.setFillStyle(isActive ? 0x1d4ed8 : 0x152033, isActive ? 0.96 : 0.88)
+        button.setStrokeStyle(1, isActive ? 0x93c5fd : 0x475569, 0.95)
+      })
+
+      tabLabels.forEach((label, index) => {
+        const key = tabKeys[index]
+        label.setColor(key === activeSection ? '#dbeafe' : '#94a3b8')
+      })
+    }
+
+    tabKeys.forEach((key, index) => {
+      const tabX = cx - ((tabKeys.length - 1) * tabSpacing) / 2 + index * tabSpacing
+      const button = this.add.rectangle(tabX, tabY, panelW < 600 ? 96 : 110, 28, 0x152033, 0.88)
+        .setStrokeStyle(1, 0x475569, 0.95)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(72)
+      const label = this.add.text(tabX, tabY, sections[key].label, {
+        fontSize: panelW < 600 ? '11px' : '12px',
+        color: '#94a3b8',
+        fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(73)
+
+      button.on('pointerdown', () => {
+        activeSection = key
+        refreshTabState()
+      })
+
+      tabButtons.push(button)
+      tabLabels.push(label)
+    })
+
+    refreshTabState()
+
     const close = () => {
       // Summary overlay is dismissed here.
       overlay.destroy()
       panel.destroy()
       titleText.destroy()
       subtitleText.destroy()
+      tabButtons.forEach((button) => button.destroy())
+      tabLabels.forEach((label) => label.destroy())
       bodyText.destroy()
       hintText.destroy()
     }
