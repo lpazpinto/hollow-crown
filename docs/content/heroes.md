@@ -1,35 +1,53 @@
 # Heroes Reference
 
-## Current Playable Hero State
+## Purpose
 
-The current prototype uses one playable hero profile tracked in run-state.
+Living reference for hero identity, current runtime implementation, and planned expansion.
 
-Baseline run values (`src/game/battle/runState.ts`):
+## Currently Implemented Content
 
-- max HP: 40
-- current HP at run start: 40
-- level at run start: 1
-- XP at run start: 0
+### Playable Hero Roster
 
-## Hero Build Sources
+- Playable heroes: 1
+- Current hero identity in docs: Un1 (from first design sheet)
+- Runtime implementation: single hero profile in run-state
 
-Hero power is defined by:
+### Runtime Hero State (v1)
 
-- deck (`currentDeck`)
-- relics (`currentRelics`)
-- abilities (`currentAbilities`)
-- temporary boon (`currentBoonId`)
+Defined in `src/game/battle/runState.ts` at run start:
 
-## Starter Deck Snapshot
+- Max HP: 40
+- Current HP: 40
+- Level: 1
+- XP: 0
 
-`src/game/content/cards.ts` starter deck:
+### Hero Build Inputs During Run
 
-- Unicorn Strike x3
-- Golden Shield x3
-- Charge x1
-- Crown Diamonds x1
+- Deck (`currentDeck`)
+- Relics (`currentRelics`)
+- Abilities (`currentAbilities`)
+- Temporary next-battle boon (`currentBoonId`)
 
-## Notes
+### Signature Resource
 
-- A distinct lore/profile sheet for multiple heroes is not yet implemented.
-- This reference tracks the currently implemented hero runtime model.
+- Resource used in cards and combat: Ember
+- Current status: implemented through card effects and combat resource handling
+
+## Current Planned Content
+
+- Additional hero profiles: TBD
+- Hero-specific visual/profile sheets: TBD
+- Clear in-game hero identity panel outside card/relic/ability systems: TBD
+- First-design-sheet passive wording for Un1 should be reconciled with actual runtime logic: TBD
+
+## Balancing / Design Notes
+
+- Direction docs prioritize hero growth during run (XP, level-up, abilities), not deck-only growth.
+- Keep hero progression readable and lightweight for web sessions.
+- Avoid introducing heavy RPG systems (large trees/equipment grids) in current scope.
+
+## Open Questions / TODOs
+
+- Confirm final in-game wording for Un1 identity and passive fantasy.
+- Decide whether first-design-sheet passive becomes explicit runtime mechanic or remains flavor direction.
+- Define when additional heroes enter scope versus content expansion for current hero.

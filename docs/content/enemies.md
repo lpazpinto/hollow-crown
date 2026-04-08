@@ -1,32 +1,36 @@
 # Enemies Reference
 
-## Core Types
+## Purpose
+
+Living reference for enemy roster, intent style, and expansion planning.
+
+## Currently Implemented Content
+
+### Data Model
 
 Defined in `src/game/content/enemies.ts`:
 
-- `EnemyContent`: id, name, tier, maxHp, intents
-- `EnemyIntent`: structured action parts
+- `EnemyContent`: id, name, tier, maxHp, initialIntent, intents, optional `phaseTwoIntents`
+- `EnemyIntent` with structured action fields
 - Tiers: common, elite, boss
 
-## Current Enemy Pools
-
-Common pool:
+### Normal Enemies
 
 - Hollow Rat
 - Thorn Acolyte
 - Ruin Beetle
 
-Elite pool:
+### Elites
 
 - Ashen Knight
 
-Boss pool:
+### Bosses
 
-- Corrupted Slime
+- Corrupted Slime (phase two enabled)
 
-## Intent System
+### Intent Style (Current)
 
-`getEnemyIntentActions()` converts intent fields into ordered action parts:
+`getEnemyIntentActions()` normalizes intent into ordered action parts:
 
 1. attack
 2. armor
@@ -34,8 +38,22 @@ Boss pool:
 4. poison
 5. reflect
 
-This shared structure is used by both UI preview and combat resolution.
+This order is shared by both preview UI and combat resolution.
 
-## Boss Behavior
+## Current Planned Content
 
-Corrupted Slime includes `phaseTwoIntents`, enabling escalation in boss flow.
+- Additional elite and boss rosters for locked domains: TBD
+- Domain-aligned enemy pool expansion (Ashen Mire vs future domains): TBD
+- Additional boss mechanics beyond simple phase escalation: TBD
+
+## Balancing / Design Notes
+
+- Playtest direction calls for stronger early pressure than the first prototype.
+- Intent readability remains a top requirement; avoid opaque action chains.
+- Keep v1 enemies as small intent cycles rather than complex AI.
+
+## Open Questions / TODOs
+
+- Confirm target enemy count per domain for next content drop.
+- Confirm if poison/reflect are expanded across more enemies in near-term scope.
+- Define when minion/summon style boss behavior enters implementation (currently TBD).

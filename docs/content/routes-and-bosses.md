@@ -1,44 +1,64 @@
 # Routes and Bosses Reference
 
-## Domain Status
+## Purpose
+
+Living reference for domain routes, boss mapping, and route-reward direction.
+
+## Currently Implemented Content
+
+### Domain / Route Availability
 
 Defined in `src/game/content/routes.ts`:
 
-- Playable: Ashen Mire (`ashen-march`)
-- Locked: Veil of Thorns
-- Locked: Starforged Deep
+- Playable domain: Ashen Mire (`ashen-march`)
+- Locked domain: Veil of Thorns
+- Locked domain: Starforged Deep
 
-## Route Graph Data
+### Current Boss Mapping
 
-Each route layout uses graph nodes with:
+- Ashen Mire -> `mire-crowned-slime`
+- Veil of Thorns -> `thorn-queen` (locked)
+- Starforged Deep -> `star-sentinel` (locked placeholder)
 
-- encounter type (`battle`, `rest`, `elite`, `boss`)
-- next node links (`nextNodeIds`)
-- optional reward metadata (`shardChance`, `grantsHealing`, `grantsBoon`, `relicCategoryLabel`)
+### Route Graph Model
 
-## Current Pacing Pattern
+Each route node can include:
 
-Current route tail is explicitly paced as:
+- encounter type: battle/rest/elite/boss
+- graph links (`nextNodeIds`)
+- reward metadata (`shardChance`, `grantsHealing`, `grantsBoon`, `relicCategoryLabel`)
 
-- elite -> post-elite encounter -> pre-boss rest/prep -> boss
-
-This aligns with latest route pacing direction.
-
-## Reward Telegraphing
-
-Route nodes expose compact reward-category badges in map UI, including:
+### Current Route Reward Categories (Telegraphed)
 
 - battle
 - elite
 - shard chance
 - healing
 - boon
-- relic teaser label
+- relic opportunity (category label only)
 
-## Boss References
+### Current Branching / Pacing Implementation
 
-Current boss IDs in route data:
+- Branch and merge lane structure is implemented.
+- Route tail pacing currently targets:
+	- elite -> post-elite meaningful node -> pre-boss preparation/rest -> boss
 
-- mire-crowned-slime (playable domain)
-- thorn-queen (locked domain)
-- star-sentinel (locked domain placeholder)
+## Current Planned Content
+
+- Additional fully playable domains (currently locked) with their own route identity: TBD
+- More route variation per domain while keeping web-friendly length: TBD
+- Expanded boss roster and boss-specific reward identity for each domain: TBD
+
+## Balancing / Design Notes
+
+- Direction docs prioritize route decisions as risk/reward lanes, not linear node clicking.
+- Shards should be route-opportunity driven, not automatic every battle.
+- Boss rewards should feel route-themed and identity-defining.
+- Exact relic identity should remain hidden until reward resolution.
+
+## Open Questions / TODOs
+
+- Confirm final naming/lore alignment for playable route and current boss presentation.
+- Confirm rollout order for unlocking additional domains.
+- Decide when route-specific enemy pools are exposed in route UI (if at all).
+- Validate final forge timing model versus utility-node timing recommendation in direction docs.

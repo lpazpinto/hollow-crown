@@ -1,57 +1,69 @@
 # Cards Reference
 
-## Core Types
+## Purpose
+
+Living reference for card data, reward usage, and current content scope.
+
+## Currently Implemented Content
+
+### Data Model
 
 Defined in `src/game/content/cards.ts`:
 
 - `CardContent`: id, title, description, effectType, value, cost, optional emberCost, rarity
-- Rarities: common, uncommon, rare
+- Rarity tiers: common, uncommon, rare
+- Reward encounter types: battle, elite, boss
 
-## Card Pools
+### Cost Types
 
-- Main pool: `UN1_CARD_POOL`
-- Starter deck: `STARTER_DECK`
-- Reward pool: `REWARD_CARD_POOL`
-- Signature card pool includes:
-  - Ashen Crown Verdict
+- Energy cost (`cost`) is the base card-play cost type.
+- Ember requirement (`emberCost`) is optional and currently used on selected cards.
 
-## Reward Choice Weights
+### Starter Deck (Run Start)
 
-By encounter reward type:
+- Unicorn Strike x3
+- Golden Shield x3
+- Charge x1
+- Crown Diamonds x1
 
-- battle: common 70, uncommon 25, rare 5
-- elite: common 45, uncommon 40, rare 15
-- boss: common 20, uncommon 50, rare 30
+### Implemented Reward/Pool Content
 
-## Upgrade Rules
+Main card pool (`UN1_CARD_POOL`):
 
-Card upgrade behavior is data-rule based in `createUpgradedCard()`:
+- Common: Unicorn Strike, Golden Shield, Ember Fire, Charge, Crown Diamonds, Double Strike
+- Uncommon: Silver Protection, Golden Horseshoe
+- Rare: Reliquary Pulse, Crownfall
 
-- some cards reduce cost on upgrade
-- others gain value
-- descriptions are recalculated for upgraded output
-
-## Notable Cards in Current Pool
-
-Common:
-
-- Unicorn Strike
-- Golden Shield
-- Ember Fire
-- Charge
-- Crown Diamonds
-- Double Strike
-
-Uncommon:
-
-- Silver Protection
-- Golden Horseshoe
-
-Rare:
-
-- Reliquary Pulse
-- Crownfall
-
-Boss signature:
+Signature card currently implemented:
 
 - Ashen Crown Verdict
+
+### Reward Rarity Weights (Current)
+
+- Battle: common 70, uncommon 25, rare 5
+- Elite: common 45, uncommon 40, rare 15
+- Boss: common 20, uncommon 50, rare 30
+
+### Upgrade Behavior (Current)
+
+- Implemented in `createUpgradedCard()`.
+- Some cards reduce cost on upgrade; others increase value.
+- Descriptions are recalculated for upgraded values.
+
+## Current Planned Content
+
+- Additional card families by domain/theme: TBD
+- Clear shard-payoff themed card package split (offense/defense/utility): direction set, exact package TBD
+- More signature boss cards for additional domains: TBD
+
+## Balancing / Design Notes
+
+- Direction docs specify less permanent-card spam from normal battles.
+- Card growth is intended to be layered with XP/level-up/boons/shards, not deck-only scaling.
+- Keep card wording concise and web-friendly.
+
+## Open Questions / TODOs
+
+- Confirm whether consumable/potion-like cards enter v1.5 or later.
+- Define late-run reward bias rules (if any) for avoiding over-repeated basics.
+- Decide if domain-specific reward pools are introduced before additional heroes.
