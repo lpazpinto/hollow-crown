@@ -1019,9 +1019,15 @@ export class PlayScene extends Phaser.Scene {
       return
     }
 
-    const shouldAnimateReshuffle = this.session.drawPile.length === 0 && this.session.discardPile.length > 0
+    // Reshuffle event is triggered here.
+    // We detect reshuffle by comparing discard count before/after startNewPlayerTurn:
+    // if discard shrinks, cards were moved from discard back into draw pile.
+    const nextPlayerSession = startNewPlayerTurn(this.session)
+    const shouldAnimateReshuffle =
+      nextPlayerSession.discardPile.length < this.session.discardPile.length
+
     const startNextPlayerTurn = () => {
-      this.session = startNewPlayerTurn(this.session)
+      this.session = nextPlayerSession
       this.pendingDrawAnimation = true
       this.handleBossPhaseTransition(previousPhase, this.session.enemyPhase)
       this.updateBattleText()
