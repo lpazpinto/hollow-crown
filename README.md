@@ -1,144 +1,152 @@
 # Hollow Crown / Shards of the Hollow Crown
 
-Hollow Crown is a Phaser 3 + TypeScript card-crawler prototype focused on a compact, web-friendly run loop:
+## Overview
 
-- choose a route path,
-- fight tactical card battles,
-- gain progression rewards,
-- reach and defeat a domain boss.
+Hollow Crown is a Phaser 3 + TypeScript fantasy card-crawler prototype built for short, web-friendly runs.
 
-## Genre Direction
+Core loop:
 
-Current direction is a short-session fantasy RPG card-crawler with:
+1. Choose a route/domain path.
+2. Resolve encounters (battle, utility/rest, elite, boss).
+3. Gain layered progression rewards (XP, cards, relics, boons, shards).
+4. Continue route progression until boss completion.
 
-- branching route choices,
-- readable battle UX,
-- layered rewards (cards, relics, boons, shards),
-- level-up growth decisions inside each run.
+This project has moved beyond a template/prototype-only shell and currently includes full scene flow, run-state persistence, and multiple reward/progression systems.
 
-## Current Playable State
+## Current Game Direction
 
-The current playable slice includes:
+Current direction is a light RPG card-crawler, not a pure deck-only roguelike.
 
-- Menu with new run and continue run.
-- Domain selection scene.
-- Route map scene with branching node choices and reward telegraphing.
-- Utility/rest node behavior (healing + temporary boon flow).
-- Card battle scene with enemy intents, statuses, and turn loop.
-- Victory flow with readable reward summary and confirmation gate.
-- Level-up scene with growth choices.
-- Card reward scene and relic reward scene.
-- Boss completion and run end flow.
-- Local save/load persistence with run-state normalization.
+Design priorities:
 
-## Major Implemented Systems
+- route decisions should feel strategic and readable,
+- battle information should be clearer and more icon-friendly,
+- rewards should be layered and player-facing,
+- hero growth should come from both deck changes and run progression systems.
 
-### Route Selection
-
-- Route graph layouts with branching and merge points.
-- Node metadata drives reward telegraphing:
-  - shard chance
-  - healing
-  - boon
-  - relic category teaser
-- Expanded elite-to-boss pacing with post-elite content and pre-boss prep.
-
-### Battle
-
-- Turn-based card combat with energy/ember resources.
-- Enemy intent preview based on structured action parts.
-- Hero/enemy status, armor, burn, poison, and reflect handling.
-- Deck/discard visibility and inspection in battle.
-
-### Rewards and Progression
-
-- XP gains by encounter type.
-- Level thresholds and pending level-up queue.
-- Milestone card-draft cadence for normal battles (not every battle).
-- Elite relic rewards.
-- Boss signature reward flow.
-
-### Shards and Boons
-
-- Shards are out-of-deck run resource from route opportunities.
-- 3/3 shards unlock forge availability and a dedicated powerful card payoff flow.
-- Boons are temporary next-battle effects with readable gain and active-state UI.
-
-## Current Direction Docs (Source of Truth)
-
-Treat these docs as the active product/design direction:
+Source-of-truth direction docs:
 
 - `docs/route-rewards-levelup-direction-update.md`
 - `docs/playtest-feedback-next-direction.md`
 - `docs/route_reward_ux_playtest_guidance_v_2.md`
 
-## Documentation Map
+## Current Implemented Features
 
-Start here:
+### Run and Scene Flow
 
-- `docs/README.md`
+- Menu with new run / continue run.
+- Domain selection scene.
+- Route selection scene with graph progression.
+- Battle scene with turn flow and outcome routing.
+- Level-up scene, card reward scene, relic reward scene, run-end scene.
 
-Structured references:
+### Route and Progression Systems
 
-- `docs/overview/`
-- `docs/systems/`
-- `docs/content/`
-- `docs/ui-ux/`
-- `docs/playtests/`
-- `docs/implementation/`
+- Branching route graph data with static + procedural layouts.
+- Route node reward telegraphing categories (shard/heal/boon/relic/battle/elite).
+- Expanded elite-to-boss pacing (post-elite node plus pre-boss preparation).
+- Compact route summary and lightweight inspection panels.
+
+### Battle Systems
+
+- Card combat with energy + ember resources.
+- Enemy intent action model (attack/armor/burn/poison/reflect).
+- Deck/discard inspection during battle.
+- Boon visibility in battle HUD.
+
+### Rewards and Growth
+
+- XP by encounter type.
+- Pending level-up queue with growth choices.
+- Milestone normal-battle card draft cadence.
+- Elite relic reward flow.
+- Boss signature reward flow.
+- Shard progression from route opportunities (not automatic every battle).
+- 3/3 shard payoff flow with explicit player-facing reward presentation.
+- Temporary next-battle boon grants and readable boon feedback.
+
+### Save/Load
+
+- Local run save/load via `localStorage`.
+- Run-state validation and normalization for compatibility.
+
+## In Progress
+
+The following are actively planned or being iterated:
+
+- additional playable domains and bosses,
+- broader content pools (cards, enemies, relics, route variants),
+- further battle readability and intent presentation polish,
+- continued balance tuning for early pressure, armor efficiency, and reward pacing,
+- route lore/boss alignment improvements.
 
 ## Tech Stack
 
-- Phaser 3 (`phaser`)
+- Phaser 3
 - TypeScript
 - Vite
 - Poki Phaser plugin (`@poki/phaser-3`)
 
-## Project Layout
+Project code areas:
 
-- `src/game/scenes/`: scene flow and UI.
-- `src/game/content/`: data/content definitions (cards, enemies, relics, routes, boons, abilities).
-- `src/game/battle/`: battle logic, run-state, save/load.
-- `public/assets/`: runtime art assets.
-- `docs/`: direction, references, implementation notes.
+- `src/game/scenes/` scene flow and UI
+- `src/game/content/` content data (cards, enemies, relics, routes, boons, abilities)
+- `src/game/battle/` battle logic, run-state, save/load
+- `public/assets/` runtime assets
 
-## Run Locally
+## Local Setup
 
-Requirements:
+### Requirements
 
-- Node.js 18+ (recommended)
+- Node.js 18+
 - npm
 
-Install dependencies:
+### Install
 
 ```bash
 npm install
 ```
 
-Run development server:
+### Run Development Server
 
 ```bash
 npm run dev
 ```
 
-Build production bundle:
+### Build
 
 ```bash
 npm run build
 ```
 
-Optional no-telemetry variants:
+### Optional No-Log Scripts
 
 ```bash
 npm run dev-nolog
 npm run build-nolog
 ```
 
-## In Progress
+## Documentation Guide
 
-Active areas still being iterated:
+Start with:
 
-- additional playable domains and bosses,
-- broader content pools (cards, enemies, relics),
-- further route/reward readability polish,
-- ongoing encounter and progression balancing.
+- `docs/README.md`
+
+Main docs structure:
+
+- `docs/overview/` project snapshot and status
+- `docs/systems/` implementation-facing system references
+- `docs/content/` content reference sheets
+- `docs/ui-ux/` interface/readability notes
+- `docs/playtests/` direction doc entry points
+- `docs/implementation/` code anchor and implementation notes
+
+Legacy/supporting direction docs are preserved in `docs/` root for context.
+
+## Next Priorities
+
+1. Expand playable route/domain content while preserving compact run length.
+2. Continue battle readability improvements (intent clarity and UI density control).
+3. Complete reward clarity pass so shard/boon/relic outcomes stay explicit and understandable.
+4. Continue balancing pass for encounter pressure and progression pacing.
+5. Keep docs synchronized with implementation after each system/content update.
