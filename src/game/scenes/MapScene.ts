@@ -4,6 +4,8 @@ import {
   advanceFloorAfterEncounter,
   getCurrentBoon,
   getAvailableRouteChoices,
+  getRunDeck,
+  getRunRelics,
   getRunState,
   getShardTarget,
   grantRandomBoon,
@@ -47,6 +49,8 @@ export class MapScene extends Phaser.Scene {
     const selectedRoute = getRouteById(run.selectedRouteId)
     const statusXp = nextLevelXp === null ? `${run.heroXp}` : `${run.heroXp}/${nextLevelXp}`
     const activeBoon = getCurrentBoon()
+    const runDeck = getRunDeck()
+    const runRelics = getRunRelics()
     const shardProgress = `${run.shardCount}/${getShardTarget()}`
 
     this.input.keyboard?.on('keydown-ESC', () => {
@@ -66,6 +70,60 @@ export class MapScene extends Phaser.Scene {
       fontSize: compactLayout ? '13px' : '14px',
       color: '#bfdbfe',
     }).setOrigin(0.5)
+
+    // Compact run summary is rendered here as a lightweight secondary panel.
+    const summaryPanelX = compactLayout ? 126 : 146
+    const summaryPanelY = compactLayout ? 98 : 104
+    const summaryPanelW = compactLayout ? 224 : 252
+    const summaryPanelH = compactLayout ? 74 : 82
+    this.add.rectangle(summaryPanelX, summaryPanelY, summaryPanelW, summaryPanelH, 0x0f172a, 0.78)
+      .setStrokeStyle(1, 0x334155, 0.88)
+    this.add.text(summaryPanelX - summaryPanelW / 2 + 10, summaryPanelY - 24, 'Run Summary', {
+      fontSize: compactLayout ? '11px' : '12px',
+      color: '#93c5fd',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5)
+    this.add.text(summaryPanelX - summaryPanelW / 2 + 10, summaryPanelY - 2, `Deck ${runDeck.length} cards`, {
+      fontSize: compactLayout ? '12px' : '13px',
+      color: '#dbeafe',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5)
+    this.add.text(summaryPanelX - summaryPanelW / 2 + 10, summaryPanelY + 18, `Relics ${runRelics.length}`, {
+      fontSize: compactLayout ? '12px' : '13px',
+      color: '#cbd5e1',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5)
+    this.add.text(summaryPanelX + summaryPanelW / 2 - 10, summaryPanelY + 28, 'Tap row to inspect', {
+      fontSize: compactLayout ? '10px' : '11px',
+      color: '#64748b',
+      align: 'right',
+    }).setOrigin(1, 0.5)
+
+    const deckInspectHit = this.add.rectangle(summaryPanelX, summaryPanelY - 2, summaryPanelW - 16, 20, 0x000000, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(2)
+    deckInspectHit.on('pointerdown', () => {
+      // Deck inspection is triggered here.
+      const deckLines = runDeck.slice(0, 14).map((card, index) => `${index + 1}. ${card.title} (${card.cost})`)
+      if (runDeck.length > 14) {
+        deckLines.push(`... +${runDeck.length - 14} more`)
+      }
+      this.showInfoListPanel('Deck', `${runDeck.length} cards in current run`, deckLines)
+    })
+
+    const relicInspectHit = this.add.rectangle(summaryPanelX, summaryPanelY + 18, summaryPanelW - 16, 20, 0x000000, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(2)
+    relicInspectHit.on('pointerdown', () => {
+      // Relic inspection is triggered here.
+      const relicLines = runRelics.length > 0
+        ? runRelics.slice(0, 10).map((relic, index) => `${index + 1}. ${relic.name} - ${relic.description}`)
+        : ['No relics collected yet.']
+      if (runRelics.length > 10) {
+        relicLines.push(`... +${runRelics.length - 10} more`)
+      }
+      this.showInfoListPanel('Relics', `${runRelics.length} relics active`, relicLines)
+    })
 
     // Reward status panel: compact shard + boon inspection for current run state.
     // Active boon summary in route selection is rendered here.
@@ -106,6 +164,28 @@ export class MapScene extends Phaser.Scene {
         color: '#475569',
       }).setOrigin(0, 0.5)
     }
+
+    const boonInspectHit = this.add.rectangle(
+      rewardsPanelX,
+      rewardsPanelY + 15,
+      rewardsPanelW - 12,
+      compactLayout ? 38 : 42,
+      0x000000,
+      0.001,
+    ).setInteractive({ useHandCursor: true }).setDepth(2)
+    boonInspectHit.on('pointerdown', () => {
+      // Boon detail inspection is triggered here.
+      if (activeBoon) {
+        this.showInfoListPanel(
+          'Active Boon',
+          'Temporary: consumed in next battle',
+          [activeBoon.name, activeBoon.description],
+        )
+        return
+      }
+
+      this.showInfoListPanel('Active Boon', 'No boon active', ['Visit a utility/rest node to gain a temporary boon.'])
+    })
 
     if (data.rewardToast) {
       this.showRewardToast(data.rewardToast.title, data.rewardToast.detail, data.rewardToast.color)
@@ -556,6 +636,53 @@ export class MapScene extends Phaser.Scene {
       this.input.once('pointerdown', dismiss)
       this.input.keyboard?.once('keydown-SPACE', dismiss)
     })
+  }
+
+  private showInfoListPanel(title: string, subtitle: string, lines: string[]) {
+    const { width, height } = this.scale
+    const cx = width / 2
+    const cy = height / 2
+    const panelW = 560
+    const panelH = 330
+
+    const overlay = this.add.rectangle(cx, cy, width, height, 0x000000, 0.52).setDepth(60)
+    const panel = this.add.rectangle(cx, cy, panelW, panelH, 0x0b1220, 0.96)
+      .setStrokeStyle(2, 0x3b82f6)
+      .setDepth(61)
+    const titleText = this.add.text(cx, cy - 130, title, {
+      fontSize: '24px',
+      color: '#dbeafe',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(62)
+    const subtitleText = this.add.text(cx, cy - 98, subtitle, {
+      fontSize: '13px',
+      color: '#93c5fd',
+      align: 'center',
+    }).setOrigin(0.5).setDepth(62)
+
+    const bodyText = this.add.text(cx - panelW / 2 + 22, cy - 70, lines.join('\n'), {
+      fontSize: '13px',
+      color: '#e2e8f0',
+      lineSpacing: 5,
+      wordWrap: { width: panelW - 44 },
+    }).setOrigin(0, 0).setDepth(62)
+
+    const hintText = this.add.text(cx, cy + panelH / 2 - 24, 'Click or press Space to close', {
+      fontSize: '12px',
+      color: '#64748b',
+    }).setOrigin(0.5).setDepth(62)
+
+    const close = () => {
+      overlay.destroy()
+      panel.destroy()
+      titleText.destroy()
+      subtitleText.destroy()
+      bodyText.destroy()
+      hintText.destroy()
+    }
+
+    this.input.once('pointerdown', close)
+    this.input.keyboard?.once('keydown-SPACE', close)
   }
 
   private showRewardToast(title: string, detail: string, color = '#93c5fd') {
