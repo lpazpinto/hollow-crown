@@ -61,7 +61,10 @@ const ASHEN_ROUTE_LAYOUT_A: RouteGraphLayout = {
     { id: 'mid-battle', label: 'Bog Ambush', encounterType: 'battle', nextNodeIds: ['lane-rest', 'lane-battle'], rewards: { shardChance: SHARD_ROUTE_CHANCE_MEDIUM } },
     { id: 'lane-rest', label: 'Ash Shrine', encounterType: 'rest', nextNodeIds: ['elite-gate'], rewards: { grantsHealing: true, grantsBoon: true } },
     { id: 'lane-battle', label: 'Tarbound Hunt', encounterType: 'battle', nextNodeIds: ['elite-gate'], rewards: { shardChance: SHARD_ROUTE_CHANCE_HIGH } },
-    { id: 'elite-gate', label: 'Knight of Cinders', encounterType: 'elite', nextNodeIds: ['recovery'], rewards: { shardChance: SHARD_ROUTE_CHANCE_GUARANTEED, relicCategoryLabel: RELIC_LABEL_RELIQUARY } },
+    // Elite-to-boss pacing is controlled here: elite leads to a post-elite encounter before the pre-boss rest.
+    { id: 'elite-gate', label: 'Knight of Cinders', encounterType: 'elite', nextNodeIds: ['post-elite'], rewards: { shardChance: SHARD_ROUTE_CHANCE_GUARANTEED, relicCategoryLabel: RELIC_LABEL_RELIQUARY } },
+    { id: 'post-elite', label: 'Smoldering Remnant', encounterType: 'battle', nextNodeIds: ['recovery'], rewards: { shardChance: SHARD_ROUTE_CHANCE_MEDIUM } },
+    // Pre-boss preparation node type is defined here: rest with healing and boon before the boss.
     { id: 'recovery', label: 'Mire Camp', encounterType: 'rest', nextNodeIds: ['boss'], rewards: { grantsHealing: true, grantsBoon: true } },
     { id: 'boss', label: 'Crown Slime Heart', encounterType: 'boss', nextNodeIds: [] },
   ],
@@ -76,7 +79,10 @@ const ASHEN_ROUTE_LAYOUT_B: RouteGraphLayout = {
     { id: 'lower-rest', label: 'Sunken Chapel', encounterType: 'rest', nextNodeIds: ['lower-battle'], rewards: { grantsHealing: true, grantsBoon: true } },
     { id: 'lower-battle', label: 'Swamp Striders', encounterType: 'battle', nextNodeIds: ['merge-elite'], rewards: { shardChance: SHARD_ROUTE_CHANCE_MEDIUM } },
     { id: 'upper-rest', label: 'Kindling Pool', encounterType: 'rest', nextNodeIds: ['merge-elite'], rewards: { grantsHealing: true, grantsBoon: true } },
-    { id: 'merge-elite', label: 'Mire Warden', encounterType: 'elite', nextNodeIds: ['prep'], rewards: { shardChance: SHARD_ROUTE_CHANCE_GUARANTEED, relicCategoryLabel: RELIC_LABEL_SHRINE } },
+    // Elite-to-boss pacing is controlled here: elite leads to a post-elite encounter before the pre-boss rest.
+    { id: 'merge-elite', label: 'Mire Warden', encounterType: 'elite', nextNodeIds: ['post-elite'], rewards: { shardChance: SHARD_ROUTE_CHANCE_GUARANTEED, relicCategoryLabel: RELIC_LABEL_SHRINE } },
+    { id: 'post-elite', label: 'Cinder Courier', encounterType: 'battle', nextNodeIds: ['prep'], rewards: { shardChance: SHARD_ROUTE_CHANCE_MEDIUM } },
+    // Pre-boss preparation node type is defined here: rest with healing and boon before the boss.
     { id: 'prep', label: 'Ember Encampment', encounterType: 'rest', nextNodeIds: ['boss'], rewards: { grantsHealing: true, grantsBoon: true } },
     { id: 'boss', label: 'Corrupted Slime', encounterType: 'boss', nextNodeIds: [] },
   ],
@@ -92,7 +98,10 @@ const THORN_ROUTE_LAYOUT_A: RouteGraphLayout = {
     { id: 'mid-rest', label: 'Rootspring', encounterType: 'rest', nextNodeIds: ['lane-battle', 'lane-rest'] },
     { id: 'lane-battle', label: 'Bramble Hunt', encounterType: 'battle', nextNodeIds: ['elite-gate'] },
     { id: 'lane-rest', label: 'Petal Ward', encounterType: 'rest', nextNodeIds: ['elite-gate'] },
-    { id: 'elite-gate', label: 'Acolyte Vanguard', encounterType: 'elite', nextNodeIds: ['recovery'] },
+    // Elite-to-boss pacing is controlled here: elite leads to a post-elite encounter before the pre-boss rest.
+    { id: 'elite-gate', label: 'Acolyte Vanguard', encounterType: 'elite', nextNodeIds: ['post-elite'] },
+    { id: 'post-elite', label: 'Thornswept Rear', encounterType: 'battle', nextNodeIds: ['recovery'] },
+    // Pre-boss preparation node type is defined here: rest with healing and boon before the boss.
     { id: 'recovery', label: 'Verdant Refuge', encounterType: 'rest', nextNodeIds: ['boss'] },
     { id: 'boss', label: 'Thorn Queen', encounterType: 'boss', nextNodeIds: [] },
   ],
@@ -107,7 +116,10 @@ const THORN_ROUTE_LAYOUT_B: RouteGraphLayout = {
     { id: 'lower-battle', label: 'Briar Corridor', encounterType: 'battle', nextNodeIds: ['merge-battle'] },
     { id: 'upper-battle', label: 'Razorvine Sentinels', encounterType: 'battle', nextNodeIds: ['merge-battle'] },
     { id: 'merge-battle', label: 'Hedge Gauntlet', encounterType: 'battle', nextNodeIds: ['elite-grove'] },
-    { id: 'elite-grove', label: 'Roseguard Champion', encounterType: 'elite', nextNodeIds: ['prep'] },
+    // Elite-to-boss pacing is controlled here: elite leads to a post-elite encounter before the pre-boss rest.
+    { id: 'elite-grove', label: 'Roseguard Champion', encounterType: 'elite', nextNodeIds: ['post-elite'] },
+    { id: 'post-elite', label: 'Briar Vanguard', encounterType: 'battle', nextNodeIds: ['prep'] },
+    // Pre-boss preparation node type is defined here: rest with healing and boon before the boss.
     { id: 'prep', label: 'Sanctified Arbor', encounterType: 'rest', nextNodeIds: ['boss'] },
     { id: 'boss', label: 'Thorn Queen', encounterType: 'boss', nextNodeIds: [] },
   ],
@@ -121,7 +133,10 @@ const LOCKED_ROUTE_LAYOUT: RouteGraphLayout = {
     { id: 'choice', label: 'Crossroads', encounterType: 'battle', nextNodeIds: ['mid'] },
     { id: 'mid', label: 'Depths', encounterType: 'battle', nextNodeIds: ['event'] },
     { id: 'event', label: 'Ritual Site', encounterType: 'rest', nextNodeIds: ['elite'] },
-    { id: 'elite', label: 'Champion', encounterType: 'elite', nextNodeIds: ['prep'] },
+    // Elite-to-boss pacing is controlled here: elite leads to a post-elite encounter before the pre-boss rest.
+    { id: 'elite', label: 'Champion', encounterType: 'elite', nextNodeIds: ['post-elite'] },
+    { id: 'post-elite', label: 'Rear Patrol', encounterType: 'battle', nextNodeIds: ['prep'] },
+    // Pre-boss preparation node type is defined here: rest with healing and boon before the boss.
     { id: 'prep', label: 'Sanctum', encounterType: 'rest', nextNodeIds: ['boss'] },
     { id: 'boss', label: 'Domain Ruler', encounterType: 'boss', nextNodeIds: [] },
   ],
@@ -392,6 +407,11 @@ function createAshenProceduralLayout(layoutId: string, key: number): RouteGraphL
   const hasMidReSplit = ((key >> 1) & 1) === 1
   const laneRestBias = ((key >> 2) & 1) === 1
   const introRestLane = ((key >> 3) & 1) === 1
+  // Elite-to-boss pacing is controlled here: bit 4 of the key determines whether the post-elite
+  // node is a battle (adds shard pressure) or a rest (adds recovery variation). This guarantees
+  // route graph generation always prefers a meaningful encounter between the elite and the prep.
+  const postEliteEncounterType: RouteEncounterType = ((key >> 4) & 1) === 0 ? 'battle' : 'rest'
+  const postEliteLabel = postEliteEncounterType === 'battle' ? 'Cinder Remnant' : 'Ember Hollow'
   const eliteLabelVariant = key % 2 === 0 ? 'Mire Warden' : 'Knight of Cinders'
   const prepLabelVariant = key % 2 === 0 ? 'Kindling Sanctuary' : 'Mire Encampment'
 
@@ -471,12 +491,22 @@ function createAshenProceduralLayout(layoutId: string, key: number): RouteGraphL
       id: 'elite-gate',
       label: eliteLabelVariant,
       encounterType: 'elite',
-      nextNodeIds: ['prep'],
+      nextNodeIds: ['post-elite'],
       rewards: {
         shardChance: SHARD_ROUTE_CHANCE_GUARANTEED,
         relicCategoryLabel: key % 3 === 0 ? RELIC_LABEL_RELIQUARY : (key % 3 === 1 ? RELIC_LABEL_MYSTERIOUS : RELIC_LABEL_CACHE),
       },
     },
+    {
+      id: 'post-elite',
+      label: postEliteLabel,
+      encounterType: postEliteEncounterType,
+      nextNodeIds: ['prep'],
+      rewards: postEliteEncounterType === 'battle'
+        ? { shardChance: SHARD_ROUTE_CHANCE_MEDIUM }
+        : { grantsHealing: true, grantsBoon: true },
+    },
+    // Pre-boss preparation node type is defined here: always a rest with healing and boon.
     {
       id: 'prep',
       label: prepLabelVariant,
