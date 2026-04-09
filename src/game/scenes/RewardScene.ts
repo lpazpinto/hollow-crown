@@ -173,9 +173,9 @@ export class RewardScene extends Phaser.Scene {
 
     if (artKey && this.textures.exists(artKey)) {
       const artImage = this.add.image(x, artWindow.y, artKey)
-      const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
       const maxW = cardWidth - 32
       const maxH = compactLayout ? 66 : 72
+      const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
       const scale = Math.min(maxW / source.width, maxH / source.height)
       artImage.setDisplaySize(source.width * scale, source.height * scale)
       postFrameVisuals.push(artImage)

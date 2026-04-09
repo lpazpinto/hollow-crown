@@ -804,9 +804,9 @@ export class PlayScene extends Phaser.Scene {
 
     if (artKey && this.textures.exists(artKey)) {
       const artImage = this.add.image(x, artWindow.y, artKey)
-      const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
       const maxW = cardWidth - 42
       const maxH = this.compactLayout ? 48 : 56
+      const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
       const scale = Math.min(maxW / source.width, maxH / source.height) * (this.compactLayout ? 1.02 : 1.04)
       artImage.setDisplaySize(source.width * scale, source.height * scale)
       artImage.setData('cardRole', 'art-image')
