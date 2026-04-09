@@ -1560,20 +1560,20 @@ export class PlayScene extends Phaser.Scene {
       const originalScaleX = art.scaleX
       const originalScaleY = art.scaleY
       
-      // Pulse effect: scale up quickly then back down
+      // Pulse effect: scale up quickly (noticeable grow) then smooth bounce back
       this.tweens.add({
         targets: art,
-        scaleX: originalScaleX * 1.15,
-        scaleY: originalScaleY * 1.15,
-        duration: 200,
-        ease: 'Quad.Out',
+        scaleX: originalScaleX * 1.28,
+        scaleY: originalScaleY * 1.28,
+        duration: 300,
+        ease: 'Back.Out',
         onComplete: () => {
-          // Scale back to original size
+          // Scale back to original size with elastic bounce
           this.tweens.add({
             targets: art,
             scaleX: originalScaleX,
             scaleY: originalScaleY,
-            duration: 220,
+            duration: 380,
             ease: 'Elastic.Out',
           })
         },
@@ -1670,7 +1670,7 @@ export class PlayScene extends Phaser.Scene {
     if (kind === 'special') {
       return {
         centerDuration: 320,
-        centerHold: 680,
+        centerHold: 1800,
         centerScale: 1.1,
         artFocusScale: 1.7,
         discardDuration: 100,
@@ -1681,7 +1681,7 @@ export class PlayScene extends Phaser.Scene {
     if (kind === 'basic-skill') {
       return {
         centerDuration: 285,
-        centerHold: 620,
+        centerHold: 1700,
         centerScale: 1.05,
         artFocusScale: 1.62,
         discardDuration: 115,
@@ -1691,7 +1691,7 @@ export class PlayScene extends Phaser.Scene {
 
     return {
       centerDuration: 260,
-      centerHold: 600,
+      centerHold: 1600,
       centerScale: 1.04,
       artFocusScale: 1.58,
       discardDuration: 105,
