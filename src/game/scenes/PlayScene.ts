@@ -820,7 +820,7 @@ export class PlayScene extends Phaser.Scene {
       cardWidth - 24,
       this.compactLayout ? 58 : 66,
       0x0f172a,
-      0.16,
+      0.56,
     ).setStrokeStyle(1, 0x0f172a, 0.34)
     postFrameVisuals.push(artWindow)
 
@@ -829,8 +829,9 @@ export class PlayScene extends Phaser.Scene {
       const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
       const maxW = cardWidth - 28
       const maxH = this.compactLayout ? 54 : 62
-      const scale = Math.min(maxW / source.width, maxH / source.height)
+      const scale = Math.min(maxW / source.width, maxH / source.height) * (this.compactLayout ? 1.18 : 1.22)
       artImage.setDisplaySize(source.width * scale, source.height * scale)
+      artImage.setData('cardRole', 'art-image')
       postFrameVisuals.push(artImage)
     }
 
@@ -1413,6 +1414,28 @@ export class PlayScene extends Phaser.Scene {
     const dy = this.centerActionY - visual.card.y
     visual.card.disableInteractive()
 
+    const artObjects = visual.objects.filter((obj) => {
+      const target = obj as Phaser.GameObjects.GameObject & { getData?: (key: string) => unknown }
+      return target.getData?.('cardRole') === 'art-image'
+    })
+    const nonArtObjects = visual.objects.filter((obj) => !artObjects.includes(obj))
+    const nonArtScaleTargets = nonArtObjects.map((obj) => {
+      const target = obj as Phaser.GameObjects.GameObject & { scaleX: number, scaleY: number }
+      return {
+        target,
+        scaleX: target.scaleX * timing.centerScale,
+        scaleY: target.scaleY * timing.centerScale,
+      }
+    })
+    const artScaleTargets = artObjects.map((obj) => {
+      const target = obj as Phaser.GameObjects.GameObject & { scaleX: number, scaleY: number }
+      return {
+        target,
+        scaleX: target.scaleX * timing.centerScale * timing.artFocusScale,
+        scaleY: target.scaleY * timing.centerScale * timing.artFocusScale,
+      }
+    })
+
     this.tweens.add({
       targets: visual.objects as Phaser.GameObjects.GameObject[],
       x: (_target: unknown, _key: string, _value: number, targetIndex: number, _totalTargets: number) => {
@@ -1423,14 +1446,30 @@ export class PlayScene extends Phaser.Scene {
         const obj = visual.objects[targetIndex] as Phaser.GameObjects.GameObject & { y: number }
         return obj.y + dy
       },
-      scaleX: timing.centerScale,
-      scaleY: timing.centerScale,
       duration: timing.centerDuration,
       ease: kind === 'special' ? 'Back.Out' : 'Cubic.Out',
+    })
+
+    this.tweens.add({
+      targets: nonArtScaleTargets.map((entry) => entry.target),
+      scaleX: (_target: unknown, _key: string, _value: number, targetIndex: number) => nonArtScaleTargets[targetIndex].scaleX,
+      scaleY: (_target: unknown, _key: string, _value: number, targetIndex: number) => nonArtScaleTargets[targetIndex].scaleY,
+      duration: timing.centerDuration,
+      ease: kind === 'special' ? 'Back.Out' : 'Cubic.Out',
+    })
+
+    this.tweens.add({
+      targets: artScaleTargets.map((entry) => entry.target),
+      scaleX: (_target: unknown, _key: string, _value: number, targetIndex: number) => artScaleTargets[targetIndex].scaleX,
+      scaleY: (_target: unknown, _key: string, _value: number, targetIndex: number) => artScaleTargets[targetIndex].scaleY,
+      duration: timing.centerDuration,
+      ease: 'Back.Out',
       onComplete: () => {
         if (kind === 'special') {
           this.cameraPunch(0.0035, 90, 1.01)
         }
+        // Add pulse animation to art image when card reaches center
+        this.animateArtPulse(artObjects)
         this.time.delayedCall(timing.centerHold, onComplete)
       },
     })
@@ -1444,6 +1483,14 @@ export class PlayScene extends Phaser.Scene {
     const timing = this.getCardAnimationTiming(kind)
     const dx = this.discardAnchorX - visual.card.x
     const dy = this.discardAnchorY - visual.card.y
+    const scaleTargets = visual.objects.map((obj) => {
+      const target = obj as Phaser.GameObjects.GameObject & { scaleX: number, scaleY: number }
+      return {
+        target,
+        scaleX: target.scaleX * timing.discardScale,
+        scaleY: target.scaleY * timing.discardScale,
+      }
+    })
 
     this.tweens.add({
       targets: visual.objects as Phaser.GameObjects.GameObject[],
@@ -1456,8 +1503,8 @@ export class PlayScene extends Phaser.Scene {
         return obj.y + dy
       },
       alpha: 0,
-      scaleX: timing.discardScale,
-      scaleY: timing.discardScale,
+      scaleX: (_target: unknown, _key: string, _value: number, targetIndex: number) => scaleTargets[targetIndex].scaleX,
+      scaleY: (_target: unknown, _key: string, _value: number, targetIndex: number) => scaleTargets[targetIndex].scaleY,
       duration: timing.discardDuration,
       ease: kind === 'special' ? 'Back.In' : 'Quad.In',
       onComplete: () => {
@@ -1501,6 +1548,34 @@ export class PlayScene extends Phaser.Scene {
             this.handCardVisuals = []
             onComplete()
           }
+        },
+      })
+    })
+  }
+
+  private animateArtPulse(artObjects: Phaser.GameObjects.GameObject[]) {
+    // Pulse animation for card art when card reaches center
+    artObjects.forEach((artObject) => {
+      const art = artObject as Phaser.GameObjects.GameObject & { scaleX: number, scaleY: number }
+      const originalScaleX = art.scaleX
+      const originalScaleY = art.scaleY
+      
+      // Pulse effect: scale up quickly then back down
+      this.tweens.add({
+        targets: art,
+        scaleX: originalScaleX * 1.15,
+        scaleY: originalScaleY * 1.15,
+        duration: 200,
+        ease: 'Quad.Out',
+        onComplete: () => {
+          // Scale back to original size
+          this.tweens.add({
+            targets: art,
+            scaleX: originalScaleX,
+            scaleY: originalScaleY,
+            duration: 220,
+            ease: 'Elastic.Out',
+          })
         },
       })
     })
@@ -1594,9 +1669,10 @@ export class PlayScene extends Phaser.Scene {
   private getCardAnimationTiming(kind: 'basic-attack' | 'basic-skill' | 'special') {
     if (kind === 'special') {
       return {
-        centerDuration: 175,
-        centerHold: 120,
+        centerDuration: 320,
+        centerHold: 680,
         centerScale: 1.1,
+        artFocusScale: 1.7,
         discardDuration: 100,
         discardScale: 0.78,
       }
@@ -1604,18 +1680,20 @@ export class PlayScene extends Phaser.Scene {
 
     if (kind === 'basic-skill') {
       return {
-        centerDuration: 145,
-        centerHold: 70,
+        centerDuration: 285,
+        centerHold: 620,
         centerScale: 1.05,
+        artFocusScale: 1.62,
         discardDuration: 115,
         discardScale: 0.87,
       }
     }
 
     return {
-      centerDuration: 125,
-      centerHold: 50,
+      centerDuration: 260,
+      centerHold: 600,
       centerScale: 1.04,
+      artFocusScale: 1.58,
       discardDuration: 105,
       discardScale: 0.85,
     }
