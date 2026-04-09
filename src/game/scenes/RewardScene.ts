@@ -28,6 +28,8 @@ const CARD_VISUAL_ASSETS: Array<{ key: string, path: string }> = [
   { key: 'card-frame-attack', path: 'assets/cards/frame-attack.png' },
   { key: 'card-frame-defense', path: 'assets/cards/frame-defense.png' },
   { key: 'card-frame-utility', path: 'assets/cards/frame-utility.png' },
+  { key: 'card-cost-energy', path: 'assets/cards/ui-cost/energy-variant-e-borderless-minimal.png' },
+  { key: 'card-cost-ember', path: 'assets/cards/ui-cost/ember-variant-f-borderless-flame-gem.png' },
   { key: 'card-rarity-overlay-common', path: 'assets/cards/rarity-overlay-common.png' },
   { key: 'card-rarity-overlay-uncommon', path: 'assets/cards/rarity-overlay-uncommon.png' },
   { key: 'card-rarity-overlay-rare', path: 'assets/cards/rarity-overlay-rare.png' },
@@ -216,11 +218,53 @@ export class RewardScene extends Phaser.Scene {
       wordWrap: { width: cardWidth - 36 },
     }).setOrigin(0.5)
 
-    const cost = this.add.text(x, y + (compactLayout ? 88 : 94), `Cost: ${cardData.cost}`, {
-      fontSize: compactLayout ? '14px' : '15px',
+    const energyCost = cardData.cost
+    const emberCost = cardData.emberCost ?? 0
+    const hasEmberCost = emberCost > 0
+    const costBadgeSize = compactLayout ? 36 : 38
+    const energyGem = this.textures.exists('card-cost-energy')
+      ? this.add.image(
+        x + cardWidth / 2 - 28,
+        y - cardHeight / 2 + 30,
+        'card-cost-energy',
+      ).setDisplaySize(costBadgeSize, costBadgeSize)
+      : this.add.circle(
+        x + cardWidth / 2 - 28,
+        y - cardHeight / 2 + 30,
+        compactLayout ? 11 : 12,
+        0x0f172a,
+        0.92,
+      ).setStrokeStyle(2, 0x1f2937, 0.75)
+
+    const emberGem = hasEmberCost
+      ? (this.textures.exists('card-cost-ember')
+        ? this.add.image(
+          energyGem.x,
+          energyGem.y + (compactLayout ? 26 : 28),
+          'card-cost-ember',
+        ).setDisplaySize(costBadgeSize, costBadgeSize)
+        : this.add.circle(
+          energyGem.x,
+          energyGem.y + (compactLayout ? 26 : 28),
+          compactLayout ? 11 : 12,
+          0x7c2d12,
+          0.95,
+        ).setStrokeStyle(2, 0xfb923c, 0.88))
+      : null
+
+    const cost = this.add.text(energyGem.x, energyGem.y, `${energyCost}`, {
+      fontSize: compactLayout ? '15px' : '16px',
       color: '#111827',
       fontStyle: 'bold',
     }).setOrigin(0.5)
+
+    const emberCostText = emberGem
+      ? this.add.text(emberGem.x, emberGem.y, `${emberCost}`, {
+        fontSize: compactLayout ? '12px' : '13px',
+        color: '#111827',
+        fontStyle: 'bold',
+      }).setOrigin(0.5)
+      : null
 
     const rarity = this.add.text(x, y + cardHeight / 2 - (compactLayout ? 20 : 22), `Type: ${frameType.toUpperCase()}`, {
       fontSize: compactLayout ? '13px' : '14px',
@@ -228,7 +272,13 @@ export class RewardScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5)
 
-    const cardObjects = [card, ...visuals, ...postFrameVisuals, titlePlate, title, bodyPlate, description, cost, rarity]
+    const cardObjects = [card, ...visuals, ...postFrameVisuals, energyGem, cost, titlePlate, title, bodyPlate, description, rarity]
+    if (emberGem) {
+      cardObjects.push(emberGem)
+    }
+    if (emberCostText) {
+      cardObjects.push(emberCostText)
+    }
 
     card.on('pointerover', () => {
       cardObjects.forEach((obj) => {

@@ -37,6 +37,8 @@ const CARD_VISUAL_ASSETS: Array<{ key: string, path: string }> = [
   { key: 'card-frame-attack', path: 'assets/cards/frame-attack.png' },
   { key: 'card-frame-defense', path: 'assets/cards/frame-defense.png' },
   { key: 'card-frame-utility', path: 'assets/cards/frame-utility.png' },
+  { key: 'card-cost-energy', path: 'assets/cards/ui-cost/energy-variant-e-borderless-minimal.png' },
+  { key: 'card-cost-ember', path: 'assets/cards/ui-cost/ember-variant-f-borderless-flame-gem.png' },
   { key: 'card-rarity-overlay-common', path: 'assets/cards/rarity-overlay-common.png' },
   { key: 'card-rarity-overlay-uncommon', path: 'assets/cards/rarity-overlay-uncommon.png' },
   { key: 'card-rarity-overlay-rare', path: 'assets/cards/rarity-overlay-rare.png' },
@@ -786,11 +788,6 @@ export class PlayScene extends Phaser.Scene {
     const overlayKey = `card-rarity-overlay-${cardData.rarity}`
     const gemsKey = cardData.rarity === 'common' ? null : `card-rarity-gems-${cardData.rarity}`
     const artKey = this.getCardArtKey(cardData)
-    const cardKindLabel = frameType === 'attack'
-      ? 'Attack'
-      : frameType === 'defense'
-        ? 'Defense'
-        : 'Utility'
 
     const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0xffffff, 0.001)
       .setStrokeStyle(0, 0x000000, 0)
@@ -840,22 +837,40 @@ export class PlayScene extends Phaser.Scene {
       postFrameVisuals.push(gemsImage)
     }
 
-    const typeChip = this.add.text(x - cardWidth / 2 + 9, y - cardHeight / 2 + 6, cardKindLabel, {
-      fontSize: this.compactLayout ? '10px' : '11px',
-      color: '#111827',
-      fontStyle: 'bold',
-      backgroundColor: '#ffffff',
-      padding: { x: 4, y: 1 },
-    }).setOrigin(0, 0)
+    const energyCost = cardData.cost
+    const emberCost = cardData.emberCost ?? 0
+    const hasEmberCost = emberCost > 0
+    const costBadgeSize = this.compactLayout ? 34 : 36
+    const energyGem = this.textures.exists('card-cost-energy')
+      ? this.add.image(
+        x + cardWidth / 2 - 24,
+        y - cardHeight / 2 + 24,
+        'card-cost-energy',
+      ).setDisplaySize(costBadgeSize, costBadgeSize)
+      : this.add.rectangle(
+        x + cardWidth / 2 - 24,
+        y - cardHeight / 2 + 24,
+        costBadgeSize,
+        costBadgeSize,
+        0x0f172a,
+        0.94,
+      ).setStrokeStyle(2, presentation.strokeColor)
 
-    const costGem = this.add.rectangle(
-      x + cardWidth / 2 - 16,
-      y - cardHeight / 2 + 17,
-      this.compactLayout ? 20 : 22,
-      this.compactLayout ? 20 : 22,
-      0x0f172a,
-      0.94,
-    ).setStrokeStyle(2, presentation.strokeColor)
+    const emberGem = hasEmberCost
+      ? (this.textures.exists('card-cost-ember')
+        ? this.add.image(
+          energyGem.x,
+          energyGem.y + (this.compactLayout ? 24 : 26),
+          'card-cost-ember',
+        ).setDisplaySize(costBadgeSize, costBadgeSize)
+        : this.add.circle(
+          energyGem.x,
+          energyGem.y + (this.compactLayout ? 24 : 26),
+          this.compactLayout ? 8 : 9,
+          0x7c2d12,
+          0.95,
+        ).setStrokeStyle(2, 0xfb923c, 0.9))
+      : null
 
     if (!canPlay) {
       card.disableInteractive()
@@ -863,56 +878,64 @@ export class PlayScene extends Phaser.Scene {
         const target = obj as Phaser.GameObjects.GameObject & { setAlpha: (value: number) => void }
         target.setAlpha(0.58)
       })
-      typeChip.setAlpha(0.6)
-      costGem.setAlpha(0.6)
+      energyGem.setAlpha(0.6)
+      emberGem?.setAlpha(0.6)
     }
 
     card.on('pointerdown', () => {
-      this.animatePress(card)
       onClick()
     })
 
+    const titleY = y - cardHeight / 2 + (this.compactLayout ? 35 : 38)
     const titlePlate = this.add.rectangle(
       x,
-      y - cardHeight / 2 + (this.compactLayout ? 31 : 34),
+      titleY,
       cardWidth - 44,
-      this.compactLayout ? 16 : 18,
-      0xf8fafc,
-      0.78,
-    ).setStrokeStyle(1, presentation.strokeColor, 0.38)
+      this.compactLayout ? 20 : 22,
+      0x0f172a,
+      0.22,
+    ).setStrokeStyle(1, 0x94a3b8, 0.35)
 
-    const titleText = this.add.text(x, y - cardHeight / 2 + (this.compactLayout ? 31 : 34), cardData.title, {
-      fontSize: this.compactLayout ? '12px' : '13px',
-      color: '#111827',
+    const titleText = this.add.text(x, titleY, cardData.title, {
+      fontSize: this.compactLayout ? '11px' : '12px',
+      color: '#f8fafc',
+      fontFamily: '"Cinzel", "Georgia", "Times New Roman", serif',
       fontStyle: 'bold',
       wordWrap: { width: cardWidth - 22 },
       align: 'center',
     }).setOrigin(0.5)
 
+    const bodyY = y + (this.compactLayout ? 36 : 41)
     const bodyPlate = this.add.rectangle(
       x,
-      y + (this.compactLayout ? 39 : 43),
+      bodyY,
       cardWidth - 34,
-      this.compactLayout ? 44 : 50,
-      0xf8fafc,
-      0.68,
-    ).setStrokeStyle(1, 0x64748b, 0.28)
+      this.compactLayout ? 48 : 54,
+      0x0f172a,
+      0.18,
+    ).setStrokeStyle(1, 0x94a3b8, 0.24)
 
-    const descriptionText = this.add.text(x, y + (this.compactLayout ? 39 : 43), cardData.description, {
-      fontSize: this.compactLayout ? '9px' : '10px',
-      color: '#111827',
+    const descriptionText = this.add.text(x, bodyY, cardData.description, {
+      fontSize: this.compactLayout ? '8px' : '9px',
+      color: '#e2e8f0',
       align: 'center',
-      wordWrap: { width: cardWidth - 24 },
+      wordWrap: { width: cardWidth - 28 },
+      lineSpacing: this.compactLayout ? 1 : 2,
     }).setOrigin(0.5)
 
-    const emberCost = cardData.emberCost ?? 0
-    const costLabel = emberCost > 0 ? `${cardData.cost}|${emberCost}🔥` : `${cardData.cost}`
-
-    const costText = this.add.text(costGem.x, costGem.y, costLabel, {
-      fontSize: this.compactLayout ? '14px' : '15px',
-      color: '#f8fafc',
+    const costText = this.add.text(energyGem.x, energyGem.y, `${energyCost}`, {
+      fontSize: this.compactLayout ? '13px' : '14px',
+      color: '#111827',
       fontStyle: 'bold',
     }).setOrigin(0.5)
+
+    const emberText = emberGem
+      ? this.add.text(emberGem.x, emberGem.y, `${emberCost}`, {
+        fontSize: this.compactLayout ? '10px' : '11px',
+        color: '#111827',
+        fontStyle: 'bold',
+      }).setOrigin(0.5)
+      : null
 
     const footerLabel = frameType.toUpperCase()
     const footerText = this.add.text(x, y + cardHeight / 2 - (this.compactLayout ? 18 : 20), footerLabel, {
@@ -925,22 +948,29 @@ export class PlayScene extends Phaser.Scene {
       titleText.setAlpha(0.6)
       descriptionText.setAlpha(0.6)
       costText.setAlpha(0.6)
+      emberText?.setAlpha(0.6)
       footerText.setAlpha(0.6)
       titlePlate.setAlpha(0.52)
       bodyPlate.setAlpha(0.5)
+    }
+
+    const costObjects: Phaser.GameObjects.GameObject[] = [energyGem, costText]
+    if (emberGem) {
+      costObjects.push(emberGem)
+    }
+    if (emberText) {
+      costObjects.push(emberText)
     }
 
     return [
       card,
       ...layeredVisuals,
       ...postFrameVisuals,
-      typeChip,
-      costGem,
+      ...costObjects,
       titlePlate,
       titleText,
       bodyPlate,
       descriptionText,
-      costText,
       footerText,
     ]
   }
@@ -1566,8 +1596,8 @@ export class PlayScene extends Phaser.Scene {
       // Pulse effect: scale up then immediately back down with no gap
       this.tweens.add({
         targets: art,
-        scaleX: originalScaleX * 1.28,
-        scaleY: originalScaleY * 1.28,
+        scaleX: originalScaleX * 1.16,
+        scaleY: originalScaleY * 1.16,
         duration: 300,
         ease: 'Quad.Out',
         yoyo: true,
@@ -1667,7 +1697,7 @@ export class PlayScene extends Phaser.Scene {
         centerDuration: 320,
         centerHold: 1050,
         centerScale: 1.25,
-        artFocusScale: 1.7,
+        artFocusScale: 1.28,
         discardDuration: 100,
         discardScale: 0.78,
       }
@@ -1678,7 +1708,7 @@ export class PlayScene extends Phaser.Scene {
         centerDuration: 285,
         centerHold: 950,
         centerScale: 1.22,
-        artFocusScale: 1.62,
+        artFocusScale: 1.24,
         discardDuration: 115,
         discardScale: 0.87,
       }
@@ -1688,7 +1718,7 @@ export class PlayScene extends Phaser.Scene {
       centerDuration: 260,
       centerHold: 850,
       centerScale: 1.2,
-      artFocusScale: 1.58,
+      artFocusScale: 1.2,
       discardDuration: 105,
       discardScale: 0.85,
     }
