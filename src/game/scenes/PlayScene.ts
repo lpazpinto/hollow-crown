@@ -819,9 +819,9 @@ export class PlayScene extends Phaser.Scene {
       y - (this.compactLayout ? 12 : 14),
       cardWidth - 24,
       this.compactLayout ? 58 : 66,
-      0x0f172a,
-      0.56,
-    ).setStrokeStyle(1, 0x0f172a, 0.34)
+      0x3a4a62,
+      0.94,
+    ).setStrokeStyle(2, 0x2a3a52, 0.88)
     postFrameVisuals.push(artWindow)
 
     if (artKey && this.textures.exists(artKey)) {
