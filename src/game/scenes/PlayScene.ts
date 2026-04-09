@@ -484,16 +484,6 @@ export class PlayScene extends Phaser.Scene {
     // Top edge of bottom zone.
     this.add.rectangle(width / 2, bottomBarTopY, width, 2, 0x2d4666).setDepth(1)
 
-    // Hand zone panel — covers only the card playfield, not the pile row.
-    const handPanelCenterX = width / 2
-    const handPanelCenterY = height - (C ? 110 : 123)
-    const handPanelW = C ? 410 : 560
-    const handPanelH = C ? 104 : 120
-    this.add.rectangle(handPanelCenterX, handPanelCenterY, handPanelW, handPanelH, 0x131d2e, 0.9)
-      .setStrokeStyle(1, 0x4b617f, 0.75)
-      .setDepth(0)
-    this.add.rectangle(handPanelCenterX, handPanelCenterY - handPanelH / 2 + 10, handPanelW - 18, 2, 0x6d87a8, 0.6).setDepth(1)
-
     // Hand/deck/discard spacing is controlled here.
     // Pile row sits in its own dedicated zone above the hand panel, separated by a clear gap.
     // pilesY is the vertical center of the pile row zone.
@@ -560,15 +550,6 @@ export class PlayScene extends Phaser.Scene {
       fontSize: C ? '10px' : '11px',
       color: '#3d526a',
     }).setOrigin(0.5).setDepth(2)
-
-    // Pile-to-hand separator line — reshuffle animation anchor area is derived from this layout (above this line).
-    this.add.rectangle(width / 2, height - (C ? 170 : 182), handPanelW, 1, 0x2d3a52, 0.55).setDepth(1)
-    // Hand label sits just above the hand zone panel, below the separator.
-    this.add.text(handPanelCenterX, height - (C ? 168 : 179), 'Hand', {
-      fontSize: C ? '11px' : '12px',
-      color: '#5a7898',
-      fontStyle: 'bold',
-    }).setOrigin(0.5, 1).setDepth(2)
 
     this.drawPileCountText = this.add.text(this.deckAnchorX, this.deckAnchorY + (C ? 29 : 34), '0', {
       fontSize: C ? '13px' : '14px',
@@ -814,7 +795,7 @@ export class PlayScene extends Phaser.Scene {
     const artWindow = this.add.rectangle(
       x,
       y - (this.compactLayout ? 12 : 14),
-      cardWidth - 24,
+      cardWidth - 38,
       this.compactLayout ? 58 : 66,
       0x3a4a62,
       0.94,
@@ -824,9 +805,9 @@ export class PlayScene extends Phaser.Scene {
     if (artKey && this.textures.exists(artKey)) {
       const artImage = this.add.image(x, artWindow.y, artKey)
       const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
-      const maxW = cardWidth - 28
-      const maxH = this.compactLayout ? 54 : 62
-      const scale = Math.min(maxW / source.width, maxH / source.height) * (this.compactLayout ? 1.18 : 1.22)
+      const maxW = cardWidth - 42
+      const maxH = this.compactLayout ? 48 : 56
+      const scale = Math.min(maxW / source.width, maxH / source.height) * (this.compactLayout ? 1.02 : 1.04)
       artImage.setDisplaySize(source.width * scale, source.height * scale)
       artImage.setData('cardRole', 'art-image')
       postFrameVisuals.push(artImage)
@@ -840,32 +821,50 @@ export class PlayScene extends Phaser.Scene {
     const energyCost = cardData.cost
     const emberCost = cardData.emberCost ?? 0
     const hasEmberCost = emberCost > 0
-    const costBadgeSize = this.compactLayout ? 34 : 36
+    const costBadgeSize = this.compactLayout ? 36 : 38
+    const gemBackingRadius = this.compactLayout ? 10 : 11
+    const energyGemBacking = this.add.circle(
+      x + cardWidth / 2 - 8,
+      y - cardHeight / 2 + 22,
+      gemBackingRadius,
+      0xe2e8f0,
+      0.98,
+    ).setStrokeStyle(1, 0x94a3b8, 0.85)
     const energyGem = this.textures.exists('card-cost-energy')
       ? this.add.image(
-        x + cardWidth / 2 - 24,
-        y - cardHeight / 2 + 24,
+        energyGemBacking.x,
+        energyGemBacking.y,
         'card-cost-energy',
       ).setDisplaySize(costBadgeSize, costBadgeSize)
       : this.add.rectangle(
-        x + cardWidth / 2 - 24,
-        y - cardHeight / 2 + 24,
+        energyGemBacking.x,
+        energyGemBacking.y,
         costBadgeSize,
         costBadgeSize,
         0x0f172a,
         0.94,
       ).setStrokeStyle(2, presentation.strokeColor)
 
+    const emberGemBacking = hasEmberCost
+      ? this.add.circle(
+        energyGemBacking.x,
+        energyGemBacking.y + (this.compactLayout ? 24 : 26),
+        gemBackingRadius,
+        0xffedd5,
+        0.98,
+      ).setStrokeStyle(1, 0xfdba74, 0.9)
+      : null
+
     const emberGem = hasEmberCost
       ? (this.textures.exists('card-cost-ember')
         ? this.add.image(
-          energyGem.x,
-          energyGem.y + (this.compactLayout ? 24 : 26),
+          emberGemBacking!.x,
+          emberGemBacking!.y,
           'card-cost-ember',
         ).setDisplaySize(costBadgeSize, costBadgeSize)
         : this.add.circle(
-          energyGem.x,
-          energyGem.y + (this.compactLayout ? 24 : 26),
+          emberGemBacking!.x,
+          emberGemBacking!.y,
           this.compactLayout ? 8 : 9,
           0x7c2d12,
           0.95,
@@ -878,6 +877,8 @@ export class PlayScene extends Phaser.Scene {
         const target = obj as Phaser.GameObjects.GameObject & { setAlpha: (value: number) => void }
         target.setAlpha(0.58)
       })
+      energyGemBacking.setAlpha(0.7)
+      emberGemBacking?.setAlpha(0.7)
       energyGem.setAlpha(0.6)
       emberGem?.setAlpha(0.6)
     }
@@ -886,48 +887,37 @@ export class PlayScene extends Phaser.Scene {
       onClick()
     })
 
-    const titleY = y - cardHeight / 2 + (this.compactLayout ? 35 : 38)
-    const titlePlate = this.add.rectangle(
-      x,
-      titleY,
-      cardWidth - 44,
-      this.compactLayout ? 20 : 22,
-      0x0f172a,
-      0.22,
-    ).setStrokeStyle(1, 0x94a3b8, 0.35)
+    const isLongTitle = cardData.title.length >= 14
+    const titleY = y - cardHeight / 2 + (this.compactLayout ? (isLongTitle ? 38 : 35) : (isLongTitle ? 40 : 38))
 
     const titleText = this.add.text(x, titleY, cardData.title, {
-      fontSize: this.compactLayout ? '11px' : '12px',
+      fontSize: this.compactLayout ? (isLongTitle ? '9px' : '11px') : (isLongTitle ? '10px' : '12px'),
       color: '#f8fafc',
       fontFamily: '"Cinzel", "Georgia", "Times New Roman", serif',
       fontStyle: 'bold',
-      wordWrap: { width: cardWidth - 22 },
+      wordWrap: { width: cardWidth - (this.compactLayout ? 30 : 26) },
       align: 'center',
     }).setOrigin(0.5)
+    titleText.setShadow(0, 1, '#020617', 4, false, true)
 
-    const bodyY = y + (this.compactLayout ? 36 : 41)
-    const bodyPlate = this.add.rectangle(
-      x,
-      bodyY,
-      cardWidth - 34,
-      this.compactLayout ? 48 : 54,
-      0x0f172a,
-      0.18,
-    ).setStrokeStyle(1, 0x94a3b8, 0.24)
+    const bodyY = y + (this.compactLayout ? 38 : 42)
+    const descriptionIsLong = cardData.description.length > 24
 
     const descriptionText = this.add.text(x, bodyY, cardData.description, {
-      fontSize: this.compactLayout ? '8px' : '9px',
+      fontSize: this.compactLayout ? (descriptionIsLong ? '7px' : '8px') : (descriptionIsLong ? '8px' : '9px'),
       color: '#e2e8f0',
       align: 'center',
-      wordWrap: { width: cardWidth - 28 },
+      wordWrap: { width: cardWidth - (this.compactLayout ? 38 : 34) },
       lineSpacing: this.compactLayout ? 1 : 2,
     }).setOrigin(0.5)
+    descriptionText.setShadow(0, 1, '#1e293b', 4, false, true)
 
     const costText = this.add.text(energyGem.x, energyGem.y, `${energyCost}`, {
       fontSize: this.compactLayout ? '13px' : '14px',
       color: '#111827',
       fontStyle: 'bold',
     }).setOrigin(0.5)
+    costText.setShadow(0, 1, '#f8fafc', 2, false, true)
 
     const emberText = emberGem
       ? this.add.text(emberGem.x, emberGem.y, `${emberCost}`, {
@@ -936,6 +926,7 @@ export class PlayScene extends Phaser.Scene {
         fontStyle: 'bold',
       }).setOrigin(0.5)
       : null
+    emberText?.setShadow(0, 1, '#fff7ed', 2, false, true)
 
     const footerLabel = frameType.toUpperCase()
     const footerText = this.add.text(x, y + cardHeight / 2 - (this.compactLayout ? 18 : 20), footerLabel, {
@@ -943,6 +934,7 @@ export class PlayScene extends Phaser.Scene {
       color: '#111827',
       fontStyle: 'bold',
     }).setOrigin(0.5)
+    footerText.setShadow(0, 1, '#f8fafc', 2, false, true)
 
     if (!canPlay) {
       titleText.setAlpha(0.6)
@@ -950,11 +942,12 @@ export class PlayScene extends Phaser.Scene {
       costText.setAlpha(0.6)
       emberText?.setAlpha(0.6)
       footerText.setAlpha(0.6)
-      titlePlate.setAlpha(0.52)
-      bodyPlate.setAlpha(0.5)
     }
 
-    const costObjects: Phaser.GameObjects.GameObject[] = [energyGem, costText]
+    const costObjects: Phaser.GameObjects.GameObject[] = [energyGemBacking, energyGem, costText]
+    if (emberGemBacking) {
+      costObjects.push(emberGemBacking)
+    }
     if (emberGem) {
       costObjects.push(emberGem)
     }
@@ -967,9 +960,7 @@ export class PlayScene extends Phaser.Scene {
       ...layeredVisuals,
       ...postFrameVisuals,
       ...costObjects,
-      titlePlate,
       titleText,
-      bodyPlate,
       descriptionText,
       footerText,
     ]
@@ -1445,6 +1436,11 @@ export class PlayScene extends Phaser.Scene {
     const timing = this.getCardAnimationTiming(kind)
     const dx = this.centerActionX - visual.card.x
     const dy = this.centerActionY - visual.card.y
+    const cardStartX = visual.card.x
+    const cardStartY = visual.card.y
+    const cardFinalX = cardStartX + dx
+    const cardFinalY = cardStartY + dy
+    const s = timing.centerScale
     visual.card.disableInteractive()
 
     const artObjects = visual.objects.filter((obj) => {
@@ -1473,11 +1469,11 @@ export class PlayScene extends Phaser.Scene {
       targets: visual.objects as Phaser.GameObjects.GameObject[],
       x: (_target: unknown, _key: string, _value: number, targetIndex: number, _totalTargets: number) => {
         const obj = visual.objects[targetIndex] as Phaser.GameObjects.GameObject & { x: number }
-        return obj.x + dx
+        return cardFinalX + (obj.x - cardStartX) * s
       },
       y: (_target: unknown, _key: string, _value: number, targetIndex: number, _totalTargets: number) => {
         const obj = visual.objects[targetIndex] as Phaser.GameObjects.GameObject & { y: number }
-        return obj.y + dy
+        return cardFinalY + (obj.y - cardStartY) * s
       },
       duration: timing.centerDuration,
       ease: kind === 'special' ? 'Back.Out' : 'Cubic.Out',
@@ -1697,7 +1693,7 @@ export class PlayScene extends Phaser.Scene {
         centerDuration: 320,
         centerHold: 1050,
         centerScale: 1.25,
-        artFocusScale: 1.28,
+        artFocusScale: 1.0,
         discardDuration: 100,
         discardScale: 0.78,
       }
@@ -1708,7 +1704,7 @@ export class PlayScene extends Phaser.Scene {
         centerDuration: 285,
         centerHold: 950,
         centerScale: 1.22,
-        artFocusScale: 1.24,
+        artFocusScale: 1.0,
         discardDuration: 115,
         discardScale: 0.87,
       }
@@ -1718,7 +1714,7 @@ export class PlayScene extends Phaser.Scene {
       centerDuration: 260,
       centerHold: 850,
       centerScale: 1.2,
-      artFocusScale: 1.2,
+      artFocusScale: 1.0,
       discardDuration: 105,
       discardScale: 0.85,
     }
@@ -1774,8 +1770,16 @@ export class PlayScene extends Phaser.Scene {
         && this.session.state.ember >= emberCost
       if (canPlay) {
         cardVisual.setInteractive({ useHandCursor: true })
+        visual.objects.forEach((obj) => {
+          const target = obj as Phaser.GameObjects.GameObject & { setAlpha?: (value: number) => void }
+          target.setAlpha?.(1)
+        })
       } else {
         cardVisual.disableInteractive()
+        visual.objects.forEach((obj) => {
+          const target = obj as Phaser.GameObjects.GameObject & { setAlpha?: (value: number) => void }
+          target.setAlpha?.(0.6)
+        })
       }
     })
   }
