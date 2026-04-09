@@ -9,6 +9,7 @@ import {
   getCardBaseId,
   generateRewardChoices,
   getCardById,
+  getCardType,
   type CardContent,
   type RewardEncounterType,
 } from '../content/cards'
@@ -260,15 +261,7 @@ export class RewardScene extends Phaser.Scene {
   }
 
   private getCardFrameType(card: CardContent): 'attack' | 'defense' | 'utility' {
-    if (card.effectType === 'damage') {
-      return 'attack'
-    }
-
-    if (card.effectType === 'armor') {
-      return 'defense'
-    }
-
-    return 'utility'
+    return getCardType(card)
   }
 
   private getCardArtKey(card: CardContent): string | null {

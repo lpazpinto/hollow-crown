@@ -2,6 +2,7 @@ import type { CardEffectType } from '../battle/battleLogic'
 
 export type CardRarity = 'common' | 'uncommon' | 'rare'
 export type RewardEncounterType = 'battle' | 'elite' | 'boss'
+export type CardType = 'attack' | 'defense' | 'utility'
 
 export type CardContent = {
   id: string
@@ -12,6 +13,15 @@ export type CardContent = {
   cost: number
   emberCost?: number
   rarity: CardRarity
+}
+
+const CARD_TYPE_OVERRIDES: Record<string, CardType> = {
+  // Charge is a tempo/utility action (draw + ember usage) with defensive value.
+  charge: 'utility',
+  // Crown Diamonds is resource setup utility.
+  'crown-diamonds': 'utility',
+  // Reliquary Pulse is ember conversion/card flow utility.
+  'reliquary-pulse': 'utility',
 }
 
 export const UN1_CARD_POOL: CardContent[] = [
@@ -182,6 +192,24 @@ export function getCardById(cardId: string): CardContent | null {
   const allCards = [...UN1_CARD_POOL, ...SIGNATURE_CARD_POOL]
   const match = allCards.find((card) => card.id === cardId)
   return match ? { ...match } : null
+}
+
+export function getCardType(card: CardContent): CardType {
+  const baseId = getCardBaseId(card.id)
+  const override = CARD_TYPE_OVERRIDES[baseId]
+  if (override) {
+    return override
+  }
+
+  if (card.effectType === 'damage') {
+    return 'attack'
+  }
+
+  if (card.effectType === 'armor') {
+    return 'defense'
+  }
+
+  return 'utility'
 }
 
 export function createUpgradedCard(card: CardContent): CardContent {

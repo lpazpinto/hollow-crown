@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { checkBattleOutcome, type BattleState } from '../battle/battleLogic'
 import { type BoonContent } from '../content/boons'
-import { getCardBaseId, type CardContent } from '../content/cards'
+import { getCardBaseId, getCardType, type CardContent } from '../content/cards'
 import { getRouteById } from '../content/routes'
 import { getEnemyIntentActions, type EnemyIntentAction } from '../content/enemies'
 import {
@@ -786,11 +786,11 @@ export class PlayScene extends Phaser.Scene {
     const overlayKey = `card-rarity-overlay-${cardData.rarity}`
     const gemsKey = cardData.rarity === 'common' ? null : `card-rarity-gems-${cardData.rarity}`
     const artKey = this.getCardArtKey(cardData)
-    const cardKindLabel = presentation.kind === 'basic-attack'
+    const cardKindLabel = frameType === 'attack'
       ? 'Attack'
-      : presentation.kind === 'basic-skill'
-        ? 'Skill'
-        : 'Special'
+      : frameType === 'defense'
+        ? 'Defense'
+        : 'Utility'
 
     const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0xffffff, 0.001)
       .setStrokeStyle(0, 0x000000, 0)
@@ -2030,15 +2030,7 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private getCardFrameType(card: CardContent): 'attack' | 'defense' | 'utility' {
-    if (card.effectType === 'damage') {
-      return 'attack'
-    }
-
-    if (card.effectType === 'armor') {
-      return 'defense'
-    }
-
-    return 'utility'
+    return getCardType(card)
   }
 
   private getCardArtKey(card: CardContent): string | null {

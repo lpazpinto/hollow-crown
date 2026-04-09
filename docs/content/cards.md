@@ -11,8 +11,21 @@ Living reference for card data, reward usage, and current content scope.
 Defined in `src/game/content/cards.ts`:
 
 - `CardContent`: id, title, description, effectType, value, cost, optional emberCost, rarity
+- Card UI type system: `attack | defense | utility` (resolved by `getCardType()`)
 - Rarity tiers: common, uncommon, rare
 - Reward encounter types: battle, elite, boss
+
+### Card Type Rules (UI + Frame)
+
+- `attack`: direct damage-focused cards
+- `defense`: armor/protection-focused cards
+- `utility`: setup, draw, ember management, or hybrid tempo cards
+
+Current explicit utility overrides in implementation:
+
+- Charge
+- Crown Diamonds
+- Reliquary Pulse
 
 ### Cost Types
 
@@ -22,9 +35,9 @@ Defined in `src/game/content/cards.ts`:
 ### Starter Deck (Run Start)
 
 - Unicorn Strike x3
-- Golden Shield x3
-- Charge x1
-- Crown Diamonds x1
+- Golden Shield x3 (Defense, blue frame)
+- Charge x1 (Utility, green frame)
+- Crown Diamonds x1 (Utility, green frame)
 
 ### Implemented Reward/Pool Content
 
