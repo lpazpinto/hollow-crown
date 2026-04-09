@@ -48,6 +48,14 @@ const CARD_VISUAL_ASSETS: Array<{ key: string, path: string }> = [
   { key: 'card-art-golden-shield', path: 'assets/cards/art-golden-shield.png' },
   { key: 'card-art-charge', path: 'assets/cards/art-charge.png' },
   { key: 'card-art-crown-diamonds', path: 'assets/cards/art-crown-diamonds.png' },
+  { key: 'card-art-bg-unicorn-strike', path: 'assets/cards/art-bg-unicorn-strike.png' },
+  { key: 'card-art-bg-golden-shield', path: 'assets/cards/art-bg-golden-shield.png' },
+  { key: 'card-art-bg-charge', path: 'assets/cards/art-bg-charge.png' },
+  { key: 'card-art-bg-crown-diamonds', path: 'assets/cards/art-bg-crown-diamonds.png' },
+  { key: 'card-art-fg-unicorn-strike', path: 'assets/cards/art-fg-unicorn-strike.png' },
+  { key: 'card-art-fg-golden-shield', path: 'assets/cards/art-fg-golden-shield.png' },
+  { key: 'card-art-fg-charge', path: 'assets/cards/art-fg-charge.png' },
+  { key: 'card-art-fg-crown-diamonds', path: 'assets/cards/art-fg-crown-diamonds.png' },
 ]
 
 export class PlayScene extends Phaser.Scene {
@@ -768,6 +776,7 @@ export class PlayScene extends Phaser.Scene {
     const frameKey = `card-frame-${frameType}`
     const overlayKey = `card-rarity-overlay-${cardData.rarity}`
     const gemsKey = cardData.rarity === 'common' ? null : `card-rarity-gems-${cardData.rarity}`
+    const artBgKey = this.getCardArtBackgroundKey(cardData)
     const artKey = this.getCardArtKey(cardData)
 
     const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0xffffff, 0.001)
@@ -787,25 +796,54 @@ export class PlayScene extends Phaser.Scene {
       layeredVisuals.push(fallbackUnderlay)
     }
 
-    if (this.textures.exists(frameKey)) {
-      const frameImage = this.add.image(x, y, frameKey).setDisplaySize(cardWidth, cardHeight)
-      layeredVisuals.push(frameImage)
-    }
-
+    const artWindowWidth = cardWidth - 38
+    const artWindowHeight = this.compactLayout ? 58 : 66
     const artWindow = this.add.rectangle(
       x,
       y - (this.compactLayout ? 12 : 14),
-      cardWidth - 38,
-      this.compactLayout ? 58 : 66,
+      artWindowWidth,
+      artWindowHeight,
       0x3a4a62,
-      0.94,
-    ).setStrokeStyle(2, 0x2a3a52, 0.88)
+      0,
+    ).setStrokeStyle(0, 0x000000, 0)
     postFrameVisuals.push(artWindow)
+
+    const artMaskShape = this.add.graphics()
+    artMaskShape.fillStyle(0xffffff, 1)
+    artMaskShape.fillRect(
+      artWindow.x - artWindowWidth / 2,
+      artWindow.y - artWindowHeight / 2,
+      artWindowWidth,
+      artWindowHeight,
+    )
+    artMaskShape.setVisible(false)
+    const artMask = artMaskShape.createGeometryMask()
+    postFrameVisuals.push(artMaskShape)
+
+    const maxW = cardWidth - 42
+    const maxH = this.compactLayout ? 48 : 56
+
+    if (artBgKey && this.textures.exists(artBgKey)) {
+      const artBgImage = this.add.image(x, artWindow.y, artBgKey)
+      artBgImage.setDisplaySize(artWindowWidth * 1.16, artWindowHeight * 1.16)
+      artBgImage.setMask(artMask)
+      artBgImage.setData('cardRole', 'art-bg-image')
+      postFrameVisuals.push(artBgImage)
+    }
+
+    if (this.textures.exists(frameKey)) {
+      const frameShadow = this.add.image(x + 2, y + 3, frameKey)
+        .setDisplaySize(cardWidth, cardHeight)
+        .setTintFill(0x000000)
+        .setAlpha(0.28)
+      postFrameVisuals.push(frameShadow)
+
+      const frameImage = this.add.image(x, y, frameKey).setDisplaySize(cardWidth, cardHeight)
+      postFrameVisuals.push(frameImage)
+    }
 
     if (artKey && this.textures.exists(artKey)) {
       const artImage = this.add.image(x, artWindow.y, artKey)
-      const maxW = cardWidth - 42
-      const maxH = this.compactLayout ? 48 : 56
       const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
       const scale = Math.min(maxW / source.width, maxH / source.height) * (this.compactLayout ? 1.02 : 1.04)
       artImage.setDisplaySize(source.width * scale, source.height * scale)
@@ -2067,10 +2105,21 @@ export class PlayScene extends Phaser.Scene {
     return getCardType(card)
   }
 
+  private getCardArtBackgroundKey(card: CardContent): string | null {
+    const baseId = getCardBaseId(card.id)
+    const artKey = `card-art-bg-${baseId}`
+    return this.textures.exists(artKey) ? artKey : null
+  }
+
   private getCardArtKey(card: CardContent): string | null {
     const baseId = getCardBaseId(card.id)
-    const artKey = `card-art-${baseId}`
-    return this.textures.exists(artKey) ? artKey : null
+    const foregroundArtKey = `card-art-fg-${baseId}`
+    if (this.textures.exists(foregroundArtKey)) {
+      return foregroundArtKey
+    }
+
+    const fallbackArtKey = `card-art-${baseId}`
+    return this.textures.exists(fallbackArtKey) ? fallbackArtKey : null
   }
 
   private getCardPresentation(card: CardContent): {
