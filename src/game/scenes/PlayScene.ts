@@ -798,6 +798,9 @@ export class PlayScene extends Phaser.Scene {
 
     const artWindowWidth = cardWidth - 38
     const artWindowHeight = this.compactLayout ? 58 : 66
+    const artHoleInset = this.compactLayout ? 5 : 6
+    const artHoleWidth = artWindowWidth - artHoleInset * 2
+    const artHoleHeight = artWindowHeight - artHoleInset * 2
     const artWindow = this.add.rectangle(
       x,
       y - (this.compactLayout ? 12 : 14),
@@ -811,10 +814,10 @@ export class PlayScene extends Phaser.Scene {
     const artMaskShape = this.add.graphics()
     artMaskShape.fillStyle(0xffffff, 1)
     artMaskShape.fillRect(
-      artWindow.x - artWindowWidth / 2,
-      artWindow.y - artWindowHeight / 2,
-      artWindowWidth,
-      artWindowHeight,
+      artWindow.x - artHoleWidth / 2,
+      artWindow.y - artHoleHeight / 2,
+      artHoleWidth,
+      artHoleHeight,
     )
     artMaskShape.setVisible(false)
     const artMask = artMaskShape.createGeometryMask()
@@ -823,29 +826,114 @@ export class PlayScene extends Phaser.Scene {
     const maxW = cardWidth - 42
     const maxH = this.compactLayout ? 48 : 56
 
-    if (artBgKey && this.textures.exists(artBgKey)) {
-      const artBgImage = this.add.image(x, artWindow.y, artBgKey)
-      artBgImage.setDisplaySize(artWindowWidth * 1.16, artWindowHeight * 1.16)
-      artBgImage.setMask(artMask)
-      artBgImage.setData('cardRole', 'art-bg-image')
-      postFrameVisuals.push(artBgImage)
-    }
-
     if (this.textures.exists(frameKey)) {
       const frameShadow = this.add.image(x + 2, y + 3, frameKey)
         .setDisplaySize(cardWidth, cardHeight)
         .setTintFill(0x000000)
-        .setAlpha(0.28)
+        .setAlpha(0.34)
       postFrameVisuals.push(frameShadow)
 
       const frameImage = this.add.image(x, y, frameKey).setDisplaySize(cardWidth, cardHeight)
       postFrameVisuals.push(frameImage)
     }
 
+    if (artBgKey && this.textures.exists(artBgKey)) {
+      const artBgImage = this.add.image(x, artWindow.y, artBgKey)
+      artBgImage.setDisplaySize(artHoleWidth * 1.16, artHoleHeight * 1.16)
+      artBgImage.setMask(artMask)
+      artBgImage.setData('cardRole', 'art-bg-image')
+      postFrameVisuals.push(artBgImage)
+
+      // Inset-window inner shadows to fake recessed depth.
+      const topShadow = this.add.rectangle(
+        artWindow.x,
+        artWindow.y - artHoleHeight / 2 + 2,
+        artHoleWidth,
+        this.compactLayout ? 5 : 6,
+        0x000000,
+        0.42,
+      )
+      topShadow.setMask(artMask)
+      postFrameVisuals.push(topShadow)
+
+      const leftShadow = this.add.rectangle(
+        artWindow.x - artHoleWidth / 2 + 2,
+        artWindow.y,
+        this.compactLayout ? 5 : 6,
+        artHoleHeight,
+        0x000000,
+        0.3,
+      )
+      leftShadow.setMask(artMask)
+      postFrameVisuals.push(leftShadow)
+
+      const ambientDarken = this.add.rectangle(
+        artWindow.x,
+        artWindow.y,
+        artHoleWidth,
+        artHoleHeight,
+        0x000000,
+        0.12,
+      )
+      ambientDarken.setMask(artMask)
+      postFrameVisuals.push(ambientDarken)
+
+      const bottomShadow = this.add.rectangle(
+        artWindow.x,
+        artWindow.y + artHoleHeight / 2 - 2,
+        artHoleWidth,
+        this.compactLayout ? 4 : 5,
+        0x000000,
+        0.26,
+      )
+      bottomShadow.setMask(artMask)
+      postFrameVisuals.push(bottomShadow)
+
+      const rightShadow = this.add.rectangle(
+        artWindow.x + artHoleWidth / 2 - 2,
+        artWindow.y,
+        this.compactLayout ? 4 : 5,
+        artHoleHeight,
+        0x000000,
+        0.26,
+      )
+      rightShadow.setMask(artMask)
+      postFrameVisuals.push(rightShadow)
+
+      const holeFrameDark = this.add.rectangle(
+        artWindow.x,
+        artWindow.y,
+        artHoleWidth + 2,
+        artHoleHeight + 2,
+        0x000000,
+        0,
+      ).setStrokeStyle(2, 0x1a2437, 0.88)
+      postFrameVisuals.push(holeFrameDark)
+
+      const holeFrameLight = this.add.rectangle(
+        artWindow.x,
+        artWindow.y,
+        artHoleWidth,
+        artHoleHeight,
+        0x000000,
+        0,
+      ).setStrokeStyle(1, 0x93a8bf, 0.36)
+      postFrameVisuals.push(holeFrameLight)
+    }
+
     if (artKey && this.textures.exists(artKey)) {
-      const artImage = this.add.image(x, artWindow.y, artKey)
       const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
       const scale = Math.min(maxW / source.width, maxH / source.height) * (this.compactLayout ? 1.02 : 1.04)
+
+      const artShadow = this.add.image(x + 1.5, artWindow.y + 2.5, artKey)
+      artShadow.setDisplaySize(source.width * scale * 0.9, source.height * scale * 0.9)
+      artShadow.setTintFill(0x000000)
+      artShadow.setAlpha(0.2)
+      artShadow.setMask(artMask)
+      artShadow.setData('cardRole', 'art-fg-shadow')
+      postFrameVisuals.push(artShadow)
+
+      const artImage = this.add.image(x, artWindow.y, artKey)
       artImage.setDisplaySize(source.width * scale, source.height * scale)
       artImage.setData('cardRole', 'art-image')
       postFrameVisuals.push(artImage)
@@ -1485,6 +1573,10 @@ export class PlayScene extends Phaser.Scene {
       const target = obj as Phaser.GameObjects.GameObject & { getData?: (key: string) => unknown }
       return target.getData?.('cardRole') === 'art-image'
     })
+    const artShadowObjects = visual.objects.filter((obj) => {
+      const target = obj as Phaser.GameObjects.GameObject & { getData?: (key: string) => unknown }
+      return target.getData?.('cardRole') === 'art-fg-shadow'
+    })
     const nonArtObjects = visual.objects.filter((obj) => !artObjects.includes(obj))
     const nonArtScaleTargets = nonArtObjects.map((obj) => {
       const target = obj as Phaser.GameObjects.GameObject & { scaleX: number, scaleY: number }
@@ -1536,7 +1628,7 @@ export class PlayScene extends Phaser.Scene {
           this.cameraPunch(0.0035, 90, 1.01)
         }
         // Add pulse animation to art image when card reaches center
-        this.animateArtPulse(artObjects)
+        this.animateArtPulse(artObjects, artShadowObjects)
         this.time.delayedCall(timing.centerHold, onComplete)
       },
     })
@@ -1620,7 +1712,10 @@ export class PlayScene extends Phaser.Scene {
     })
   }
 
-  private animateArtPulse(artObjects: Phaser.GameObjects.GameObject[]) {
+  private animateArtPulse(
+    artObjects: Phaser.GameObjects.GameObject[],
+    artShadowObjects: Phaser.GameObjects.GameObject[],
+  ) {
     // Pulse animation for card art when card reaches center
     artObjects.forEach((artObject) => {
       const art = artObject as Phaser.GameObjects.GameObject & { scaleX: number, scaleY: number }
@@ -1632,6 +1727,22 @@ export class PlayScene extends Phaser.Scene {
         targets: art,
         scaleX: originalScaleX * 1.16,
         scaleY: originalScaleY * 1.16,
+        duration: 300,
+        ease: 'Quad.Out',
+        yoyo: true,
+        hold: 0,
+      })
+    })
+
+    artShadowObjects.forEach((shadowObject) => {
+      const shadow = shadowObject as Phaser.GameObjects.GameObject & { scaleX: number, scaleY: number }
+      const originalScaleX = shadow.scaleX
+      const originalScaleY = shadow.scaleY
+
+      this.tweens.add({
+        targets: shadow,
+        scaleX: originalScaleX * 1.08,
+        scaleY: originalScaleY * 1.08,
         duration: 300,
         ease: 'Quad.Out',
         yoyo: true,

@@ -168,6 +168,9 @@ export class RewardScene extends Phaser.Scene {
 
     const artWindowWidth = cardWidth - 28
     const artWindowHeight = compactLayout ? 72 : 78
+    const artHoleInset = compactLayout ? 6 : 7
+    const artHoleWidth = artWindowWidth - artHoleInset * 2
+    const artHoleHeight = artWindowHeight - artHoleInset * 2
     const artWindow = this.add.rectangle(
       x,
       y - (compactLayout ? 18 : 20),
@@ -181,10 +184,10 @@ export class RewardScene extends Phaser.Scene {
     const artMaskShape = this.add.graphics()
     artMaskShape.fillStyle(0xffffff, 1)
     artMaskShape.fillRect(
-      artWindow.x - artWindowWidth / 2,
-      artWindow.y - artWindowHeight / 2,
-      artWindowWidth,
-      artWindowHeight,
+      artWindow.x - artHoleWidth / 2,
+      artWindow.y - artHoleHeight / 2,
+      artHoleWidth,
+      artHoleHeight,
     )
     artMaskShape.setVisible(false)
     const artMask = artMaskShape.createGeometryMask()
@@ -193,28 +196,112 @@ export class RewardScene extends Phaser.Scene {
     const maxW = cardWidth - 32
     const maxH = compactLayout ? 66 : 72
 
-    if (artBgKey && this.textures.exists(artBgKey)) {
-      const artBgImage = this.add.image(x, artWindow.y, artBgKey)
-      artBgImage.setDisplaySize(artWindowWidth * 1.16, artWindowHeight * 1.16)
-      artBgImage.setMask(artMask)
-      postFrameVisuals.push(artBgImage)
-    }
-
     if (this.textures.exists(frameKey)) {
       const frameShadow = this.add.image(x + 2, y + 3, frameKey)
         .setDisplaySize(cardWidth, cardHeight)
         .setTintFill(0x000000)
-        .setAlpha(0.28)
+        .setAlpha(0.34)
       postFrameVisuals.push(frameShadow)
 
       const frameImage = this.add.image(x, y, frameKey).setDisplaySize(cardWidth, cardHeight)
       postFrameVisuals.push(frameImage)
     }
 
+    if (artBgKey && this.textures.exists(artBgKey)) {
+      const artBgImage = this.add.image(x, artWindow.y, artBgKey)
+      artBgImage.setDisplaySize(artHoleWidth * 1.16, artHoleHeight * 1.16)
+      artBgImage.setMask(artMask)
+      postFrameVisuals.push(artBgImage)
+
+      // Inset-window inner shadows to fake recessed depth.
+      const topShadow = this.add.rectangle(
+        artWindow.x,
+        artWindow.y - artHoleHeight / 2 + 2,
+        artHoleWidth,
+        compactLayout ? 6 : 7,
+        0x000000,
+        0.42,
+      )
+      topShadow.setMask(artMask)
+      postFrameVisuals.push(topShadow)
+
+      const leftShadow = this.add.rectangle(
+        artWindow.x - artHoleWidth / 2 + 2,
+        artWindow.y,
+        compactLayout ? 6 : 7,
+        artHoleHeight,
+        0x000000,
+        0.3,
+      )
+      leftShadow.setMask(artMask)
+      postFrameVisuals.push(leftShadow)
+
+      const ambientDarken = this.add.rectangle(
+        artWindow.x,
+        artWindow.y,
+        artHoleWidth,
+        artHoleHeight,
+        0x000000,
+        0.12,
+      )
+      ambientDarken.setMask(artMask)
+      postFrameVisuals.push(ambientDarken)
+
+      const bottomShadow = this.add.rectangle(
+        artWindow.x,
+        artWindow.y + artHoleHeight / 2 - 2,
+        artHoleWidth,
+        compactLayout ? 5 : 6,
+        0x000000,
+        0.26,
+      )
+      bottomShadow.setMask(artMask)
+      postFrameVisuals.push(bottomShadow)
+
+      const rightShadow = this.add.rectangle(
+        artWindow.x + artHoleWidth / 2 - 2,
+        artWindow.y,
+        compactLayout ? 5 : 6,
+        artHoleHeight,
+        0x000000,
+        0.26,
+      )
+      rightShadow.setMask(artMask)
+      postFrameVisuals.push(rightShadow)
+
+      const holeFrameDark = this.add.rectangle(
+        artWindow.x,
+        artWindow.y,
+        artHoleWidth + 2,
+        artHoleHeight + 2,
+        0x000000,
+        0,
+      ).setStrokeStyle(2, 0x1a2437, 0.88)
+      postFrameVisuals.push(holeFrameDark)
+
+      const holeFrameLight = this.add.rectangle(
+        artWindow.x,
+        artWindow.y,
+        artHoleWidth,
+        artHoleHeight,
+        0x000000,
+        0,
+      ).setStrokeStyle(1, 0x93a8bf, 0.36)
+      postFrameVisuals.push(holeFrameLight)
+    }
+
     if (artKey && this.textures.exists(artKey)) {
-      const artImage = this.add.image(x, artWindow.y, artKey)
       const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
       const scale = Math.min(maxW / source.width, maxH / source.height)
+
+      const artShadow = this.add.image(x + 1.5, artWindow.y + 2.5, artKey)
+      artShadow.setDisplaySize(source.width * scale * 0.9, source.height * scale * 0.9)
+      artShadow.setTintFill(0x000000)
+      artShadow.setAlpha(0.2)
+      artShadow.setMask(artMask)
+      postFrameVisuals.push(artShadow)
+
+      const artImage = this.add.image(x, artWindow.y, artKey)
       artImage.setDisplaySize(source.width * scale, source.height * scale)
       postFrameVisuals.push(artImage)
     }
