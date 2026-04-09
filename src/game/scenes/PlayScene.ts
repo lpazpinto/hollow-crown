@@ -961,6 +961,9 @@ export class PlayScene extends Phaser.Scene {
     const previousState = this.cloneBattleState(this.session.state)
     const previousPhase = this.session.enemyPhase
     const visual = this.handCardVisuals[cardIndex]
+    const cardTiming = this.getCardAnimationTiming(presentation.kind)
+    const centerFallbackDelay = cardTiming.centerDuration + cardTiming.centerHold + 80
+    const impactFallbackDelay = 180
     let cardResolutionFinished = false
     let playResolved = false
 
@@ -1035,14 +1038,14 @@ export class PlayScene extends Phaser.Scene {
 
       this.playHeroCardAction(presentation.kind, resolveImpact)
 
-      this.time.delayedCall(320, () => {
+      this.time.delayedCall(impactFallbackDelay, () => {
         resolveImpact()
       })
     }
 
     if (visual) {
       this.animateCardToCenter(visual, presentation.kind, resolvePlay)
-      this.time.delayedCall(420, () => {
+      this.time.delayedCall(centerFallbackDelay, () => {
         resolvePlay()
       })
       return
@@ -1560,23 +1563,15 @@ export class PlayScene extends Phaser.Scene {
       const originalScaleX = art.scaleX
       const originalScaleY = art.scaleY
       
-      // Pulse effect: scale up quickly (noticeable grow) then smooth bounce back
+      // Pulse effect: scale up then immediately back down with no gap
       this.tweens.add({
         targets: art,
         scaleX: originalScaleX * 1.28,
         scaleY: originalScaleY * 1.28,
         duration: 300,
-        ease: 'Back.Out',
-        onComplete: () => {
-          // Scale back to original size with elastic bounce
-          this.tweens.add({
-            targets: art,
-            scaleX: originalScaleX,
-            scaleY: originalScaleY,
-            duration: 380,
-            ease: 'Elastic.Out',
-          })
-        },
+        ease: 'Quad.Out',
+        yoyo: true,
+        hold: 0,
       })
     })
   }
@@ -1670,8 +1665,8 @@ export class PlayScene extends Phaser.Scene {
     if (kind === 'special') {
       return {
         centerDuration: 320,
-        centerHold: 1800,
-        centerScale: 1.1,
+        centerHold: 1050,
+        centerScale: 1.25,
         artFocusScale: 1.7,
         discardDuration: 100,
         discardScale: 0.78,
@@ -1681,8 +1676,8 @@ export class PlayScene extends Phaser.Scene {
     if (kind === 'basic-skill') {
       return {
         centerDuration: 285,
-        centerHold: 1700,
-        centerScale: 1.05,
+        centerHold: 950,
+        centerScale: 1.22,
         artFocusScale: 1.62,
         discardDuration: 115,
         discardScale: 0.87,
@@ -1691,8 +1686,8 @@ export class PlayScene extends Phaser.Scene {
 
     return {
       centerDuration: 260,
-      centerHold: 1600,
-      centerScale: 1.04,
+      centerHold: 850,
+      centerScale: 1.2,
       artFocusScale: 1.58,
       discardDuration: 105,
       discardScale: 0.85,
