@@ -778,6 +778,7 @@ export class PlayScene extends Phaser.Scene {
     const gemsKey = cardData.rarity === 'common' ? null : `card-rarity-gems-${cardData.rarity}`
     const artBgKey = this.getCardArtBackgroundKey(cardData)
     const artKey = this.getCardArtKey(cardData)
+    const artScaleModifier = getCardBaseId(cardData.id) === 'unicorn-strike' ? 0.9 : 1
 
     const card = this.add.rectangle(x, y, cardWidth, cardHeight, 0xffffff, 0.001)
       .setStrokeStyle(0, 0x000000, 0)
@@ -923,12 +924,14 @@ export class PlayScene extends Phaser.Scene {
 
     if (artKey && this.textures.exists(artKey)) {
       const source = this.textures.get(artKey).getSourceImage() as { width: number, height: number }
-      const scale = Math.min(maxW / source.width, maxH / source.height) * (this.compactLayout ? 1.02 : 1.04)
+      const scale = Math.min(maxW / source.width, maxH / source.height)
+        * (this.compactLayout ? 1.02 : 1.04)
+        * artScaleModifier
 
       const artShadow = this.add.image(x + 1.5, artWindow.y + 2.5, artKey)
       artShadow.setDisplaySize(source.width * scale * 0.9, source.height * scale * 0.9)
       artShadow.setTintFill(0x000000)
-      artShadow.setAlpha(0.2)
+      artShadow.setAlpha(0.12)
       artShadow.setMask(artMask)
       artShadow.setData('cardRole', 'art-fg-shadow')
       postFrameVisuals.push(artShadow)
