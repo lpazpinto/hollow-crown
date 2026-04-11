@@ -34,6 +34,8 @@ import { clearSave, saveRun } from '../battle/runSave'
 type VictoryRewardType = 'none' | 'elite-relic' | 'boss-signature'
 
 const CARD_VISUAL_ASSETS: Array<{ key: string, path: string }> = [
+  { key: 'card-area', path: 'assets/cards/card-area.png' },
+  { key: 'playmat', path: 'assets/cards/playmat.png' },
   { key: 'card-frame-attack', path: 'assets/cards/frame-attack.png' },
   { key: 'card-frame-defense', path: 'assets/cards/frame-defense.png' },
   { key: 'card-frame-utility', path: 'assets/cards/frame-utility.png' },
@@ -118,6 +120,7 @@ export class PlayScene extends Phaser.Scene {
   private pileInspectPageText?: Phaser.GameObjects.Text
   private isEffectInspectOpen = false
   private effectInspectObjects: Phaser.GameObjects.GameObject[] = []
+  private playmatImage?: Phaser.GameObjects.Image
   // Active boon consumed at battle start; stored for in-battle display.
   private battleBoon: BoonContent | null = null
   // Victory screen overlay objects, cleared on transition.
@@ -162,6 +165,70 @@ export class PlayScene extends Phaser.Scene {
     const heroX = C ? Math.floor(width * 0.28) : Math.floor(width * 0.26)
     const enemyX = width - heroX
     const spriteY = C ? Math.floor(height * 0.49) : Math.floor(height * 0.48)
+    const bottomBarTopY = height - (C ? 248 : 266)
+    const cardAreaTopY = bottomBarTopY
+
+    // Card area background fills the lower UI zone and preserves aspect ratio.
+    if (this.textures.exists('card-area')) {
+      const source = this.textures.get('card-area').getSourceImage() as { width?: number, height?: number }
+      const sourceW = source.width ?? width
+      const sourceH = source.height ?? (height - cardAreaTopY)
+      const targetW = width
+      const targetH = height - cardAreaTopY
+      const coverScale = Math.max(targetW / sourceW, targetH / sourceH)
+      const cardAreaImage = this.add.image(width / 2, cardAreaTopY + targetH / 2, 'card-area')
+        .setDisplaySize(Math.ceil(sourceW * coverScale), Math.ceil(sourceH * coverScale))
+        .setOrigin(0.5, 0.5)
+        .setDepth(-5)
+
+      const cardAreaMaskShape = this.add.graphics().setDepth(-4)
+      cardAreaMaskShape.fillStyle(0xffffff, 1)
+      cardAreaMaskShape.fillRect(0, cardAreaTopY, targetW, targetH)
+      cardAreaMaskShape.setVisible(false)
+      cardAreaImage.setMask(cardAreaMaskShape.createGeometryMask())
+    }
+
+    // Playmat sits above card-area background but below cards and HUD elements.
+    if (this.textures.exists('playmat')) {
+      const source = this.textures.get('playmat').getSourceImage() as { width?: number, height?: number }
+      const sourceW = source.width ?? width
+      const sourceH = source.height ?? (height - cardAreaTopY)
+      const areaH = height - cardAreaTopY
+      // Fit to width so the playmat fills almost the full horizontal zone.
+      const targetW = Math.floor(width * (C ? 0.9 : 0.88))
+      const fitWidthScale = targetW / sourceW
+      const displayW = Math.ceil(sourceW * fitWidthScale)
+      const displayH = Math.ceil(sourceH * fitWidthScale)
+      // Show more of the source vertically so the decorative border is not clipped.
+      const targetH = Math.floor(areaH * (C ? 0.98 : 0.97))
+      // Anchor the mat to the TOP of the card zone so the top edge is always visible.
+      const matTopY = cardAreaTopY + Math.floor(areaH * 0.01)
+      // Bias the sampled slice slightly downward to keep the bottom trim visible.
+      const matSliceDownBias = Math.floor(areaH * (C ? 0.08 : 0.1))
+      const matCenterY = matTopY + Math.floor(targetH / 2) + matSliceDownBias
+
+      const playmatImage = this.add.image(width / 2, matCenterY, 'playmat')
+        .setDisplaySize(displayW, displayH)
+        .setOrigin(0.5, 0.5)
+        .setDepth(-3)
+      playmatImage.setData('baseY', matCenterY)
+      playmatImage.setData('baseScaleX', playmatImage.scaleX)
+      playmatImage.setData('baseScaleY', playmatImage.scaleY)
+      playmatImage.setData('baseAngle', 0)
+      this.playmatImage = playmatImage
+
+      // Mask clips the image to the visible window (top-anchored, centered horizontally).
+      const playmatMaskShape = this.add.graphics().setDepth(-2)
+      playmatMaskShape.fillStyle(0xffffff, 1)
+      playmatMaskShape.fillRect(
+        Math.floor((width - targetW) / 2),
+        matTopY,
+        targetW,
+        targetH,
+      )
+      playmatMaskShape.setVisible(false)
+      playmatImage.setMask(playmatMaskShape.createGeometryMask())
+    }
 
     // Top HUD band background.
     this.add.rectangle(width / 2, hudH / 2, width, hudH, 0x060a13, 0.84).setDepth(0)
@@ -484,11 +551,8 @@ export class PlayScene extends Phaser.Scene {
 
     // Bottom command band with matching HUD framing.
     // Bottom command band — extended upward to give pile zone its own readable row above the hand zone.
-    const bottomBarTopY = height - (C ? 248 : 266)
     // Battle stage boundary line — sits just above the bottom zone.
     this.add.rectangle(width / 2, bottomBarTopY - (C ? 16 : 20), width * 0.86, 2, 0x334155, 0.62).setDepth(1)
-    // Bottom zone background fills from bottomBarTopY to screen bottom.
-    this.add.rectangle(width / 2, height - (C ? 124 : 133), width, C ? 248 : 266, 0x0b1020, 0.84).setDepth(0)
     // Top edge of bottom zone.
     this.add.rectangle(width / 2, bottomBarTopY, width, 2, 0x2d4666).setDepth(1)
 
@@ -1106,6 +1170,7 @@ export class PlayScene extends Phaser.Scene {
     }
 
     this.lockBattleInput()
+    this.animatePlaymatRipple('impact')
     this.stopHeroIdleAnimation()
     const presentation = this.getCardPresentation(card)
     const previousState = this.cloneBattleState(this.session.state)
@@ -1486,6 +1551,10 @@ export class PlayScene extends Phaser.Scene {
     const animateDraw = this.pendingDrawAnimation
     this.pendingDrawAnimation = false
 
+    if (animateDraw) {
+      this.animatePlaymatRipple('draw')
+    }
+
     this.session.hand.forEach((cardData, index) => {
       const cardX = startX + index * cardSpacing
       // Mixed-cost cards require both energy and Ember to be playable.
@@ -1517,6 +1586,56 @@ export class PlayScene extends Phaser.Scene {
       }
 
       this.handObjects.push(...cardObjects)
+    })
+  }
+
+  private animatePlaymatRipple(type: 'draw' | 'impact') {
+    if (!this.playmatImage) {
+      return
+    }
+
+    this.tweens.killTweensOf(this.playmatImage)
+
+    const baseY = (this.playmatImage.getData('baseY') as number) ?? this.playmatImage.y
+    const baseScaleX = (this.playmatImage.getData('baseScaleX') as number) ?? this.playmatImage.scaleX
+    const baseScaleY = (this.playmatImage.getData('baseScaleY') as number) ?? this.playmatImage.scaleY
+    const baseAngle = (this.playmatImage.getData('baseAngle') as number) ?? 0
+    const sway = type === 'impact' ? 1 : 0.6
+
+    this.playmatImage.setScale(baseScaleX, baseScaleY)
+    this.playmatImage.setAngle(baseAngle)
+    this.playmatImage.setY(baseY)
+
+    this.tweens.add({
+      targets: this.playmatImage,
+      y: baseY - 1.2 * sway,
+      angle: 0.3 * sway,
+      scaleX: baseScaleX * (1 + 0.003 * sway),
+      scaleY: baseScaleY * (1 + 0.0018 * sway),
+      duration: 100,
+      ease: 'Sine.Out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: this.playmatImage,
+          y: baseY + 0.9 * sway,
+          angle: -0.24 * sway,
+          scaleX: baseScaleX * (1 - 0.0012 * sway),
+          scaleY: baseScaleY * (1 + 0.0022 * sway),
+          duration: 170,
+          ease: 'Sine.InOut',
+          onComplete: () => {
+            this.tweens.add({
+              targets: this.playmatImage,
+              y: baseY,
+              angle: baseAngle,
+              scaleX: baseScaleX,
+              scaleY: baseScaleY,
+              duration: 220,
+              ease: 'Sine.Out',
+            })
+          },
+        })
+      },
     })
   }
 

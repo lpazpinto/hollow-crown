@@ -25,6 +25,7 @@ type RewardSceneData = {
 }
 
 const CARD_VISUAL_ASSETS: Array<{ key: string, path: string }> = [
+  { key: 'card-area', path: 'assets/cards/card-area.png' },
   { key: 'card-frame-attack', path: 'assets/cards/frame-attack.png' },
   { key: 'card-frame-defense', path: 'assets/cards/frame-defense.png' },
   { key: 'card-frame-utility', path: 'assets/cards/frame-utility.png' },
@@ -84,6 +85,27 @@ export class RewardScene extends Phaser.Scene {
     this.advanceFloorOnSelect = data.advanceFloorOnSelect ?? true
 
     this.cameras.main.setBackgroundColor('#111827')
+
+    // Card area background for the lower half, rendered with cover+crop.
+    if (this.textures.exists('card-area')) {
+      const cardAreaTopY = Math.floor(height * 0.5)
+      const source = this.textures.get('card-area').getSourceImage() as { width?: number, height?: number }
+      const sourceW = source.width ?? width
+      const sourceH = source.height ?? (height - cardAreaTopY)
+      const targetW = width
+      const targetH = height - cardAreaTopY
+      const coverScale = Math.max(targetW / sourceW, targetH / sourceH)
+      const cardAreaImage = this.add.image(width / 2, cardAreaTopY + targetH / 2, 'card-area')
+        .setDisplaySize(Math.ceil(sourceW * coverScale), Math.ceil(sourceH * coverScale))
+        .setOrigin(0.5, 0.5)
+        .setDepth(-5)
+
+      const cardAreaMaskShape = this.add.graphics().setDepth(-4)
+      cardAreaMaskShape.fillStyle(0xffffff, 1)
+      cardAreaMaskShape.fillRect(0, cardAreaTopY, targetW, targetH)
+      cardAreaMaskShape.setVisible(false)
+      cardAreaImage.setMask(cardAreaMaskShape.createGeometryMask())
+    }
 
     this.add.text(width / 2, 40, this.mode === 'boss-signature' ? 'Signature Reward' : (this.mode === 'shard-forge' ? 'Shard Forge Reward' : 'Card Draft'), {
       fontSize: '34px',
