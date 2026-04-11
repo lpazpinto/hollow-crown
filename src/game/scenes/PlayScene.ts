@@ -36,6 +36,8 @@ type VictoryRewardType = 'none' | 'elite-relic' | 'boss-signature'
 const CARD_VISUAL_ASSETS: Array<{ key: string, path: string }> = [
   { key: 'card-area', path: 'assets/cards/card-area.png' },
   { key: 'playmat', path: 'assets/cards/playmat.png' },
+  { key: 'pile-holder-deck', path: 'assets/cards/pile-holder-deck-unicorn-cardcolors-midright.png' },
+  { key: 'pile-holder-discard', path: 'assets/cards/pile-holder-discard.png' },
   { key: 'card-frame-attack', path: 'assets/cards/frame-attack.png' },
   { key: 'card-frame-defense', path: 'assets/cards/frame-defense.png' },
   { key: 'card-frame-utility', path: 'assets/cards/frame-utility.png' },
@@ -121,6 +123,8 @@ export class PlayScene extends Phaser.Scene {
   private isEffectInspectOpen = false
   private effectInspectObjects: Phaser.GameObjects.GameObject[] = []
   private playmatImage?: Phaser.GameObjects.Image
+  private deckHolderImage?: Phaser.GameObjects.Image
+  private discardHolderImage?: Phaser.GameObjects.Image
   // Active boon consumed at battle start; stored for in-battle display.
   private battleBoon: BoonContent | null = null
   // Victory screen overlay objects, cleared on transition.
@@ -569,10 +573,32 @@ export class PlayScene extends Phaser.Scene {
     this.centerActionX = width / 2
     this.centerActionY = spriteY + (C ? 4 : 6)
 
-    this.add.rectangle(deckPileX, pilesY, pileW + 12, pileH + 12, 0x0f172a, 0.95).setStrokeStyle(1, 0x4b617f).setDepth(1)
-    this.add.rectangle(discardPileX, pilesY, pileW + 12, pileH + 12, 0x0f172a, 0.95).setStrokeStyle(1, 0x4b617f).setDepth(1)
-    this.add.rectangle(deckPileX, pilesY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(2)
-    this.add.rectangle(discardPileX, pilesY, pileW, pileH, 0x1a2439, 0.95).setStrokeStyle(1, 0x5b7699).setDepth(2)
+    // Pile holder art underneath the deck and discard boxes.
+    // Keep these wide and shallow so they read as flat cloth, not blocks.
+    const holderW = C ? 132 : 156
+    const holderH = C ? 72 : 84
+    this.deckHolderImage = undefined
+    this.discardHolderImage = undefined
+    if (this.textures.exists('pile-holder-deck')) {
+      const deckHolder = this.add.image(deckPileX, pilesY + (C ? 6 : 8), 'pile-holder-deck')
+        .setDisplaySize(holderW, holderH)
+        .setDepth(0)
+      deckHolder.setData('baseY', deckHolder.y)
+      deckHolder.setData('baseScaleX', deckHolder.scaleX)
+      deckHolder.setData('baseScaleY', deckHolder.scaleY)
+      deckHolder.setData('baseAngle', 0)
+      this.deckHolderImage = deckHolder
+    }
+    if (this.textures.exists('pile-holder-discard')) {
+      const discardHolder = this.add.image(discardPileX, pilesY + (C ? 6 : 8), 'pile-holder-discard')
+        .setDisplaySize(holderW, holderH)
+        .setDepth(0)
+      discardHolder.setData('baseY', discardHolder.y)
+      discardHolder.setData('baseScaleX', discardHolder.scaleX)
+      discardHolder.setData('baseScaleY', discardHolder.scaleY)
+      discardHolder.setData('baseAngle', 0)
+      this.discardHolderImage = discardHolder
+    }
 
     const stackW = C ? 28 : 32
     const stackH = C ? 36 : 40
@@ -1553,6 +1579,7 @@ export class PlayScene extends Phaser.Scene {
 
     if (animateDraw) {
       this.animatePlaymatRipple('draw')
+      this.animatePileHolderRipple('draw')
     }
 
     this.session.hand.forEach((cardData, index) => {
@@ -1637,6 +1664,70 @@ export class PlayScene extends Phaser.Scene {
         })
       },
     })
+  }
+
+  private animatePileHolderRipple(type: 'draw' | 'discard') {
+    const animateHolder = (
+      holder: Phaser.GameObjects.Image | undefined,
+      sway: number,
+      angleSign: number,
+    ) => {
+      if (!holder || sway <= 0) {
+        return
+      }
+
+      this.tweens.killTweensOf(holder)
+
+      const baseY = (holder.getData('baseY') as number) ?? holder.y
+      const baseScaleX = (holder.getData('baseScaleX') as number) ?? holder.scaleX
+      const baseScaleY = (holder.getData('baseScaleY') as number) ?? holder.scaleY
+      const baseAngle = (holder.getData('baseAngle') as number) ?? 0
+
+      holder.setScale(baseScaleX, baseScaleY)
+      holder.setAngle(baseAngle)
+      holder.setY(baseY)
+
+      this.tweens.add({
+        targets: holder,
+        y: baseY - 0.9 * sway,
+        angle: baseAngle + angleSign * 0.35 * sway,
+        scaleX: baseScaleX * (1 + 0.003 * sway),
+        scaleY: baseScaleY * (1 + 0.002 * sway),
+        duration: 95,
+        ease: 'Sine.Out',
+        onComplete: () => {
+          this.tweens.add({
+            targets: holder,
+            y: baseY + 0.7 * sway,
+            angle: baseAngle - angleSign * 0.22 * sway,
+            scaleX: baseScaleX * (1 - 0.0015 * sway),
+            scaleY: baseScaleY * (1 + 0.0018 * sway),
+            duration: 150,
+            ease: 'Sine.InOut',
+            onComplete: () => {
+              this.tweens.add({
+                targets: holder,
+                y: baseY,
+                angle: baseAngle,
+                scaleX: baseScaleX,
+                scaleY: baseScaleY,
+                duration: 180,
+                ease: 'Sine.Out',
+              })
+            },
+          })
+        },
+      })
+    }
+
+    if (type === 'draw') {
+      animateHolder(this.deckHolderImage, 1, -1)
+      animateHolder(this.discardHolderImage, 0.45, 1)
+      return
+    }
+
+    animateHolder(this.deckHolderImage, 0.35, -1)
+    animateHolder(this.discardHolderImage, 1, 1)
   }
 
   private animateDrawToHand(
@@ -1761,6 +1852,8 @@ export class PlayScene extends Phaser.Scene {
     kind: 'basic-attack' | 'basic-skill' | 'special',
     onComplete: () => void,
   ) {
+    this.animatePileHolderRipple('discard')
+
     const timing = this.getCardAnimationTiming(kind)
     const dx = this.discardAnchorX - visual.card.x
     const dy = this.discardAnchorY - visual.card.y
@@ -1800,6 +1893,8 @@ export class PlayScene extends Phaser.Scene {
       onComplete()
       return
     }
+
+    this.animatePileHolderRipple('discard')
 
     const pending = this.handCardVisuals.length
     let completed = 0
