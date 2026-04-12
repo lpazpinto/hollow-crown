@@ -37,7 +37,7 @@ const CARD_VISUAL_ASSETS: Array<{ key: string, path: string }> = [
   { key: 'card-area', path: 'assets/cards/card-area.png' },
   { key: 'playmat', path: 'assets/cards/playmat.png' },
   { key: 'pile-holder-deck', path: 'assets/cards/pile-holder-deck-unicorn-cardcolors-midright.png' },
-  { key: 'pile-holder-discard', path: 'assets/cards/pile-holder-discard.png' },
+  { key: 'pile-holder-discard', path: 'assets/cards/pile-holder-discard-gem.png' },
   { key: 'card-frame-attack', path: 'assets/cards/frame-attack.png' },
   { key: 'card-frame-defense', path: 'assets/cards/frame-defense.png' },
   { key: 'card-frame-utility', path: 'assets/cards/frame-utility.png' },
@@ -650,15 +650,19 @@ export class PlayScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(2)
 
     this.drawPileCountText = this.add.text(this.deckAnchorX, this.deckAnchorY + (C ? 29 : 34), '0', {
-      fontSize: C ? '13px' : '14px',
-      color: '#b0c8e3',
+      fontSize: C ? '17px' : '19px',
+      color: '#ffffff',
       fontStyle: 'bold',
+      stroke: '#1a2e45',
+      strokeThickness: 4,
     }).setOrigin(0.5).setDepth(3)
 
     this.discardPileText = this.add.text(this.discardAnchorX, this.discardAnchorY + (C ? 29 : 34), '0', {
-      fontSize: C ? '13px' : '14px',
-      color: '#b0c8e3',
+      fontSize: C ? '17px' : '19px',
+      color: '#ffffff',
       fontStyle: 'bold',
+      stroke: '#1a2e45',
+      strokeThickness: 4,
     }).setOrigin(0.5).setDepth(3)
 
     const inspectHitW = pileW + (C ? 24 : 28)
@@ -1667,67 +1671,91 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private animatePileHolderRipple(type: 'draw' | 'discard') {
-    const animateHolder = (
-      holder: Phaser.GameObjects.Image | undefined,
-      sway: number,
-      angleSign: number,
-    ) => {
-      if (!holder || sway <= 0) {
-        return
-      }
-
-      this.tweens.killTweensOf(holder)
-
-      const baseY = (holder.getData('baseY') as number) ?? holder.y
-      const baseScaleX = (holder.getData('baseScaleX') as number) ?? holder.scaleX
-      const baseScaleY = (holder.getData('baseScaleY') as number) ?? holder.scaleY
-      const baseAngle = (holder.getData('baseAngle') as number) ?? 0
-
-      holder.setScale(baseScaleX, baseScaleY)
-      holder.setAngle(baseAngle)
-      holder.setY(baseY)
-
-      this.tweens.add({
-        targets: holder,
-        y: baseY - 0.9 * sway,
-        angle: baseAngle + angleSign * 0.35 * sway,
-        scaleX: baseScaleX * (1 + 0.003 * sway),
-        scaleY: baseScaleY * (1 + 0.002 * sway),
-        duration: 95,
-        ease: 'Sine.Out',
-        onComplete: () => {
-          this.tweens.add({
-            targets: holder,
-            y: baseY + 0.7 * sway,
-            angle: baseAngle - angleSign * 0.22 * sway,
-            scaleX: baseScaleX * (1 - 0.0015 * sway),
-            scaleY: baseScaleY * (1 + 0.0018 * sway),
-            duration: 150,
-            ease: 'Sine.InOut',
-            onComplete: () => {
-              this.tweens.add({
-                targets: holder,
-                y: baseY,
-                angle: baseAngle,
-                scaleX: baseScaleX,
-                scaleY: baseScaleY,
-                duration: 180,
-                ease: 'Sine.Out',
-              })
-            },
-          })
-        },
-      })
-    }
-
     if (type === 'draw') {
-      animateHolder(this.deckHolderImage, 1, -1)
-      animateHolder(this.discardHolderImage, 0.45, 1)
+      // Deck cloth only: small upward lift as a card is pulled from the top.
+      this.nudgeHolderLift(this.deckHolderImage)
       return
     }
 
-    animateHolder(this.deckHolderImage, 0.35, -1)
-    animateHolder(this.discardHolderImage, 1, 1)
+    // Discard cloth only: small downward press as a card lands on the pile.
+    this.nudgeHolderPress(this.discardHolderImage)
+  }
+
+  // Light upward lift — card being drawn off the deck.
+  private nudgeHolderLift(holder: Phaser.GameObjects.Image | undefined) {
+    if (!holder) {
+      return
+    }
+
+    this.tweens.killTweensOf(holder)
+
+    const baseY = (holder.getData('baseY') as number) ?? holder.y
+    const baseScaleX = (holder.getData('baseScaleX') as number) ?? holder.scaleX
+    const baseScaleY = (holder.getData('baseScaleY') as number) ?? holder.scaleY
+    const baseAngle = (holder.getData('baseAngle') as number) ?? 0
+
+    holder.setY(baseY)
+    holder.setScale(baseScaleX, baseScaleY)
+    holder.setAngle(baseAngle)
+
+    this.tweens.add({
+      targets: holder,
+      y: baseY - 1.8,
+      angle: baseAngle - 0.4,
+      scaleX: baseScaleX * 1.004,
+      duration: 80,
+      ease: 'Sine.Out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: holder,
+          y: baseY,
+          angle: baseAngle,
+          scaleX: baseScaleX,
+          scaleY: baseScaleY,
+          duration: 200,
+          ease: 'Sine.InOut',
+        })
+      },
+    })
+  }
+
+  // Light downward press — card landing on the discard pile.
+  private nudgeHolderPress(holder: Phaser.GameObjects.Image | undefined) {
+    if (!holder) {
+      return
+    }
+
+    this.tweens.killTweensOf(holder)
+
+    const baseY = (holder.getData('baseY') as number) ?? holder.y
+    const baseScaleX = (holder.getData('baseScaleX') as number) ?? holder.scaleX
+    const baseScaleY = (holder.getData('baseScaleY') as number) ?? holder.scaleY
+    const baseAngle = (holder.getData('baseAngle') as number) ?? 0
+
+    holder.setY(baseY)
+    holder.setScale(baseScaleX, baseScaleY)
+    holder.setAngle(baseAngle)
+
+    this.tweens.add({
+      targets: holder,
+      y: baseY + 1.6,
+      angle: baseAngle + 0.3,
+      scaleX: baseScaleX * 1.003,
+      scaleY: baseScaleY * 0.997,
+      duration: 70,
+      ease: 'Sine.Out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: holder,
+          y: baseY,
+          angle: baseAngle,
+          scaleX: baseScaleX,
+          scaleY: baseScaleY,
+          duration: 190,
+          ease: 'Sine.InOut',
+        })
+      },
+    })
   }
 
   private animateDrawToHand(
