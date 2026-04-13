@@ -45,18 +45,26 @@ Related preserved direction/reference docs (historical + supporting):
 ### Scene Flow
 
 - Menu: new run / continue run
+- Character select
 - Domain select
 - Route map select
 - Battle scene
 - Level-up scene
-- Card reward scene
+- Card reward scene (post-battle card selection)
 - Relic reward scene
 - Run end scene
+
+### Character Selection
+
+- Character select screen before domain selection
+- Currently features the Unicorn hero with expandable framework for additional characters
+- Supports future character-specific cosmetics and starting deck modifications
 
 ### Route Selection and Progression
 
 - Branching route graph layouts (static + deterministic procedural)
-- Reachable-node progression and completion tracking
+- Extended run path: 11 encounters per run (battles, elites, rest, boss)
+- Reachable-node progression with clickable circles and buttons
 - Reward-category telegraphing (battle, elite, shard, healing, boon, relic teaser)
 - Elite-to-boss pacing with post-elite and pre-boss preparation nodes
 - Compact route summary with lightweight deck/relic/boon inspection
@@ -72,7 +80,7 @@ Related preserved direction/reference docs (historical + supporting):
 
 - XP by encounter type
 - Pending level-up queue + level-up choice scene
-- Milestone normal-battle draft cadence
+- Card draft after every normal battle victory (3 card choices)
 - Elite relic reward flow
 - Boss signature reward flow
 - Route-driven shard opportunities (not auto-per-battle)

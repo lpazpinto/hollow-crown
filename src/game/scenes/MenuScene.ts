@@ -112,7 +112,7 @@ export class MenuScene extends Phaser.Scene {
       this.animatePress(newBtn)
       clearSave()
       startNewRun()
-      this.scene.start('DomainSelectScene')
+      this.scene.start('CharacterSelectScene')
     })
 
     if (hasSave()) {
@@ -134,7 +134,7 @@ export class MenuScene extends Phaser.Scene {
         }
 
         const run = getRunState()
-        this.scene.start(run.selectedRouteId ? 'MapScene' : 'DomainSelectScene')
+        this.scene.start(run.selectedRouteId ? 'MapScene' : 'CharacterSelectScene')
       })
     }
 

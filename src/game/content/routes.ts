@@ -190,7 +190,7 @@ export function getDefaultRoutePath(): RouteNodeType[] {
   const firstPlayableRoute = ROUTE_SELECT_ROUTES.find((route) => route.status === 'playable')
   const layout = firstPlayableRoute?.graphLayouts[0]
   if (!firstPlayableRoute || !layout) {
-    return ['battle', 'battle_or_utility', 'battle', 'utility_or_special', 'elite', 'recovery', 'boss']
+    return ['battle', 'battle_or_utility', 'battle', 'utility_or_special', 'battle', 'battle_or_utility', 'elite', 'recovery', 'battle', 'recovery', 'boss']
   }
 
   return summarizeLayoutToPath(layout)

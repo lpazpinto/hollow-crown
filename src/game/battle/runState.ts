@@ -66,9 +66,8 @@ const LEVEL_XP_STEP_COSTS = [8, 12, 16, 20]
 const LEVEL_XP_THRESHOLDS = buildLevelXpThresholds(LEVEL_XP_STEP_COSTS)
 
 // Milestone card cadence control:
-// normal battles do not grant permanent cards by default;
-// every N normal battle wins grants one card draft.
-const BATTLE_CARD_REWARD_INTERVAL = 3
+// Every normal battle win grants one card draft.
+const BATTLE_CARD_REWARD_INTERVAL = 1
 
 // Tuning target (route-rewards-levelup-direction-update.md):
 // - normal battle: 4-5 XP

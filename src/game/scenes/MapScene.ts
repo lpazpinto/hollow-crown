@@ -238,6 +238,7 @@ export class MapScene extends Phaser.Scene {
         routeLayout,
         run.currentRouteChoiceNodeIds,
         run.completedRouteNodeIds,
+        run.selectedRouteId,
         compactLayout ? 286 : 306,
       )
     }
@@ -335,6 +336,7 @@ export class MapScene extends Phaser.Scene {
     layout: RouteGraphLayout,
     reachableNodeIds: string[],
     completedNodeIds: string[],
+    selectedRouteId: string | null,
     centerY: number,
   ) {
     const { width } = this.scale
@@ -428,6 +430,15 @@ export class MapScene extends Phaser.Scene {
 
       this.add.circle(position.x, position.y, nodeRadius, fillColor)
         .setStrokeStyle(2, strokeColor)
+
+      // Interactive hit zone for the node circle (clickable to select)
+      if (isReachable) {
+        const hitCircle = this.add.circle(position.x, position.y, nodeRadius + 8, 0x000000, 0.001)
+          .setInteractive({ useHandCursor: true })
+        hitCircle.on('pointerdown', () => {
+          this.handleEncounterSelection(selectedRouteId || '', node.id, node.encounterType)
+        })
+      }
 
       this.add.text(position.x, position.y + nodeRadius + 16, this.getEncounterTypeTag(node.encounterType), {
         fontSize: compactLayout ? '10px' : '11px',
