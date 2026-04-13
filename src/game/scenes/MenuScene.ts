@@ -7,6 +7,12 @@ export class MenuScene extends Phaser.Scene {
     super('MenuScene')
   }
 
+  preload() {
+    if (!this.textures.exists('hud-button-standard')) {
+      this.load.image('hud-button-standard', 'assets/HUD/button-standard-pixel-v2.png')
+    }
+  }
+
   create() {
     const { width, height } = this.scale
     const compactLayout = width < 900 || height < 700
@@ -97,14 +103,24 @@ export class MenuScene extends Phaser.Scene {
       wordWrap: { width: compactLayout ? 460 : 620 },
     }).setOrigin(0.5).setDepth(2)
 
-    const newBtn = this.add
-      .rectangle(width / 2, height / 2 - 20, compactLayout ? 280 : 300, compactLayout ? 72 : 76, 0x1e293b)
-      .setStrokeStyle(2, 0xffd166)
-      .setDepth(2)
-      .setInteractive({ useHandCursor: true })
+    const menuButtonW = compactLayout ? 336 : 368
+    const menuButtonH = compactLayout ? 72 : 76
 
-    this.add.text(width / 2, height / 2 - 20, 'Start New Run', {
-      fontSize: '22px',
+    const newBtn = this.textures.exists('hud-button-standard')
+      ? this.add
+        .image(width / 2, height / 2 - 20, 'hud-button-standard')
+        .setDisplaySize(menuButtonW, menuButtonH)
+        .setTint(0xffd166)
+        .setDepth(2)
+        .setInteractive({ useHandCursor: true })
+      : this.add
+        .rectangle(width / 2, height / 2 - 20, menuButtonW, menuButtonH, 0x1e293b)
+        .setStrokeStyle(2, 0xffd166)
+        .setDepth(2)
+        .setInteractive({ useHandCursor: true })
+
+    this.add.text(width / 2, height / 2 - 20, 'Start New Adventure', {
+      fontSize: compactLayout ? '18px' : '20px',
       color: '#ffd166',
     }).setOrigin(0.5).setDepth(3)
 
@@ -116,14 +132,21 @@ export class MenuScene extends Phaser.Scene {
     })
 
     if (hasSave()) {
-      const contBtn = this.add
-        .rectangle(width / 2, height / 2 + 68, compactLayout ? 280 : 300, compactLayout ? 72 : 76, 0x1e293b)
-        .setStrokeStyle(2, 0x86efac)
-        .setDepth(2)
-        .setInteractive({ useHandCursor: true })
+      const contBtn = this.textures.exists('hud-button-standard')
+        ? this.add
+          .image(width / 2, height / 2 + 68, 'hud-button-standard')
+          .setDisplaySize(menuButtonW, menuButtonH)
+          .setTint(0x86efac)
+          .setDepth(2)
+          .setInteractive({ useHandCursor: true })
+        : this.add
+          .rectangle(width / 2, height / 2 + 68, menuButtonW, menuButtonH, 0x1e293b)
+          .setStrokeStyle(2, 0x86efac)
+          .setDepth(2)
+          .setInteractive({ useHandCursor: true })
 
-      this.add.text(width / 2, height / 2 + 68, 'Continue Run', {
-        fontSize: '22px',
+      this.add.text(width / 2, height / 2 + 68, 'Continue Adventure', {
+        fontSize: compactLayout ? '18px' : '20px',
         color: '#86efac',
       }).setOrigin(0.5).setDepth(3)
 
@@ -146,7 +169,7 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(2)
   }
 
-  private animatePress(target: Phaser.GameObjects.Rectangle) {
+  private animatePress(target: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image) {
     this.tweens.killTweensOf(target)
     target.setScale(0.97)
     this.tweens.add({

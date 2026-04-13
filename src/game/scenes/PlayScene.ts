@@ -36,6 +36,7 @@ type VictoryRewardType = 'none' | 'elite-relic' | 'boss-signature'
 const CARD_VISUAL_ASSETS: Array<{ key: string, path: string }> = [
   { key: 'card-area', path: 'assets/cards/card-area.png' },
   { key: 'playmat', path: 'assets/cards/playmat.png' },
+  { key: 'hud-button-standard', path: 'assets/HUD/button-standard-pixel-v2.png' },
   { key: 'pile-holder-deck', path: 'assets/cards/pile-holder-deck-unicorn-cardcolors-midright.png' },
   { key: 'pile-holder-discard', path: 'assets/cards/pile-holder-discard-gem.png' },
   { key: 'card-frame-attack', path: 'assets/cards/frame-attack.png' },
@@ -690,45 +691,32 @@ export class PlayScene extends Phaser.Scene {
       this.openPileInspection('discard')
     })
 
-    // End-turn button: framed, prominent, and consistent with HUD palette.
+    // End-turn button: image-first control with no background panel behind it.
     const actionPanelY = bottomBarTopY + (C ? 56 : 62)
-    this.add.rectangle(
-      width - (C ? 118 : 138),
-      actionPanelY,
-      C ? 228 : 240,
-      C ? 106 : 116,
-      0x1f2937,
-      0.88,
-    ).setStrokeStyle(1, 0x6b7280, 0.7).setDepth(1)
 
-    this.add.text(width - (C ? 118 : 138), actionPanelY - (C ? 44 : 48), 'Turn', {
-      fontSize: C ? '11px' : '12px',
-      color: '#9ca3af',
-      fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(3)
+    const endTurnButtonX = width - (C ? 118 : 138)
+    const endTurnButtonY = actionPanelY + (C ? 8 : 10)
+    const endTurnButtonW = C ? 222 : 236
+    const endTurnButtonH = C ? 80 : 88
+    const endTurnButton = this.textures.exists('hud-button-standard')
+      ? this.add.image(endTurnButtonX, endTurnButtonY, 'hud-button-standard')
+        .setDisplaySize(endTurnButtonW, endTurnButtonH)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(2)
+      : this.add.rectangle(
+        endTurnButtonX,
+        endTurnButtonY,
+        endTurnButtonW,
+        endTurnButtonH,
+        0xb9781f,
+      ).setStrokeStyle(2, 0xf8d17f).setInteractive({ useHandCursor: true }).setDepth(2)
 
-    const endTurnButton = this.add.rectangle(
-      width - (C ? 118 : 138),
-      actionPanelY + (C ? 8 : 10),
-      C ? 208 : 220,
-      C ? 72 : 78,
-      0xb9781f,
-    ).setStrokeStyle(2, 0xf8d17f).setInteractive({ useHandCursor: true }).setDepth(2)
-
-    this.add.rectangle(endTurnButton.x, endTurnButton.y - (C ? 16 : 18), C ? 194 : 206, 2, 0xf7d896, 0.9).setDepth(3)
-
-    this.add.text(endTurnButton.x, endTurnButton.y - 8, 'END TURN', {
+    this.add.text(endTurnButton.x, endTurnButton.y, 'END TURN', {
       fontSize: C ? '21px' : '23px',
-      color: '#fff4d6',
+      color: '#f8f6d2',
       fontStyle: 'bold',
-      stroke: '#5a3200',
+      stroke: '#1b1f36',
       strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(4)
-
-    this.add.text(endTurnButton.x, endTurnButton.y + 14, 'Pass Action', {
-      fontSize: C ? '11px' : '12px',
-      color: '#ffe7b3',
-      fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(4)
 
     endTurnButton.on('pointerdown', () => {
@@ -2722,7 +2710,7 @@ export class PlayScene extends Phaser.Scene {
     })
   }
 
-  private animatePress(target: Phaser.GameObjects.Rectangle) {
+  private animatePress(target: Phaser.GameObjects.Rectangle | Phaser.GameObjects.Image) {
     this.tweens.killTweensOf(target)
     target.setScale(0.97)
     this.tweens.add({
