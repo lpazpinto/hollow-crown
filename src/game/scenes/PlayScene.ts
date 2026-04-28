@@ -36,6 +36,7 @@ type VictoryRewardType = 'none' | 'elite-relic' | 'boss-signature'
 const CARD_VISUAL_ASSETS: Array<{ key: string, path: string }> = [
   { key: 'card-area', path: 'assets/cards/card-area.png' },
   { key: 'playmat', path: 'assets/cards/playmat.png' },
+  { key: 'battle-bottom-frame', path: 'assets/HUD/battle-bottom-frame.png' },
   { key: 'hud-button-standard', path: 'assets/HUD/button-standard-pixel-v2.png' },
   { key: 'pile-holder-deck', path: 'assets/cards/pile-holder-deck-unicorn-cardcolors-midright.png' },
   { key: 'pile-holder-discard', path: 'assets/cards/pile-holder-discard-gem.png' },
@@ -554,12 +555,25 @@ export class PlayScene extends Phaser.Scene {
       this.scene.start('MenuScene')
     })
 
-    // Bottom command band with matching HUD framing.
-    // Bottom command band — extended upward to give pile zone its own readable row above the hand zone.
-    // Battle stage boundary line — sits just above the bottom zone.
-    this.add.rectangle(width / 2, bottomBarTopY - (C ? 16 : 20), width * 0.86, 2, 0x334155, 0.62).setDepth(1)
-    // Top edge of bottom zone.
-    this.add.rectangle(width / 2, bottomBarTopY, width, 2, 0x2d4666).setDepth(1)
+    // Bottom separator frame: decorative divider line (no panel fill).
+    if (this.textures.exists('battle-bottom-frame')) {
+      const frameTexture = this.textures.get('battle-bottom-frame')
+      frameTexture.setFilter(Phaser.Textures.FilterMode.NEAREST)
+
+      const frameW = Math.floor(width * (C ? 0.96 : 0.95))
+      const sourceStripY = 0
+      const sourceStripH = C ? 10 : 12
+      const stripDisplayH = C ? 18 : 20
+      const separator = this.add.image(width / 2, bottomBarTopY + (C ? 1 : 2), 'battle-bottom-frame')
+        .setCrop(0, sourceStripY, 400, sourceStripH)
+        .setDisplaySize(frameW, stripDisplayH)
+        .setDepth(2)
+      separator.setOrigin(0.5, 0.5)
+    } else {
+      // Fallback separator lines if frame art is unavailable.
+      this.add.rectangle(width / 2, bottomBarTopY - (C ? 16 : 20), width * 0.86, 2, 0x334155, 0.62).setDepth(1)
+      this.add.rectangle(width / 2, bottomBarTopY, width, 2, 0x2d4666).setDepth(1)
+    }
 
     // Hand/deck/discard spacing is controlled here.
     // Pile row sits in its own dedicated zone above the hand panel, separated by a clear gap.
